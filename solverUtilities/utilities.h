@@ -30,7 +30,7 @@
 #define		EQ					'E'
 
 typedef 	char				*cString;
-typedef		double				*dVector;
+typedef		double				*dVector; /*how dvector is defined*/
 typedef		int					*iVector;
 
 #define 	mem_malloc(n) 		log_alloc("malloc : " #n,malloc((n)), (n))

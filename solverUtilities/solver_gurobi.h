@@ -15,7 +15,7 @@
 #include "gurobi_c.h"
 
 #define ENVptr 		GRBenv
-#define modelPtr 	GRBmodel
+#define modelPtr 	GRBmodel   /*Changing the name of the structure to modify it for different solvers*/
 #define GRB_OFF 	0
 
 enum modelType {
@@ -61,7 +61,7 @@ int	getConstraints(modelPtr *model, int	*numnzP, int *matbeg, int *matind, doubl
 int	getVariables (modelPtr *model, int *numnzP, int *vbeg, int *vind, double *vval, int start, int len);
 
 /* Input/Output */
-int readProblem(char *probpath, modelPtr **model);
+int readProblem(char *probpath, modelPtr **model); 
 int writeProblem(modelPtr *model, char *fname);
 
 /* Attribute Management */

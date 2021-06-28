@@ -1,0 +1,12 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs
+/Debug
+/x64/Debug
+/solverErrors.log
+/stochasticQP.vcxproj.user
+/stochasticQP.vcxproj.filters
+/stochasticQP.vcxproj
+/stochasticQP.sln
