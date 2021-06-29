@@ -30,7 +30,7 @@
 #define		EQ					'E'
 
 typedef 	char				*cString;
-typedef		double				*dVector; /*how dvector is defined*/
+typedef		double				*dVector;
 typedef		int					*iVector;
 
 #define 	mem_malloc(n) 		log_alloc("malloc : " #n,malloc((n)), (n))
@@ -88,14 +88,16 @@ bool equalIntvec(iVector a, iVector b, int len);
 bool equalLongIntvec(unsigned long *a, unsigned long *b, int len);
 bool isZeroVector(dVector a, int len, double tolerance);
 bool isInteger(dVector x, int length, int startIdx, int endIdx, double tolerance);
-dVector duplicVector(double *a, int len);
-iVector duplicIntvec(iVector a, int len);
-void copyVector(dVector a, dVector b, int len, bool isOneNorm);
-void copyIntvec (iVector a, iVector b, int len);
+dVector duplicVector(double *orig, int len);
+iVector duplicIntvec(iVector orig, int len);
+void copyVector(dVector orig, dVector copy, int len);
+void copyIntvec (iVector orig, iVector copy, int len);
 void addVectors(dVector a, dVector b, iVector indices, int len);
 
 void trPrint(cString routine, int type);
+void readCSVLine(char *lineContent, double *X);
 void printVector(dVector vec, int len, FILE *fptr);
+void printVectorWName(dVector vec, cString *vecName, int len, FILE *fptr);
 void printIntvec(iVector vec, int len, FILE *fptr);
 void printSparseVector(dVector vec, iVector indices, int len);
 void printSparseMatrix(sparseMatrix *V, char *cString);

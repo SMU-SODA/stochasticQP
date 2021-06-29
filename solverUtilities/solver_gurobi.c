@@ -48,7 +48,7 @@ void solverErrMsg() {
 int createProblem(char *probname, modelPtr *model) {
 	int status;
 
-	status = GRBnewmodel(env, &model, NULL, 0, NULL, NULL, NULL, NULL, NULL);
+	status = GRBnewmodel(env, &model, probname, 0, NULL, NULL, NULL, NULL, NULL);
 	if ( status )
 		solverErrMsg(status);
 
@@ -69,8 +69,9 @@ int createProblemInit(const char *probname, modelPtr *model, int numvars, double
 /* Create a new optimization model, using the provided arguments to initialize the model data (objective function, variable bounds, constraint matrix,
 etc.). The model is then ready for optimization, or for modification (e.g., addition of variables or constraints, changes to variable types or bounds,
 etc.). */
-modelPtr *setupProblem(const char *Pname, int numvars, int numconstrs, int objsense, double	objcon,  double	*obj, char	*sense, double *rhs, int *vbeg,
-		int *vlen, int *vind, double *vval, double *lb, double *ub, char *vtype, char **varnames, char **constrnames ) {
+modelPtr *setupProblem(const char *Pname, int numvars, int numconstrs, int objsense, double	objcon,  double	*obj, char	*sense,
+		double *rhs, int *vbeg, int *vlen, int *vind, double *vval, double *lb, double *ub, char *vtype,
+		char **varnames, char **constrnames ) {
 	modelPtr *model;
 	int	status;
 
@@ -127,8 +128,8 @@ int changeObjCoeffArray (modelPtr *model, int numchgs, int *vind, double *val ) 
 	return status;
 }//END changeObjCoeffArray()
 
-/* Change the right-hand side values. */
-int changeRHSvalue (modelPtr *model, int vind, double val) {
+/* Change the right-hand side element. */
+int changeRHSelement (modelPtr *model, int vind, double val) {
 	int status;
 
 	status = setDoubleAttributeElement(model, "RHS", vind, val);
@@ -138,7 +139,8 @@ int changeRHSvalue (modelPtr *model, int vind, double val) {
 	return status;
 }//END changeRHSvalue()
 
-int changeRHSvalueArray (modelPtr *model, int numchgs, int *vind, double *val ) {
+/* Change the right-hand side array values. */
+int changeRHSArray (modelPtr *model, int numchgs, int *vind, double *val ) {
 	int status;
 
 	for ( int n = 0; n < numchgs; n++ ) {
@@ -150,6 +152,107 @@ int changeRHSvalueArray (modelPtr *model, int numchgs, int *vind, double *val ) 
 	return status;
 }//END changeRHSvalueArray()
 
+/* Change the bound element. */
+int changeBDSelement (modelPtr *model, const char *attrname, int vind, double val) {
+	int status;
+
+	status = setDoubleAttributeElement(model, attrname, vind, val);
+	if ( status )
+		solverErrMsg(status);
+
+	return status;
+}//END changeBDSelement()
+
+/* Change the bound array values. */
+int changeBDSArray (modelPtr *model, const char *attrname, int numchgs, int *vind, double *val ) {
+	int status;
+
+	for ( int n = 0; n < numchgs; n++ ) {
+		status = setDoubleAttributeElement(model, attrname, vind[n], val[n]);
+		if ( status )
+			solverErrMsg(status);
+	}
+
+	return status;
+}//END changeBDSArray()
+
+int	addQPterms (modelPtr *model, int numqnz, int *qrow, int	*qcol, double *qval) {
+	int status;
+
+	status = GRBaddqpterms (model, numqnz, qrow, qcol, qval);
+	if ( status )
+		solverErrMsg(status);
+
+	return status;
+}//END addQPterms()
+
+/* Add new linear constraints to a model. */
+int	addRows(modelPtr *ptr, int numRows, int numnz, int *rbeg, int *rind, double	*rval, char	*senx, double *rhsx, char **rname) {
+	int status;
+
+	status = GRBaddconstrs(ptr, numRows, numnz, rbeg, rind, rval, senx, rhsx, rname);
+	if ( status )
+		solverErrMsg(status);
+
+	return status;
+}//END addRow()
+
+/* Add a new linear constraint to a model. */
+int addRow(modelPtr *ptr, int numnz, double rhs, char sense, iVector rmatind, dVector rmatval, cString rowname) {
+	int		status;
+
+	/* Add row to the solver */
+	status = GRBaddconstr (ptr, numnz, rmatind, rmatval, sense, rhs, rowname);
+	if ( status )
+		solverErrMsg(status);
+
+	return status;
+}//END addRow()
+
+/* Add new variables to a model. */
+int addCols(modelPtr *ptr, int numvars, int numnz, int *cbeg, int *cind, double *cval, double *objx, double *lb, double *ub, char *ctype, char **cname) {
+	int status;
+
+
+	status = GRBaddvars (ptr, numvars, numnz, cbeg, cind, cval, objx, lb, ub, ctype, cname);
+	if ( status )
+		solverErrMsg(status);
+
+	return status;
+}//addCol()
+
+/* Add a new variable to a model. */
+int	addCol (modelPtr *ptr, int numnz, int *cind, double *cval, double objx, double lb, double ub, char ctype, char *cname) {
+	int status;
+
+	status = GRBaddvar (ptr, numnz, cind, cval, objx, lb, ub, ctype, cname);
+	if ( status )
+		solverErrMsg(status);
+
+	return status;
+}//END addCol();
+
+/* Delete a list of constraints from an existing model. */
+int deleteRows ( modelPtr *ptr, int numRows, int *indices ) {
+	int status;
+
+	status = GRBdelconstrs (ptr, numRows, indices);
+	if ( status )
+		solverErrMsg(status);
+
+	return status;
+}//END deleteRows ()
+
+/* Delete a list of variables from an existing model. */
+int deleteCols ( modelPtr *ptr, int numCols, int *indices ) {
+	int status;
+
+	status = GRBdelvars (ptr, numCols, indices);
+	if ( status )
+		solverErrMsg(status);
+
+	return status;
+}//END deleteCols;
 /* Free a model and release the associated memory. */
 int freeProblem(modelPtr *model) {
 	int status;
@@ -157,6 +260,7 @@ int freeProblem(modelPtr *model) {
 	status = GRBfreemodel(model);
 	if (status)
 		solverErrMsg(status);
+	model = NULL;
 
 	return status;
 }//END freeProblem()
@@ -231,24 +335,25 @@ int solveProblem ( modelPtr *model ) {
 
 /* Obtain the optimal objective function value. */
 double getObjective ( modelPtr *model ) {
-    int status;
-    double objval;
+	int status;
+	double objval;
 
-    status = GRBgetdblattr(model, GRB_DBL_ATTR_OBJVAL, &objval);
-    if ( status ) {
-    	solverErrMsg(status);
-    }
+	status = GRBgetdblattr(model, GRB_DBL_ATTR_OBJVAL, &objval);
+	if ( status ) {
+		solverErrMsg(status);
+	}
 
-    return objval;
+	return objval;
 }//END getObjective()
 
 /* Obtain the primal solution vector. */
 int getPrimal ( modelPtr *model, double *X, int start, int len ) {
 	int status;
 
-	status = getDoubleAttributeArray(model, "X", start, len, X);
+	status = getDoubleAttributeArray(model, "X", start, len, X+1);
 	if ( status )
 		errMsg("solver", "getPrimal", "failed to retrieve the primal solution", 0);
+	X[0] = oneNorm(X+1, len);
 
 	return status;
 }//END getPrimal()
@@ -259,12 +364,102 @@ int getDual ( modelPtr *model, double *pi, int start, int len ) {
 
 	status = getDoubleAttributeArray(model, "Pi", start, len, pi+1);
 	if ( status )
-		errMsg("solver", "getPrimal", "failed to retrieve the primal solution", 0);
+		errMsg("solver", "getPrimal", "failed to retrieve the dual solution", 0);
 
 	pi[0]= oneNorm(pi+1, len);
 
 	return status;
-}//END getPrimal()
+}//END getDual()
+
+/* The reduced cost in the current solution. Only available for convex, continuous models. */
+int getDualSlack (modelPtr *model, double *dj, int start, int len) {
+	int status;
+
+	status = getDoubleAttributeArray(model, "RC", start, len, dj+1);
+	if (status)
+		errMsg("solver", "getPrimal", "failed to retrieve the reduced cost", 0);
+
+	return status;
+}//END getDualSlack()
+
+/* The status of a given linear constraint or a given variable in the current basis.*/
+int getBasis(modelPtr *model, iVector cstat, iVector rstat, int mac, int mar) {
+	int status;
+
+	if ( cstat != NULL ) {
+		status = getIntAttributeArray(model, "VBasis", 0, mac, cstat+1);
+		if ( status )
+			errMsg("solver", "getBasis", "failed to retrieve the status of a given linear constraint in the current basis", 0);
+	}
+
+	if ( rstat != NULL ) {
+		status = getIntAttributeArray(model, "CBasis", 0, mar, rstat+1);
+		if ( status )
+			errMsg("solver", "getBasis", "failed to retrieve the status of a given variable in the current basis", 0);
+	}
+
+	return status;
+}//END getBasis()
+
+/* Returns the indices of the variables that make up the current basis matrix. */
+int getBasisHead(modelPtr *ptr, iVector head) {
+	int status;
+
+	status = GRBgetBasisHead(ptr, head+1);
+	if ( status )
+		solverErrMsg(status);
+
+	return status;
+}//END getBasisHead()
+
+
+/* Computes a single tableau row. More precisely, this routine returns row i from the matrix B^{-1} A, where B^{-1} is the inverse of the basis matrix and A
+ * is the constraint matrix. Note that the tableau will contain columns corresponding to the variables in the model, and also columns corresponding to artificial
+ * and slack variables associated with constraints.
+ */
+int getBasisInvRow(modelPtr *ptr, int idx, int len, dVector phi) {
+	int status;
+	GRBsvec *v;
+
+	v = (GRBsvec *) mem_malloc(sizeof(GRBsvec));
+	v->ind = (iVector) arr_alloc(len, int);
+	v->val = (dVector) arr_alloc(len, double);
+
+	status = GRBBinvRowi(ptr, idx, v);
+	if ( status )
+		solverErrMsg(status);
+
+	if (v->ind) mem_free(v->ind);
+	if (v->val) mem_free(v->val);
+	mem_free(v);
+
+	return status;
+}//END getBasicInvRow()
+
+/* Computes the solution to the linear system Bx = A_j, where B is the current basis and A_j is the is the column of the constraint matrix A associated with column
+ * j.
+ */
+int getBasisInvCol(modelPtr *ptr, int idx, int len, dVector phi) {
+	int status;
+	GRBsvec *v;
+
+	v = (GRBsvec *) mem_malloc(sizeof(GRBsvec));
+	v->ind = (iVector) arr_alloc(len, int);
+	v->val = (dVector) arr_alloc(len, double);
+
+	status = GRBBinvColj(ptr, idx, v);
+	if ( status )
+		solverErrMsg(status);
+	else
+		for (int n = 0; n < v->len; n++ )
+			phi[v->ind[n]] = v->val[n];
+
+	if (v->ind) mem_free(v->ind);
+	if (v->val) mem_free(v->val);
+	mem_free(v);
+
+	return status;
+}//END getBasicInvCol()
 
 /********************************************************************** Model queries *********************************************************************/
 int getModelType(modelPtr *model) {
@@ -386,19 +581,15 @@ int getIntAttibuteElement (modelPtr *model, const char *attributeName, int eleme
 }//END getIntAttibuteElement()
 
 /* Query the values of an integer-valued array attribute. */
-int *getIntAttributeArray(modelPtr *model, const char *attributeName, int start, int len) {
+int getIntAttributeArray(modelPtr *model, const char *attributeName, int start, int len, int *attr) {
 	int status;
-	int *attr;
-
-	attr = (int *) arr_alloc(len, int);
 
 	status = GRBgetintattrarray(model, attributeName, start, len, attr);
 	if ( status ) {
 		solverErrMsg(status);
-		return NULL;
 	}
 
-	return attr;
+	return status;
 }//END getIntAttributeArray()
 
 /* Query the value of a double-valued model attribute. */
@@ -469,15 +660,14 @@ int setDoubleAttributeArray (modelPtr *model, const char *attributename, int sta
 }//END setDoubleAttributeArray()
 
 /* Query the value of a string-valued model attribute. */
-char *getStringAttribute(modelPtr *model, char *attributeName) {
+int getStringAttribute(modelPtr *model, char *attributeName, char **attr) {
 	int status;
-	char *attr;
 
-	status = GRBgetstrattr(model, attributeName, &attr);
+	status = GRBgetstrattr(model, attributeName, attr);
 	if ( status )
 		solverErrMsg(status);
 
-	return attr;
+	return status;
 }//END getDoubleAttribute()
 
 /* Query a single value from a string-valued array attribute. */

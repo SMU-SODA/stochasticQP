@@ -159,13 +159,13 @@ int str2int(char *cString) {
 
 /* This function returns the minimum number of bits needed to represent a given number. */
 int getNumBits(int num) {
-  int 	hi_bit = 1;
-  int 	numBits;
+	int 	hi_bit = 1;
+	int 	numBits;
 
-  for (numBits = 0; hi_bit <= num; numBits++)
-    hi_bit = hi_bit << 1;
+	for (numBits = 0; hi_bit <= num; numBits++)
+		hi_bit = hi_bit << 1;
 
-  return numBits;
+	return numBits;
 }//END getNumBits()
 
 
@@ -189,21 +189,21 @@ double twoNorm(dVector a, dVector b, int len) {
 			norm += pow((a[cnt]-b[cnt]), 2);
 	else
 
-	norm = sqrt(norm);
+		norm = sqrt(norm);
 	return norm;
 }//END twoNorm()
 
 void calcMeanVariance(dVector x, int lenX, double *mean, double *variance) {
-    double 	temp;
-    int 	cnt;
+	double 	temp;
+	int 	cnt;
 
-    temp = 0.0;
-    (*variance) = 0.0; (*mean) = x[0];
-    for (cnt = 1; cnt < lenX; cnt++) {
-        temp = (*mean);
-        (*mean) = (*mean) + (x[cnt] - (*mean)) / (double) (cnt + 1);
-        (*variance) = (1 - 1 / (double) cnt) * (*variance) + (cnt + 1) * ((*mean) - temp) * ((*mean) - temp);
-    }
+	temp = 0.0;
+	(*variance) = 0.0; (*mean) = x[0];
+	for (cnt = 1; cnt < lenX; cnt++) {
+		temp = (*mean);
+		(*mean) = (*mean) + (x[cnt] - (*mean)) / (double) (cnt + 1);
+		(*variance) = (1 - 1 / (double) cnt) * (*variance) + (cnt + 1) * ((*mean) - temp) * ((*mean) - temp);
+	}
 
 }//END calcVariance()
 
@@ -306,19 +306,18 @@ dVector expandVector(dVector red, iVector col, int redElems, int expElems){
 }//END expandVector
 
 bool equalVector(dVector a, dVector b, int len, double tolerance) {
-	int		cnt;
 
-	for (cnt = 1; cnt <= len; cnt++)
+	for (int cnt = 0; cnt < len; cnt++)
 		if ( DBL_ABS(a[cnt] - b[cnt]) > tolerance )
 			return false;
-    
+
 	return true;
 }//END equalVector()
 
 bool equalIntvec(iVector a, iVector b, int len) {
 	int		cnt;
 
-	for (cnt = 1; cnt <= len; cnt++)
+	for (cnt = 0; cnt < len; cnt++)
 		if ( a[cnt] != b[cnt] )
 			return false;
 
@@ -341,8 +340,8 @@ bool isZeroVector(dVector a, int len, double tolerance) {
 	for (cnt = 0; cnt < len; cnt++) {
 		if ( DBL_ABS(a[cnt]) >= tolerance )
 			return false;
-//		else
-//			a[cnt] = 0.0;
+		//		else
+		//			a[cnt] = 0.0;
 	}
 
 	return true;
@@ -359,55 +358,42 @@ bool isInteger(dVector x, int length, int startIdx, int endIdx, double tolerance
 	return true;
 }//END isInteger()
 
-
-dVector duplicVector(dVector a, int len) {
+dVector duplicVector(dVector orig, int len) {
 	int		i;
-	dVector	b;
+	dVector	copy;
 
-	if ((b = (dVector) arr_alloc(len+1, double))) {
-		for (i = 1; i <= len; i++)
-			b[i] = a[i];
-		b[0] = oneNorm(b+1, len);
-	}
-	else
-		errMsg("allocation", "duplicArray", "b", 1);
+	copy = (dVector) arr_alloc(len+1, double);
+	for (i = 1; i <= len; i++)
+		copy[i] = orig[i];
+	copy[0] = oneNorm(copy+1, len);
 
-	return b;
+	return copy;
 }//END duplicArray()
 
-iVector duplicIntvec(iVector a, int len) {
+iVector duplicIntvec(iVector orig, int len) {
 	int		i;
-	iVector	b;
+	iVector	copy;
 
-	if ((b = (iVector) arr_alloc(len+1, int))) {
-		for (i = 1; i <= len; i++)
-			b[i] = a[i];
-	}
-	else
-		errMsg("allocation", "duplicArray", "b", 1);
+	copy = (iVector) arr_alloc(len+1, int);
+	for (i = 0; i <= len; i++)
+		copy[i] = orig[i];
 
-	return b;
+	return copy;
 }//END duplicArray()
 
-void copyVector(dVector a, dVector b, int len, bool isOneNorm){
+void copyVector(dVector orig, dVector copy, int len){
 	int n;
 
-	if (isOneNorm)
-		for ( n = 0; n <= len; n++ )
-			b[n] = a[n];
-	else {
-		for ( n = 1; n <= len; n++ )
-			b[n] = a[n-1];
-		b[0] = oneNorm(b+1, len);
-	}
+	for ( n = 0; n <= len; n++ )
+		copy[n] = orig[n];
 
 }//END copyVector()
 
-void copyIntvec (iVector a, iVector b, int len) {
+void copyIntvec (iVector orig, iVector copy, int len) {
 	int n;
 
 	for ( n = 0; n < len; n++ )
-		b[n] = a[n];
+		copy[n] = orig[n];
 
 }//END copyVector()
 
@@ -426,6 +412,18 @@ void addVectors(dVector a, dVector b, iVector indices, int len) {
 
 }//END copy_arr()
 
+void readCSVLine(char *lineContent, double *X) {
+	char *pEnd;
+
+	int n = 1;
+	X[n++] = strtod(lineContent, &pEnd);
+	do {
+		X[n++] = strtod(pEnd+1, &pEnd);
+	}
+	while (pEnd[2] != '\n' );
+
+}//END readCSVLine()
+
 void printVector(dVector vec, int len, FILE *fptr){
 	int n;
 
@@ -436,18 +434,17 @@ void printVector(dVector vec, int len, FILE *fptr){
 	}
 	else {
 		for ( n = 1; n <= len; n++ )
-			fprintf(fptr, "%4.6lf, ", vec[n]);
+			fprintf(fptr, "%4.12lf, ", vec[n]);
 		fprintf(fptr, "\n");
 	}
 
 }//END printVector()
 
-void printVectorWName(dVector vec, cString *vecName, int len, FILE *fptr){
+void printVectorWName(dVector vec, cString *vecName, int len, FILE *fptr) {
 	int n;
 
-	for ( n = 1; n <= len; n++ ) {
-		fprintf(fptr, "%s\t\t%4.6lf\n ", vecName[n-1],vec[n]);
-		fprintf(fptr, "\n");
+	for ( n = 0; n < len; n++ ) {
+		fprintf(fptr, "%s\t\t%4.6lf\n ", vecName[n],vec[n]);
 	}
 
 }//END printVectorWName()
@@ -490,7 +487,7 @@ void printSparseMatrix(sparseMatrix *V, char *cString) {
 
 void printLine() {
 
-    printf("-------------------------------------------------------------------------- \n");
+	printf("------------------------------------------------------------------------------------------------------------------------------------------------------ \n");
 
 }//END printLine
 
@@ -525,7 +522,9 @@ iVector findElems(iVector allElem, int totalElem, int *numUniq){
 	return elemUniq;
 }//END findElems()
 
-/* The function encodes an integer dVector _stream_ of given length _len_ into an unsigned long dVector _codeWord_. The _maxValue indicates the maximum value of decoded integer.*/
+/* The function encodes an integer dVector _stream_ of given length _len_ into an unsigned long dVector _codeWord_.
+ * The _maxValue indicates the maximum value of decoded integer.
+ * NOTE: the integer vector is converted to a non-negative vector before encoding. */
 unsigned long *encodeIntvec(iVector stream, int len, int wordLength, int maxValue) {
 	unsigned long *codeWord, temp;
 	int j, group, shift, codeLength, numBits;
@@ -539,7 +538,7 @@ unsigned long *encodeIntvec(iVector stream, int len, int wordLength, int maxValu
 	for (j = 1; j <= len; j++) {
 		group = numBits*(j-1)/wordLength + 1;
 		shift = wordLength - numBits*(j % wordLength);
-		temp = (unsigned long) stream[j] << shift;
+		temp = (unsigned long) abs(stream[j]) << shift;
 		codeWord[group] |= temp;
 	}
 
@@ -551,20 +550,20 @@ iVector decodeIntvec(unsigned long *codeWord, int len, int wordLength, int maxVa
 	iVector 	stream;
 	int 	j, group, shift, numBits, mask = 0;
 
-    numBits = (int) ceil(log2(maxValue));
-    for ( j = 0; j < numBits; j++ )
-    	mask = (mask << 1) + 1;
-    stream = (iVector) arr_alloc(len+1, int);
+	numBits = (int) ceil(log2(maxValue));
+	for ( j = 0; j < numBits; j++ )
+		mask = (mask << 1) + 1;
+	stream = (iVector) arr_alloc(len+1, int);
 
-    /* Let's decode phi_col */
-    for (j = 1; j <= len; j++) {
-        group = numBits*(j-1)/wordLength + 1;
-        shift = wordLength - numBits*(j % wordLength);
-        stream[j] = (unsigned long) codeWord[group] >> shift;
-        stream[j] = stream[j] & mask;
-    }
+	/* Let's decode phi_col */
+	for (j = 1; j <= len; j++) {
+		group = numBits*(j-1)/wordLength + 1;
+		shift = wordLength - numBits*(j % wordLength);
+		stream[j] = (unsigned long) codeWord[group] >> shift;
+		stream[j] = stream[j] & mask;
+	}
 
-    return stream;
+	return stream;
 }//END decodeIntvec()
 
 /* This subroutine extracts elements which are common to the two input integer dVectors _a_ and _b_ */
