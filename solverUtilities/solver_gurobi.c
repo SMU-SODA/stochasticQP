@@ -528,8 +528,10 @@ int getObjName(cString srcFile, cString *objName) {
 	fptr = fopen(srcFile, "r");
 	while ( fgets(line, sizeof line, fptr) != NULL ) {
 		sscanf(line, "%s %s", field1, field2);
-		if ( !(strncmp(field1, "N", 1)) )
+		if ( !(strncmp(field1, "N", 1)) ) {
 			strcpy((*objName), field2);
+			break;
+		}
 	}
 	fclose (fptr);
 

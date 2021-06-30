@@ -19,8 +19,6 @@ int main(int argc, char *argv[]) {
 	/* read the problem */
 	readFiles(inputDir, probname, &orig, &tim, &stoc);
 
-	printf("Successfully read the problem files\n");
-
 	/* close the solver environment */
 	closeSolver();
 
