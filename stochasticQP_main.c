@@ -1,30 +1,25 @@
 #include "stochasticQP.h"
-#include ".\smpsReader\smps.h"
- cString outputDir;
- long MEM_USED;
+#include "./smpsReader/smps.h"
 
-int main(int argc, char *argv[])  /*what is argc and argv? Does char * mean that we are passing the address of a 
-								  char? what is the defference between char and string? */
-{
+cString outputDir;
+long MEM_USED;
+
+int main(int argc, char *argv[]) {
 	oneProblem* orig;
 	timeType* tim;
 	stocType* stoc;
-	// All string are an array of characters.
-  // Let's to make a Cstring array of characters.
 	cString inputDir , probname;
 
 	/* Obtain parameter input from the command line */
-
 	parseCmdLine(argc, argv, &probname, &inputDir); /*what are the inputs?*/
 
-/* Setup a solver environment */
+	/* Setup a solver environment */
 	openSolver();
 
-	
 	/* read the problem */
-	readFiles(inputDir, probname, &orig, &tim, &stoc); /*succesfuly red the roblem files*/
-	
-	printf("succesfuly red the problem files\n");
+	readFiles(inputDir, probname, &orig, &tim, &stoc);
+
+	printf("Successfully read the problem files\n");
 
 	/* close the solver environment */
 	closeSolver();
@@ -33,6 +28,10 @@ int main(int argc, char *argv[])  /*what is argc and argv? Does char * mean that
 } /*END main()*/
 
 void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir) {
+
+	if ( argc == 1 ) {
+		printHelpMenu(); exit(0);
+	}
 
 	for (int i = 1; (i < argc); i++) {
 		if (argv[i][0] == '-') {
@@ -54,13 +53,18 @@ void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir) 
 		}
 		else {
 			printf("Input options must begin with a '-'. Use '-?' for help.\n"); exit(0);
+			printHelpMenu(); exit(0);
 		}
-
 
 	}
 }//END printCmdLine()
 
 void printHelpMenu() {
+
+	printf("Required input to the program.\n");
+	printf("         -p string  -> problem name.\n");
+	printf("         -i string  -> input directory where the problem SMPS files are saved.\n");
+	printf("         -o string  -> output directory where the result files will be written.\n");
 
 }//END printHelpMenu()
 

@@ -518,6 +518,24 @@ int	getVariables (modelPtr *model, int *numnzP, int *vbeg, int *vind, double *vv
 	return status;
 }//END getVariables()
 
+/* Reads the file to extract the name of the objective. Gurobi 9.1 does not support reading objective name for single-objective problems. */
+int getObjName(cString srcFile, cString *objName) {
+	char line[BLOCKSIZE], field1[NAMESIZE], field2[NAMESIZE];
+	FILE *fptr;
+
+	(*objName) = (cString) arr_alloc(NAMESIZE, char);
+
+	fptr = fopen(srcFile, "r");
+	while ( fgets(line, sizeof line, fptr) != NULL ) {
+		sscanf(line, "%s %s", field1, field2);
+		if ( !(strncmp(field1, "N", 1)) )
+			strcpy((*objName), field2);
+	}
+	fclose (fptr);
+
+	return 0;
+}//END getObjName()
+
 /********************************************************************** Input/Output **********************************************************************/
 /* Read a model from a file. */
 int readProblem(cString probpath, modelPtr **model) {

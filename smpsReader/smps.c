@@ -50,7 +50,12 @@ oneProblem *readCore(cString inputDir, cString probName) {
 	FILE		*fptr;
 
 	/* Locate the problem core file */
+#if _WIN64 || _WIND32
 	sprintf(srcFile, "%s%s\\%s.cor", inputDir, probName, probName);
+#else
+	sprintf(srcFile, "%s%s/%s.cor", inputDir, probName, probName);
+#endif
+
 	if ( (fptr = fopen(srcFile, "r")) ) {
 
 		/* Change the name with extension *.cor to *.mps. Gurobi does not recognize *.cor. */
@@ -91,6 +96,7 @@ oneProblem *readCore(cString inputDir, cString probName) {
 	/* (1) problem name and sense */
 	orig->name = NULL;
 	getStringAttribute(orig->model, "ModelName", &orig->name);
+	getObjName(srcFile, &orig->objname);
 	orig->objSense = getIntAttribute(orig->model, "ModelSense");
 
 	/* (2) number of rows, columns, and non-zeros in constraint matrix. */
@@ -182,7 +188,11 @@ timeType *readTime(cString inputDir, cString probName, oneProblem *orig) {
 	FILE		*fptr;
 
 	/* Locate the problem core file */
+#if _WIN32 || _WIN64
 	sprintf(probpath, "%s%s\\%s.tim", inputDir, probName, probName);
+#else
+	sprintf(probpath, "%s%s/%s.tim", inputDir, probName, probName);
+#endif
 
 	/* open the time file */
 	fptr = fopen(probpath,"r");
@@ -251,8 +261,9 @@ timeType *readTime(cString inputDir, cString probName, oneProblem *orig) {
 					return NULL;
 				}
 				tim->col[n] = m;
+
 				if ( !(strcmp(field2, orig->objname)) )
-					m = 0;
+					m = -1;
 				else {
 					m = 0;
 					while (m < orig->mar ) {
@@ -260,10 +271,6 @@ timeType *readTime(cString inputDir, cString probName, oneProblem *orig) {
 							break;
 						m++;
 					}
-				}
-				if ( m == orig->mar ) {
-					errMsg("read", "readTime", "unknown row name in the time file", 0);
-					return NULL;
 				}
 				tim->row[n] = m;
 
@@ -310,7 +317,11 @@ stocType *readStoc(cString inputDir, cString probName, oneProblem *orig, timeTyp
 	int		maxOmegas = 1000, maxVals = 4000, n, numFields, maxFields = 10;
 
 	/* Locate the problem sto file */
+#if _WIN32 || _WIN64
+	sprintf(probpath, "%s%s\\%s.sto", inputDir, probName, probName);
+#else
 	sprintf(probpath, "%s%s/%s.sto", inputDir, probName, probName);
+#endif
 
 	/* open the time file */
 	fptr = fopen(probpath,"r");
