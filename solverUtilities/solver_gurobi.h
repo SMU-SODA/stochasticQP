@@ -14,6 +14,7 @@
 
 #include "gurobi_c.h"
 #include "utilities.h"
+
 #define ENVptr 		GRBenv
 #define modelPtr 	GRBmodel
 #define GRB_OFF 	0

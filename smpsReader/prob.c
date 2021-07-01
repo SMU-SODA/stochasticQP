@@ -5,9 +5,6 @@
  *      Author: Harsha Gangammanavar
  */
 
-#include "../solverUtilities/utilities.h"
-#include "../solverUtilities/solver_gurobi.h"
-#include "smps.h"
 #include "prob.h"
 
 /* Decomposes the problem _orig_ into subproblems as well as decomposes the stochastic information _stoc_ into stage stochastic information. The decomposition

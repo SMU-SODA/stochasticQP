@@ -1,5 +1,4 @@
 #include "stochasticQP.h"
-#include "./smpsReader/smps.h"
 
 cString outputDir;
 long MEM_USED;
@@ -17,13 +16,9 @@ int main(int argc, char *argv[]) {
 	openSolver();
 
 	/* read the problem */
-	if(readFiles(inputDir, probname, &orig, &tim, &stoc)){
-		errMsg("read", "main", "failed to read problem main file", 0);
-		return 1;
-	}
+	readFiles(inputDir, probname, &orig, &tim, &stoc);
 
 	/* close the solver environment */
-
 	closeSolver();
 
 	return 0;
