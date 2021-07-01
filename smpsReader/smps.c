@@ -10,6 +10,8 @@
  */
 
 #include "smps.h"
+#include "../solverUtilities/utilities.h"
+#include "../solverUtilities/utilities.c"
 
 int readFiles(cString inputDir, cString probName, oneProblem **orig, timeType **tim, stocType **stoc) {
 
@@ -62,7 +64,10 @@ oneProblem *readCore(cString inputDir, cString probName) {
 		sprintf(dstFile, "%s%s\\%s.mps", inputDir, probName, probName);
 		rename(srcFile, dstFile);
 
-		if ((readProblem(dstFile, &model))) {
+		/*why do we expect the readproblem to fail? what might happen?*/
+
+		if ((readProblem(dstFile, &model))) /*why do we need the pointer?*/
+		{
 			errMsg("solver", "readCore", "failed to read and copy the problem data", 0);
 			return NULL;
 		}
@@ -117,6 +122,14 @@ oneProblem *readCore(cString inputDir, cString probName) {
 		goto TERMINATE;
 	}
 
+
+	/*extract Q matrix*/
+	orig->objQ = getQmatrix(model, orig->mac);
+	if (orig->objQ == NULL) {
+		errMsg("solver", "readCore", "failed to obtain the Q matrix", 0);
+		goto TERMINATE;
+	}
+
 	if ( getDoubleAttributeArray(orig->model, "LB", 0, orig->mac, orig->bdl) ) {
 		errMsg("solver", "readCore", "failed to obtain variable lower bounds", 0);
 		goto TERMINATE;
@@ -163,6 +176,7 @@ oneProblem *readCore(cString inputDir, cString probName) {
 
 	/* Allocate memory to hold the names of problem elements */
 	orig->objname = (cString) arr_alloc(NAMESIZE, char);
+
 
 	/* (5) Constraint and variable names. */
 	orig->cname = getStringAttributeArray(orig->model, "VarName", 0, orig->mac);

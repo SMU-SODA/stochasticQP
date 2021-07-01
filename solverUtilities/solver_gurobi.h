@@ -100,6 +100,7 @@ int getModelType();
 int	getConstraints(modelPtr *model, int	*numnzP, int *matbeg, int *matind, double *matval, int start, int len);
 int	getVariables (modelPtr *model, int *numnzP, int *vbeg, int *vind, double *vval, int start, int len);
 int getObjName(char *srcFile, char **objName);
+sparseMatrix *getQmatrix(modelPtr* model, int numvar);
 
 /* Input/Output */
 int readProblem(char *probpath, modelPtr **model);

@@ -30,7 +30,14 @@ typedef struct{
 	int		numInt;			/* number of integer variables  (includes both binary and general integer variables) in the problem */
 	int		numnz;			/* number of non-zero elements in constraint matrix */
 
-	dVector	objx;			/* objective function coefficients */
+
+
+	dVector	objx;			                     /* objective function linear coefficients */
+	sparseMatrix* objQ;                          /* objective function Hessian Matrix */
+
+
+
+
 	dVector	bdl;			/* lower bound */
 	dVector	bdu;			/* upper bound */
 	cString	ctype;			/* type of decision variables: 'C' continuous, 'B' binary, 'I' general integer, 'S' semi-continuous, 'N' semi-integer */

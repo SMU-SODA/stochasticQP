@@ -17,9 +17,13 @@ int main(int argc, char *argv[]) {
 	openSolver();
 
 	/* read the problem */
-	readFiles(inputDir, probname, &orig, &tim, &stoc);
+	if(readFiles(inputDir, probname, &orig, &tim, &stoc)){
+		errMsg("read", "main", "failed to read problem main file", 0);
+		return 1;
+	}
 
 	/* close the solver environment */
+
 	closeSolver();
 
 	return 0;

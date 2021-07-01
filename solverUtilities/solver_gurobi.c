@@ -538,6 +538,27 @@ int getObjName(cString srcFile, cString *objName) {
 	return 0;
 }//END getObjName()
 
+/*Retrieve all quadratic objective terms. The qrow, qcol, and qval arguments must be large enough to hold the result*/
+sparseMatrix *getQmatrix(modelPtr* model, int numvar) {
+	int status;
+	sparseMatrix* objQ;
+
+	objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix)); /*why do we write it?												 */
+	objQ->col = (iVector)arr_alloc(numvar * numvar, int);
+	objQ->row = (iVector)arr_alloc(numvar * numvar, int);
+	objQ->val = (dVector)arr_alloc(numvar * numvar, double);
+
+	status = GRBgetq(model, &objQ->cnt, objQ->row, objQ->col, objQ->val);
+	if (status) {
+		solverErrMsg(status);
+		return NULL;
+	}
+	objQ->col = (iVector)mem_realloc(objQ->col, objQ->cnt * sizeof(int));
+	objQ->row = (iVector)mem_realloc(objQ->row, objQ->cnt * sizeof(int));
+	objQ->val = (iVector)mem_realloc(objQ->val, objQ->cnt * sizeof(double));
+
+	return objQ ;
+} //END getQmatrix()
 /********************************************************************** Input/Output **********************************************************************/
 /* Read a model from a file. */
 int readProblem(cString probpath, modelPtr **model) {
