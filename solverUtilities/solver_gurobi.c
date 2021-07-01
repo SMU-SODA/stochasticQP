@@ -555,7 +555,7 @@ sparseMatrix *getQmatrix(modelPtr* model, int numvar) {
 	}
 	objQ->col = (iVector)mem_realloc(objQ->col, objQ->cnt * sizeof(int));
 	objQ->row = (iVector)mem_realloc(objQ->row, objQ->cnt * sizeof(int));
-	objQ->val = (iVector)mem_realloc(objQ->val, objQ->cnt * sizeof(double));
+	objQ->val = (dVector)mem_realloc(objQ->val, objQ->cnt * sizeof(double));
 
 	return objQ ;
 } //END getQmatrix()
