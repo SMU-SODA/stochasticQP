@@ -10,7 +10,7 @@
 
 #include "smps.h"
 
-#define DECOMPOSE_CHECK
+#define DECOMPOSE_CHECK /*what is this*/
 
 /* Structure that holds various dimensions of the stage problem */
 typedef struct {
@@ -35,6 +35,7 @@ typedef struct {
     int 	rvDOmCnt;		/* number of RVs in recourse matrix D */
 }numType;
 
+
 /* structure to hold coordinate information at each stage */
 typedef struct {
 	iVector	allRVRows;		/* list of all random variable rows */
@@ -55,6 +56,24 @@ typedef struct {
  *                 s.t. D_t u_t = b_t - C_tx_t
  * where, x_{t+} = a_{t+} + A_{t+}x_t + B_{t+}u_t.
  */
+typedef struct {
+	int		ck;					/* Iteration when the cut was generated */
+	double  alpha;              /* scalar value for the right-hand side */
+	dVector  beta;               /* coefficients of the master problems's primal variables */
+	bool	isIncumb;			/* indicates if the cut is an incumbent cut */
+	double 	alphaIncumb;		/* right-hand side when using QP master, this is useful for quick updates */
+	int 	rowNum;				/* row number for master problem in solver */
+	int		omegaID;			/* the observation ID used when multi-cut option is used */
+	iVector iStar;				/* Holds the ID for the sigma which is associated with each observation, dual index id, which dual we  */
+	int 	form;				/* determines the form of the cut (l-shaped regular, l-shaped callback, MIR, GMI */
+	cString	name;
+}oneCut;
+
+typedef struct {
+	int    	cnt;                    /* number of cuts */
+	oneCut** vals;					/* values which define the set of cuts */
+}cutsType;
+
 typedef struct{
 	oneProblem		*sp;			/* structure with complete problem information */
 	numType			*num;			/* structure which holds the problem dimensions */
@@ -73,6 +92,9 @@ typedef struct{
 	dVector			meanX;			/* Mean value solution */
 	double			lb;				/* lower bounds on cost-to-go function */
 }probType;
+
+
+
 
 /* subroutines in prob.c */
 probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int *numStages);

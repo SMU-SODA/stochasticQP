@@ -1,19 +1,135 @@
 #include "./solverUtilities/utilities.h"
 #include "solverUtilities/solver_gurobi.h"
+#include "./smpsReader/smps.h"
+#include "./smpsReader/prob.h"
 
-//typedef struct{
-//	int cols;
-//	int rows;
-//	
-//	dVector objx;
-//	dVector rhsx;
-//	sparseMatrix *objQ; /*why this one has star but dvector not?*/
-//	sparseMatrix *consA;
-//		}oneProblem;
+typedef struct {
+	int		numRV;					/* Number of random variables */
+	int 	cnt;					/* Number of observations */
+	dVector	probs;					/* Probability of observation */
+	iVector weights;				/* Number of times a particular observation is encountered (not used, but included to align with sp
+									   algorithms repository subroutines). */
+	dVector* vals;					/* Observation values */
+} omegaType;
+
+
+typedef struct {
+	int		cnt;					/* number of elements in the structure */
+	dVector* vals;					/* value of duals with random elements in right-hand side */
+}lambdaType;
+
+
+
+typedef struct {
+	double 	pib;					/* scalar pi x b */
+	dVector 	piC;					/* dVector pi x C */
+} pixbCType;
+
+
+typedef struct {
+	pixbCType** vals;				/* matrix of product terms (rows - entries in lambdaType, columns - entries in omegaType */
+} deltaType;
+
+
+
+typedef struct {
+	double	repTime;
+	double 	iterTime;
+	double 	masterIter;
+	double 	subprobIter;
+	double 	optTestIter;
+	double  argmaxIter;
+	double 	iterAccumTime;
+	double 	masterAccumTime;
+	double 	subprobAccumTime;
+	double 	optTestAccumTime;
+	double  argmaxAccumTime;
+	double	reduceTime;
+}runTime;
+
+typedef struct {
+	int 		cnt;				/* Number of elements */
+	pixbCType* vals;				/* product terms */
+	iVector		lambdaIdx;			/* Corresponding index in lambdaType */
+	iVector		ck;					/* Iteration when the element of generated */
+} sigmaType;
+
+
+
+typedef struct {
+	int         k;                  /* number of iterations */
+	int 		LPcnt; 				/* the number of LPs solved. */
+
+	oneProblem* master;             /* store master information */
+	oneProblem* subprob;			/* store subproblem information */
+	dVector      candidX;            /* primal solution of the master problem */
+	double      candidEst;          /* objective value master problem */
+	dVector      incumbX;			/* incumbent master solution */
+	double      incumbEst;			/* estimate at incumbent solution */
+
+	//double		gamma;				/* Improvement in obejctive function */
+	//double 		quadScalar; 		/* the proximal parameter/quadratic scalar 'sigma' */
+	//bool        incumbChg;			/* set to be true if the incumbent solution has changed in an iteration */
+	//iVector     iCutIdx;			/* index of incumbent cuts in cell->cuts structure. If multicut is used, there will be one
+	//							   for each observation. */
+	dVector		piM;
+	int      	maxCuts;            /* maximum number of cuts to be used*/
+	cutsType* cuts;              /* optimality cuts */
+	cutsType* fCuts;             /* feasibility cuts */
+
+	omegaType* omega;				/* all realizations observed during the algorithm */
+
+	bool        optFlag;
+	bool		spFeasFlag;			/* Indicates whether the subproblem is feasible */
+	int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
+	bool		infeasIncumb;		/* indicates if the incumbent solution is infeasbible */
+
+	runTime* time;				/* Run time structure */
+
+	/*lambdaType* lambda;
+	sigmaType* sigma;
+	deltaType* delta;*/
+}cellType;
+
+
+typedef struct {
+	long long* RUN_SEED;		/* seed used during optimization */
+	long long* EVAL_SEED;		/* seed used during evaluation */
+	int 	NUM_SEEDS;			/* Number of run seeds provided */
+
+	double 	TOLERANCE; 			/* for zero identity test */
+	int		MIN_ITER;			/* minimum number of iterations */
+	int		MAX_ITER;			/* maximum number of iterations */
+	int		MASTER_TYPE;		/* type of master problem */
+	double	EPSILON;			/* Optimality gap */
+	int		MULTICUT;			/* Set to 1 if multicut is to be solved */
+	int		CUT_MULT;			/* Determines the number of cuts to be used for approximate */
+	int 	MULTIPLE_REP;		/* When multiple replications are needed, set this to an integer number of replications */
+	int		ALGOTYPE;			/*0 we do not use the duals and we solve all sebproblems  , 1 reuse the partitions, 3 when we use the duals*/
+	double	SAMPLE_FRACTION;	/* A fraction (0,1] to determine what fraction of samples are solved */
+	
+
+	int		SAA; 				/* Use SAA when continuous distribution in stoch file (1), or not (0) */
+	int		MAX_OBS;			/* Maximum number of iterations before which SAA is invoked */
+
+	
+	double  MAX_TIME;			/* Maximum per replication run time */
+}configType;
 
 void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir);
-
+cellType* buildmaster(probType** prob);
 void printHelpMenu();
 
+int numObs(stocType* stoch);
+omegaType* newOmega(stocType* stoc, int numObs);
 
 
+int readConfig(cString configFile);
+void freeConfig();
+oneProblem* setRhs(oneProblem* subProb, dVector rhs);
+oneProblem* newSubprob(oneProblem* sp);
+int computeRHS(modelPtr lp, numType* num, coordType* coord, sparseVector* bBar, sparseMatrix* Cbar, dVector X, dVector obs);
+oneProblem* newSubprob(oneProblem* sp);
+
+int chgObjxwObserv(modelPtr lp, numType* num, coordType* coord, dVector cost, iVector indices, dVector observ);
+int chgRHSwObserv(LPptr lp, numType* num, coordType* coord, dVector observ, dVector spRHS, dVector X);
