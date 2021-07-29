@@ -116,8 +116,38 @@ typedef struct {
 	double  MAX_TIME;			/* Maximum per replication run time */
 }configType;
 
+
+
+typedef struct {
+	int				ck;			/* The first time the basis was encountered. */
+	int				weight;		/* Frequency of observation for each unique basis */
+	unsigned long* rCode;		/* Encoded row status in the basis (currently not being used */
+	unsigned long* cCode;		/* Encoded column status in the basis */
+	int				phiLength;	/* Number of basic columns with random cost coefficients */
+	dVector* phi;		/* The phi matrix: the columns of inverse dual basis matrix which have random cost coefficients */
+	iVector			omegaIdx;	/* Indices within the random cost coefficient dVector to which the columns of phi matrix correspond to. */
+	iVector			sigmaIdx;	/* Indices within the random cost coefficient dVector to which the columns of phi matrix correspond to. */
+	dVector			piDet;		/* Deterministic component of the dual solution. This depends only on the basis. */
+	double			mubBar;
+	dVector			gBar;
+	sparseMatrix* psi;		/* The simplex tableau matrix corresponding to the basis. */
+	bool			feasFlag;
+}oneBasis;
+
+/* The basis type data structure holds all the information regarding the basis identified during the course of the algorithm.
+ * This structure will be at the heart of all calculations related to stochastic updates. */
+
+typedef struct {
+	int			basisDim;	/* The dimension of the basis matrix */
+	int			cnt;		/* Number of unique basis encountered by the algorithm */
+	int			rCodeLen;	/* Length of encoded row status */
+	int			cCodeLen;	/* Length of encoded column status */
+	bool** obsFeasible;
+	oneBasis** vals;		/* a structure for each basis */
+}basisType;
+
 void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir);
-cellType* buildmaster(probType** prob);
+cellType* buildmaster(probType** prob , omegaType* omega);
 void printHelpMenu();
 
 int numObs(stocType* stoch);
@@ -128,8 +158,8 @@ int readConfig(cString configFile);
 void freeConfig();
 oneProblem* setRhs(oneProblem* subProb, dVector rhs);
 oneProblem* newSubprob(oneProblem* sp);
-int computeRHS(modelPtr lp, numType* num, coordType* coord, sparseVector* bBar, sparseMatrix* Cbar, dVector X, dVector obs);
+int computeRHS(modelPtr* lp, numType* num, coordType* coord, sparseVector* bBar, sparseMatrix* Cbar, dVector X, dVector obs);
 oneProblem* newSubprob(oneProblem* sp);
 
-int chgObjxwObserv(modelPtr lp, numType* num, coordType* coord, dVector cost, iVector indices, dVector observ);
-int chgRHSwObserv(LPptr lp, numType* num, coordType* coord, dVector observ, dVector spRHS, dVector X);
+int chgObjxwObserv(modelPtr* lp, numType* num, coordType* coord, dVector cost, iVector indices, dVector observ);
+int chgRHSwObserv(modelPtr* lp, numType* num, coordType* coord, dVector observ, dVector spRHS, dVector X);

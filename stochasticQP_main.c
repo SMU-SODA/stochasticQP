@@ -35,12 +35,22 @@ int main(int argc, char* argv[]) {
 	prob = newProbwSMPS(inputDir, probname, &stoch, &numStages);
 	int obsnum;
 	obsnum= numObs( stoch);
+
 	omegaType* omega;
 
-	omega= newOmega(stoch,obsnum);
+	omega = newOmega(stoch,obsnum);
 
 	/*Build the algorithm cell*/
-	cell = buildCell(prob);
+
+	cell = buildCell(prob , omega);
+	double x = 0.1;
+	for (int i = 0; i < omega->cnt; i++) {
+		if (randUniform() < x) {
+			
+		}
+	}
+
+
 	TERMINATE: return 0;
 } /*END main()*/
 
