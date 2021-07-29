@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
 
 	omega = newOmega(stoch,obsnum);
 
-	/*Build the algorithm cell*/
+	/*Build the algorithm cell..*/
 
 	cell = buildCell(prob , omega);
 	double x = 0.1;
