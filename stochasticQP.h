@@ -151,15 +151,14 @@ cellType* buildmaster(probType** prob , omegaType* omega);
 void printHelpMenu();
 
 int numObs(stocType* stoch);
-omegaType* newOmega(stocType* stoc, int numObs);
-
+omegaType* newOmega(stocType* stoc);
 
 int readConfig(cString configFile);
 void freeConfig();
 oneProblem* setRhs(oneProblem* subProb, dVector rhs);
-oneProblem* newSubprob(oneProblem* sp);
 int computeRHS(modelPtr* lp, numType* num, coordType* coord, sparseVector* bBar, sparseMatrix* Cbar, dVector X, dVector obs);
-oneProblem* newSubprob(oneProblem* sp);
+oneProblem *newMaster(oneProblem *probSP);
+oneProblem* newSubproblem(oneProblem* probSP);
 
 int chgObjxwObserv(modelPtr* lp, numType* num, coordType* coord, dVector cost, iVector indices, dVector observ);
 int chgRHSwObserv(modelPtr* lp, numType* num, coordType* coord, dVector observ, dVector spRHS, dVector X);

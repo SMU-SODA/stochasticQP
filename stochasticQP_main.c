@@ -16,40 +16,34 @@ int main(int argc, char* argv[]) {
 	char configFile[BLOCKSIZE];
 
 	/* Obtain parameter input from the command line */
-
-	parseCmdLine(argc, argv, &probname, &inputDir); /*what are the inputs?*/
+	parseCmdLine(argc, argv, &probname, &inputDir);
 
 	/* read algorithm configuration file */
 	strcpy(configFile, "C:\\Users\\Niloofar\\source\\repos\\stochasticQP\\config.sd");
-
-
 	if (readConfig(configFile))
 		goto TERMINATE;
 
-	/* Obtain parameter input from the command line */
-
-	parseCmdLine(argc, argv, &probname, &inputDir); /*what are the inputs?*/
-
 	/*This function reads the problem and decomposes that into stages.*/
-
 	prob = newProbwSMPS(inputDir, probname, &stoch, &numStages);
-	int obsnum;
-	obsnum= numObs( stoch);
-
-	omegaType* omega;
-
-	omega = newOmega(stoch,obsnum);
-
-	/*Build the algorithm cell..*/
-
-	cell = buildCell(prob , omega);
-	double x = 0.1;
-	for (int i = 0; i < omega->cnt; i++) {
-		if (randUniform() < x) {
-			
-		}
+	if ( prob == NULL ) {
+		errMsg("read", "main", "failed to read files or setup the probType", 0);
+		goto TERMINATE;
 	}
 
+	/*Build the algorithm cell..*/
+	cell = buildCell(prob, stoch);
+	if ( cell == NULL ) {
+		errMsg("setup", "main", "failed to build the cell", 0);
+		goto TERMINATE;
+	}
+
+	/* To be edited */
+//	double x = 0.1;
+//	for (int i = 0; i < omega->cnt; i++) {
+//		if (randUniform() < x) {
+//
+//		}
+//	}
 
 	TERMINATE: return 0;
 } /*END main()*/

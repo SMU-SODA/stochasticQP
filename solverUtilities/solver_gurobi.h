@@ -62,11 +62,8 @@ void solverErrMsg();
 /* Model creation and modification */
 int createProblem(char *probname, modelPtr *model);
 int createProblemInit(const char *probname, modelPtr *model, int numvars, double *objx, double *lb, double *ub, char *vtype, char **varnames);
-modelPtr *setupProblem(const char *Pname, int numvars, int numconstrs, int objsense, double	objcon,  double	*obj, char	*sense, double *rhs, int *vbeg,
-		int *vlen, int *vind, double *vval, double *lb, double *ub, char *vtype, char **varnames, char **constrname);
-
-
-
+modelPtr *setupProblem(const char *Pname, int numvars, int numconstrs, int objsense, double	objcon, double	*obj, sparseMatrix *objQ, char *sense,
+		double *rhs, int *vbeg, int *vlen, int *vind, double *vval, double *lb, double *ub, char *vtype, char **varnames, char **constrnames );
 modelPtr *cloneProblem (modelPtr *orig);
 
 int	changeCoefficients ( modelPtr *model, int numchgs, int *cind, int *vind, double *val );

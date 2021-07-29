@@ -11,7 +11,6 @@
 
 #include "smps.h"
 #include "../solverUtilities/utilities.h"
-#include "../solverUtilities/utilities.c"
 
 int readFiles(cString inputDir, cString probName, oneProblem **orig, timeType **tim, stocType **stoc) {
 

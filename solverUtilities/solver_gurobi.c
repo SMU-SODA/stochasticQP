@@ -69,20 +69,24 @@ int createProblemInit(const char *probname, modelPtr *model, int numvars, double
 /* Create a new optimization model, using the provided arguments to initialize the model data (objective function, variable bounds, constraint matrix,
 etc.). The model is then ready for optimization, or for modification (e.g., addition of variables or constraints, changes to variable types or bounds,
 etc.). */
-modelPtr *setupProblem(const char *Pname, int numvars, int numconstrs, int objsense, double	objcon,  double	*obj,sparseMatrix *objQ, char	*sense,
-		double *rhs, int *vbeg, int *vlen, int *vind, double *vval, double *lb, double *ub, char *vtype,
-		char **varnames, char **constrnames ) {
+modelPtr *setupProblem(const char *Pname, int numvars, int numconstrs, int objsense, double	objcon, double	*obj, sparseMatrix *objQ, char *sense,
+		double *rhs, int *vbeg, int *vlen, int *vind, double *vval, double *lb, double *ub, char *vtype, char **varnames, char **constrnames ) {
 	modelPtr *model;
 	int	status;
 
 	status = GRBloadmodel (env, &model, Pname, numvars, numconstrs, objsense, objcon, obj, sense, rhs, vbeg, vlen, vind, vval, lb, ub, vtype, varnames, constrnames);
-	
 	if ( status ) {
 		solverErrMsg(status);
 		return NULL;
 	}
-	GRBaddqpterms(model, objQ->cnt, objQ->row, objQ->col, objQ->val);
-	sparseMatrix* q = getQmatrix(model, numvars);
+
+	if ( objQ != NULL ) {
+		status =  GRBaddqpterms(model, objQ->cnt, objQ->row, objQ->col, objQ->val);
+		if ( status ) {
+			solverErrMsg(status);
+			return NULL;
+		}
+	}
 
 	return model;
 }//END setupProblem()

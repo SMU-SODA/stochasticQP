@@ -11,299 +11,57 @@
 #include "stochasticQP.h"
 extern configType config;
 
-
-/*building master problem*/
-cellType* buildCell(probType** prob , omegaType* omega) {
-	
-	oneProblem* stage0 = NULL;
-    stage0 = (oneProblem*)mem_malloc(sizeof(oneProblem));
-	stage0->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));   /*why do we write it?*/
-	stage0->objQ->col = (iVector)arr_alloc(prob[0]->sp->mac * prob[0]->sp->mac, int);
-	stage0->objQ->row = (iVector)arr_alloc(prob[0]->sp->mac * prob[0]->sp->mac, int);
-	stage0->objQ->val = (dVector)arr_alloc(prob[0]->sp->mac * prob[0]->sp->mac, double);
-	stage0->model = NULL;
-	stage0->name = (cString)arr_alloc(NAMESIZE, char);
-	stage0->objname = (cString)arr_alloc(NAMESIZE, char);
-	stage0->objx = (dVector)arr_alloc(prob[0]->sp->macsz, double);
-	stage0->bdl = (dVector)arr_alloc(prob[0]->sp->macsz, double);
-	stage0->bdu = (dVector)arr_alloc(prob[0]->sp->macsz, double);
-	stage0->ctype = (cString)arr_alloc(prob[0]->sp->macsz, char);
-	stage0->rhsx = (dVector)arr_alloc(prob[0]->sp->marsz, double);
-	stage0->senx = (cString)arr_alloc(prob[0]->sp->marsz, char);
-	stage0->matbeg = (iVector)arr_alloc(prob[0]->sp->macsz, int);
-	stage0->matcnt = (iVector)arr_alloc(prob[0]->sp->macsz, int);
-	stage0->matval = (dVector)arr_alloc(prob[0]->sp->matsz, double);
-	stage0->matind = (iVector)arr_alloc(prob[0]->sp->matsz, int);
-	stage0->cname = (cString*)arr_alloc(prob[0]->sp->macsz, cString);
-	stage0->rname = (cString*)arr_alloc(prob[0]->sp->marsz, cString);
-	stage0->mac = prob[0]->sp->mac;
-	stage0->type= prob[0]->sp->type;			/* type of problem: LP, QP, MIP or MIQP */
-
-	for (int i = 0; i < prob[0]->sp->mac; i++) {
-		stage0->objx[i] = prob[0]->sp->objx[i];
-	}
-
-	stage0->objQ->cnt = prob[0]->sp->objQ->cnt;
-
-	for (int i = 0; i < prob[0]->sp->objQ->cnt; i++) {
-		stage0->objQ->val[i] = prob[0]->sp->objQ->val[i];
-		stage0->objQ->col[i] = prob[0]->sp->objQ->col[i];
-	}
-
-	stage0->objSense = prob[0]->sp->objSense;		
-	stage0->mac = prob[0]->sp->mac;			/* number of columns */
-	stage0->mar = prob[0]->sp->mar;			/* number of rows */
-	stage0->numBin = prob[0]->sp->numBin;			/* number of binary variables in the problem */
-	stage0->numInt = prob[0]->sp->numInt;			/* number of integer variables  (includes both binary and general integer variables) in the problem */
-	stage0->numnz = prob[0]->sp->numnz;			/* number of non-zero elements in constraint matrix */
-	stage0->macsz = prob[0]->sp->macsz;			/* number of columns */
-	stage0->marsz = prob[0]->sp->marsz;			/* number of rows */
-	stage0->matsz = prob[0]->sp->matsz;			/* number of rows */
-	
-
-	for (int i = 0; i < prob[0]->sp->macsz; i++) {
-		stage0->bdl[i] = prob[0]->sp->bdl[i];
-	}
-
-	for (int i = 0; i < prob[0]->sp->macsz; i++) {
-		stage0->bdu[i] = prob[0]->sp->bdu[i];
-	}
-
-	for (int i = 0; i < prob[0]->sp->marsz; i++) {
-		stage0->rhsx[i] = prob[0]->sp->rhsx[i];
-	}
-
-	for (int i = 0; i < prob[0]->sp->marsz; i++) {
-		stage0->senx[i] = prob[0]->sp->senx[i];
-	}
-
-	for (int i = 0; i < prob[0]->sp->macsz; i++) {
-		stage0->matbeg[i] = prob[0]->sp->matbeg[i];
-	}
-
-	for (int i = 0; i < prob[0]->sp->macsz; i++) {
-		stage0->matcnt[i] = prob[0]->sp->matcnt[i];
-	}
-
-	for (int i = 0; i < prob[0]->sp->matsz; i++) {
-		stage0->matind[i] = prob[0]->sp->matind[i];
-	}
-
-
-	for (int i = 0; i < prob[0]->sp->matsz; i++) {
-		stage0->matval[i] = prob[0]->sp->matval[i];
-	}
-
-
-	for (int i = 0; i < NAMESIZE; i++) {
-		stage0->objname[i] = prob[0]->sp->objname[i];
-	}
-
-	for (int i = 0; i < NAMESIZE; i++) {
-		stage0->name[i] = prob[0]->sp->name[i];
-	}
-
-	for (int i = 0; i < prob[0]->sp->marsz; i++) {
-		stage0->rname[i] = prob[0]->sp->rname[i];
-	}
-	for (int i = 0; i < prob[0]->sp->macsz; i++) {
-		stage0->cname[i] = prob[0]->sp->cname[i];
-	}
-
-
-
-	for (int i = 0; i < prob[0]->sp->macsz; i++) {
-		stage0->ctype[i] = prob[0]->sp->ctype[i];
-	}
-	cString	ctype;			/* type of decision variables: 'C' continuous, 'B' binary, 'I' general integer, 'S' semi-continuous, 'N' semi-integer */
-	
-	/* These don't seem necessary for Gurobi. */
-	//	int		rstorsz;		/* memory size for storing row names */
-	//	cString	rstore;			/* row names cString */
-	//	int		cstorsz;		/* memory size for storing column names */
-	//	cString	cstore;			/* column name cString */
+/* Building the cell for the 2-SQP algorithms */
+cellType* buildCell(probType** prob , stocType* stoc) {
 
 	cellType* prb;
 	prb = (cellType*)mem_malloc(sizeof(cellType));
 
-	prb->master = stage0;
-
-	prb->master = newSubprob(prb->master);
-
-	
-	oneProblem* stage1 = NULL;
-	stage1 = (oneProblem*)mem_malloc(sizeof(oneProblem));
-	stage1->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));   /*why do we write it?*/
-	stage1->objQ->col = (iVector)arr_alloc(prob[1]->sp->mac * prob[1]->sp->mac, int);
-	stage1->objQ->row = (iVector)arr_alloc(prob[1]->sp->mac * prob[1]->sp->mac, int);
-	stage1->objQ->val = (dVector)arr_alloc(prob[1]->sp->mac * prob[1]->sp->mac, double);
-	stage1->model = NULL;
-	stage1->name = (cString)arr_alloc(NAMESIZE, char);
-	stage1->objname = (cString)arr_alloc(NAMESIZE, char);
-	stage1->objx = (dVector)arr_alloc(prob[1]->sp->macsz, double);
-	stage1->bdl = (dVector)arr_alloc(prob[1]->sp->macsz, double);
-	stage1->bdu = (dVector)arr_alloc(prob[1]->sp->macsz, double);
-	stage1->ctype = (cString)arr_alloc(prob[1]->sp->macsz, char);
-	stage1->rhsx = (dVector)arr_alloc(prob[1]->sp->marsz, double);
-	stage1->senx = (cString)arr_alloc(prob[1]->sp->marsz, char);
-	stage1->matbeg = (iVector)arr_alloc(prob[1]->sp->macsz, int);
-	stage1->matcnt = (iVector)arr_alloc(prob[1]->sp->macsz, int);
-	stage1->matval = (dVector)arr_alloc(prob[1]->sp->matsz, double);
-	stage1->matind = (iVector)arr_alloc(prob[1]->sp->matsz, int);
-	stage1->cname = (cString*)arr_alloc(prob[1]->sp->macsz, cString);
-	stage1->rname = (cString*)arr_alloc(prob[1]->sp->marsz, cString);
-	stage1->mac = prob[1]->sp->mac;
-	stage1->type = prob[1]->sp->type;			/* type of problem: LP, QP, MIP or MIQP */
-	for (int i = 0; i < prob[1]->sp->mac; i++) {
-		stage1->objx[i] = prob[1]->sp->objx[i];
+	/* 1. construct the master problem */
+	prb->master = newMaster(prob[0]->sp);
+	if ( prb->master == NULL ) {
+		errMsg("setup", "buildCell", "failed to setup master", 0);
+		return NULL;
 	}
 
-	stage1->objQ->cnt = prob[1]->sp->objQ->cnt;
-
-	for (int i = 0; i < prob[1]->sp->objQ->cnt; i++) {
-		stage1->objQ->val[i] = prob[1]->sp->objQ->val[i];
-		stage1->objQ->col[i] = prob[1]->sp->objQ->col[i];
+	/* 2. construct the subproblem */
+	prb->subprob = newSubproblem(prob[1]->sp);
+	if ( prb->subprob == NULL ) {
+		errMsg("setup", "buildCell", "failed to setup subproblem", 0);
+		return NULL;
 	}
 
-	stage1->objSense = prob[1]->sp->objSense;
-	stage1->mac = prob[1]->sp->mac;			/* number of columns */
-	stage1->mar = prob[1]->sp->mar;			/* number of rows */
-	stage1->numBin = prob[1]->sp->numBin;			/* number of binary variables in the problem */
-	stage1->numInt = prob[1]->sp->numInt;			/* number of integer variables  (includes both binary and general integer variables) in the problem */
-	stage1->numnz = prob[1]->sp->numnz;			/* number of non-zero elements in constraint matrix */
-	stage1->macsz = prob[1]->sp->macsz;			/* number of columns */
-	stage1->marsz = prob[1]->sp->marsz;			/* number of rows */
-	stage1->matsz = prob[1]->sp->matsz;			/* number of rows */
+	/* 3. construct the omega structure */
+	prb->omega = newOmega(stoc);
 
+	/* 4. construct the cuts structure */
 
-	for (int i = 0; i < prob[1]->sp->macsz; i++) {
-		stage1->bdl[i] = prob[1]->sp->bdl[i];
-	}
-
-	for (int i = 0; i < prob[1]->sp->macsz; i++) {
-		stage1->bdu[i] = prob[1]->sp->bdu[i];
-	}
-
-	for (int i = 0; i < prob[1]->sp->marsz; i++) {
-		stage1->rhsx[i] = prob[1]->sp->rhsx[i];
-	}
-
-	for (int i = 0; i < prob[1]->sp->marsz; i++) {
-		stage1->senx[i] = prob[1]->sp->senx[i];
-	}
-
-	for (int i = 0; i < prob[1]->sp->macsz; i++) {
-		stage1->matbeg[i] = prob[1]->sp->matbeg[i];
-	}
-
-	for (int i = 0; i < prob[1]->sp->macsz; i++) {
-		stage1->matcnt[i] = prob[1]->sp->matcnt[i];
-	}
-
-	for (int i = 0; i < prob[1]->sp->matsz; i++) {
-		stage1->matind[i] = prob[1]->sp->matind[i];
-	}
-
-
-	for (int i = 0; i < prob[1]->sp->matsz; i++) {
-		stage1->matval[i] = prob[1]->sp->matval[i];
-	}
-
-
-	for (int i = 0; i < NAMESIZE; i++) {
-		stage1->objname[i] = prob[1]->sp->objname[i];
-	}
-
-	for (int i = 0; i < NAMESIZE; i++) {
-		stage1->name[i] = prob[1]->sp->name[i];
-	}
-
-	for (int i = 0; i < prob[1]->sp->marsz; i++) {
-		stage1->rname[i] = prob[1]->sp->rname[i];
-	}
-	for (int i = 0; i < prob[1]->sp->macsz; i++) {
-		stage1->cname[i] = prob[1]->sp->cname[i];
-	}
+	/* 5. Allocate memory to candidate and incumbent solution */
 
 
 
-	for (int i = 0; i < prob[1]->sp->macsz; i++) {
-		stage1->ctype[i] = prob[1]->sp->ctype[i];
-	}
-
-	/* These don't seem necessary for Gurobi. */
-	//	int		rstorsz;		/* memory size for storing row names */
-	//	cString	rstore;			/* row names cString */
-	//	int		cstorsz;		/* memory size for storing column names */
-	//	cString	cstore;			/* column name cString */
-	prb->subprob = stage1;
-
-	prb->subprob = newSubprob(prb->subprob);
-
-	prb->omega = omega;
 
 	return prb;
-	}
+}//END buildCell()
 
 
-/*This function gets the stoc file and creats a matrix of observations*/
-
-int numObs(stocType* stoch) {
-	int numObs=1; 
-	int coef = 1;
-	int precoef = 1;
-
-	for (int i = 0; i < stoch->numOmega; ++i) {
-		numObs = numObs * stoch->numVals[i];
-	} /*number of observations*/
-
-
-
-	//dVector probs;
-	//probs = (dVector)arr_alloc(numObs, double);
-	//for (int i = 0; i < numObs; ++i) {
-	//	probs[i] = 1;
-	//}
-	//
-	//for (int i = stoch->numOmega; i > 0; --i) {
-	//	precoef = coef;
-	//	coef = coef * stoch->numVals[i-1];
-	//	int f = numObs / coef; /*number in groups*/
-
-	//	for (int j = 0; j < f; ++j) {
-	//		for (int k = 0; k < stoch->numVals[i-1]; ++k) {
-
-	//			for (int t = 0; t < precoef; ++t) {
-	//				int ind1 = j * stoch->numVals[i-1] + k * precoef + t;
-	//				
-	//				probs[ ind1] = probs[ind1] * stoch->probs[i-1][k];
-	//			}
-	//		}
-	//	}
-	//}
-	return numObs;
-}
 /* This function allocates memory for an omega structure.  It allocates the memory to structure elements: a dVector to hold an array of
  * observation and the probability associated with it. */
-
-omegaType* newOmega(stocType* stoc, int numObs) {
+omegaType* newOmega(stocType* stoc) {
 	omegaType* omega;
 	int cnt, i, base, idx;
 
 	omega = (omegaType*)mem_malloc(sizeof(omegaType));
-	omega->probs = (dVector)arr_alloc(numObs, double);
-	omega->weights = (iVector)arr_alloc(numObs, int);
-	omega->vals = (dVector*)arr_alloc(numObs, dVector);
+	omega->probs = (dVector) arr_alloc(numObs, double);
+	omega->weights = (iVector) arr_alloc(numObs, int);
+	omega->vals = (dVector*) arr_alloc(numObs, dVector);
 	omega->cnt = 0; omega->numRV = stoc->numOmega;
-
-	
 
 	if (config.SAA == 1 ) {
 		config.SAA = 1;
 		omega->cnt = config.MAX_OBS;
 		return omega;
 	}
-
 
 	if (strstr(stoc->type, "BLOCKS") != NULL) {
 		if ((omega->cnt = stoc->numVals[0]) <= config.MAX_OBS) {
@@ -380,7 +138,7 @@ void freeOmegaType(omegaType* omega, bool partial) {
 }//END freeOmegaType()
 
 
- // This function gets a oneproblem type and changes the rhs 
+// This function gets a oneproblem type and changes the rhs
 
 oneProblem* setRhs(oneProblem* subProb, dVector rhs) {
 	for (int i = 0; i < subProb->mac; i++)
@@ -624,7 +382,7 @@ oneProblem* setRhs(oneProblem* subProb, dVector rhs) {
 ////	if (changeObjx(lp, num->rvdOmCnt, indices + 1, vals + 1)) {
 ////		errMsg("solver", "chgObjswObserv", "failed to change the cost coefficients in the solver", 0);
 ////		return 1;
-////	}
+////	}subproblems problem
 ////
 ////	mem_free(vals);
 ////	return 0;
@@ -633,35 +391,190 @@ oneProblem* setRhs(oneProblem* subProb, dVector rhs) {
 
 //This function gets a oneproblem and builds a model to be solved by gurobi
 
-oneProblem* newSubprob(oneProblem* sp) {
+oneProblem* newSubproblem(oneProblem* probSP) {
+	oneProblem *stage1;
 
-	/* since the basic structure of subproblem is not modified during the course of the algorithm, we just load it onto the solver */
+	stage1 = (oneProblem*)mem_malloc(sizeof(oneProblem));
+	stage1->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));   /*why do we write it?*/
+	stage1->objQ->col = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
+	stage1->objQ->row = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
+	stage1->objQ->val = (dVector)arr_alloc(probSP->mac * probSP->mac, double);
+	stage1->model = NULL;
+	stage1->name = (cString)arr_alloc(NAMESIZE, char);
+	stage1->objname = (cString)arr_alloc(NAMESIZE, char);
+	stage1->objx = (dVector)arr_alloc(probSP->macsz, double);
+	stage1->bdl = (dVector)arr_alloc(probSP->macsz, double);
+	stage1->bdu = (dVector)arr_alloc(probSP->macsz, double);
+	stage1->ctype = (cString)arr_alloc(probSP->macsz, char);
+	stage1->rhsx = (dVector)arr_alloc(probSP->marsz, double);
+	stage1->senx = (cString)arr_alloc(probSP->marsz, char);
+	stage1->matbeg = (iVector)arr_alloc(probSP->macsz, int);
+	stage1->matcnt = (iVector)arr_alloc(probSP->macsz, int);
+	stage1->matval = (dVector)arr_alloc(probSP->matsz, double);
+	stage1->matind = (iVector)arr_alloc(probSP->matsz, int);
+	stage1->cname = (cString*)arr_alloc(probSP->macsz, cString);
+	stage1->rname = (cString*)arr_alloc(probSP->marsz, cString);
+	stage1->mac = probSP->mac;
+	stage1->type= probSP->type;			/* type of problem: LP, QP, MIP or MIQP */
 
-	sp->model = setupProblem(sp->name, sp->mac, sp->mar, sp->objSense,0.0, sp->objx, sp->senx, sp->rhsx, sp->matbeg, sp->matcnt,
-		sp->matind, sp->matval, sp->bdl, sp->bdu, sp->ctype, sp->cname, sp->rname);
+	/* Copy the quadratic part of the objective */
+	stage1->objQ->cnt = probSP->objQ->cnt;
+	for (int i = 0; i < probSP->objQ->cnt; i++) {
+		stage1->objQ->val[i] = probSP->objQ->val[i];
+		stage1->objQ->col[i] = probSP->objQ->col[i];
+	}
 
-	
+	stage1->objSense = probSP->objSense;
+	stage1->mac = probSP->mac;				/* number of columns */
+	stage1->mar = probSP->mar;				/* number of rows */
+	stage1->numBin = probSP->numBin;		/* number of binary variables in the problem */
+	stage1->numInt = probSP->numInt;		/* number of integer variables  (includes both binary and general integer variables) in the problem */
+	stage1->numnz = probSP->numnz;			/* number of non-zero elements in constraint matrix */
+	stage1->macsz = probSP->macsz;			/* number of columns */
+	stage1->marsz = probSP->marsz;			/* number of rows */
+	stage1->matsz = probSP->matsz;			/* number of rows */
 
 
+	strcpy(stage1->objname, probSP->objname);
+	strcpy(stage1->name, probSP->name);
 
-	if (sp->model == NULL)
-	{
-		errMsg("Problem Setup", "newSubprob", "sp", 0);
+	/* Loop over the variables to copy relevant sections */
+	for (int i = 0; i < probSP->macsz; i++) {
+		stage1->objx[i] = probSP->objx[i];
+		stage1->bdl[i] = probSP->bdl[i];
+		stage1->bdu[i] = probSP->bdu[i];
+		stage1->matbeg[i] = probSP->matbeg[i];
+		stage1->matcnt[i] = probSP->matcnt[i];
+		stage1->ctype[i] = probSP->ctype[i];
+		strcpy(stage1->cname[i], probSP->cname[i]);
+	}
+
+	/* Loop over the constraints to copy relevant sections */
+	for (int i = 0; i < probSP->marsz; i++) {
+		stage1->rhsx[i] = probSP->rhsx[i];
+		stage1->senx[i] = probSP->senx[i];
+		strcpy(stage1->rname[i], probSP->rname[i]);
+	}
+
+	/* Loop over the non-zero elements of constraint matrix to copy relevant sections */
+	for (int i = 0; i < probSP->matsz; i++) {
+		stage1->matind[i] = probSP->matind[i];
+		stage1->matval[i] = probSP->matval[i];
+	}
+
+	/* Load the master problem into the solver */
+	stage1->model = setupProblem(stage1->name, stage1->mac, stage1->mar, stage1->objSense, 0.0, stage1->objx, stage1->objQ, stage1->senx, stage1->rhsx, stage1->matbeg,
+			stage1->matcnt, stage1->matind, stage1->matval, stage1->bdl, stage1->bdu, stage1->ctype, stage1->cname, stage1->rname);
+	if ( stage1->model == NULL ) {
+		errMsg("setup", "newSubproblem", "failed to load the master problem onto the solver", 0);
 		return NULL;
 	}
 
 #if 0
 	int     status;
 	char probName[NAMESIZE];
-	sprintf(probName, "newSubprob%d.lp", agent);
-	status = writeProblem(scell->sp->lp, probName);
+	sprintf(probName, "newSubprob.lp");
+	status = writeProblem(stage1->model, probName);
 	if (status) {
-		errMsg("write problem", "new_subprob", "failed to write subproblems problem to file", 0);
+		errMsg("write problem", "newSubproblem", "failed to write subproblems problem to file", 0);
 		return NULL;
 	}
 #endif
 
-	return sp;
-}//END new_subprob
+	return stage1;
+}//END newSubproblem
+
+oneProblem *newMaster(oneProblem *probSP) {
+	oneProblem* stage0 = NULL;
+
+	stage0 = (oneProblem*)mem_malloc(sizeof(oneProblem));
+	stage0->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));   /*why do we write it?*/
+	stage0->objQ->col = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
+	stage0->objQ->row = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
+	stage0->objQ->val = (dVector)arr_alloc(probSP->mac * probSP->mac, double);
+	stage0->model = NULL;
+	stage0->name = (cString)arr_alloc(NAMESIZE, char);
+	stage0->objname = (cString)arr_alloc(NAMESIZE, char);
+	stage0->objx = (dVector)arr_alloc(probSP->macsz, double);
+	stage0->bdl = (dVector)arr_alloc(probSP->macsz, double);
+	stage0->bdu = (dVector)arr_alloc(probSP->macsz, double);
+	stage0->ctype = (cString)arr_alloc(probSP->macsz, char);
+	stage0->rhsx = (dVector)arr_alloc(probSP->marsz, double);
+	stage0->senx = (cString)arr_alloc(probSP->marsz, char);
+	stage0->matbeg = (iVector)arr_alloc(probSP->macsz, int);
+	stage0->matcnt = (iVector)arr_alloc(probSP->macsz, int);
+	stage0->matval = (dVector)arr_alloc(probSP->matsz, double);
+	stage0->matind = (iVector)arr_alloc(probSP->matsz, int);
+	stage0->cname = (cString*)arr_alloc(probSP->macsz, cString);
+	stage0->rname = (cString*)arr_alloc(probSP->marsz, cString);
+	stage0->mac = probSP->mac;
+	stage0->type= probSP->type;			/* type of problem: LP, QP, MIP or MIQP */
+
+	/* Copy the quadratic part of the objective */
+	stage0->objQ->cnt = probSP->objQ->cnt;
+	for (int i = 0; i < probSP->objQ->cnt; i++) {
+		stage0->objQ->val[i] = probSP->objQ->val[i];
+		stage0->objQ->col[i] = probSP->objQ->col[i];
+	}
+
+	stage0->objSense = probSP->objSense;
+	stage0->mac = probSP->mac;				/* number of columns */
+	stage0->mar = probSP->mar;				/* number of rows */
+	stage0->numBin = probSP->numBin;		/* number of binary variables in the problem */
+	stage0->numInt = probSP->numInt;		/* number of integer variables  (includes both binary and general integer variables) in the problem */
+	stage0->numnz = probSP->numnz;			/* number of non-zero elements in constraint matrix */
+	stage0->macsz = probSP->macsz;			/* number of columns */
+	stage0->marsz = probSP->marsz;			/* number of rows */
+	stage0->matsz = probSP->matsz;			/* number of rows */
 
 
+	strcpy(stage0->objname, probSP->objname);
+	strcpy(stage0->name, probSP->name);
+
+	/* Loop over the variables to copy relevant sections */
+	for (int i = 0; i < probSP->macsz; i++) {
+		stage0->objx[i] = probSP->objx[i];
+		stage0->bdl[i] = probSP->bdl[i];
+		stage0->bdu[i] = probSP->bdu[i];
+		stage0->matbeg[i] = probSP->matbeg[i];
+		stage0->matcnt[i] = probSP->matcnt[i];
+		stage0->ctype[i] = probSP->ctype[i];
+		strcpy(stage0->cname[i], probSP->cname[i]);
+	}
+
+	/* Loop over the constraints to copy relevant sections */
+	for (int i = 0; i < probSP->marsz; i++) {
+		stage0->rhsx[i] = probSP->rhsx[i];
+		stage0->senx[i] = probSP->senx[i];
+		strcpy(stage0->rname[i], probSP->rname[i]);
+	}
+
+	/* Loop over the non-zero elements of constraint matrix to copy relevant sections */
+	for (int i = 0; i < probSP->matsz; i++) {
+		stage0->matind[i] = probSP->matind[i];
+		stage0->matval[i] = probSP->matval[i];
+	}
+
+	/* TODO: add an additional column for the approximation */
+
+	/* Load the master problem into the solver */
+	stage0->model = setupProblem(stage0->name, stage0->mac, stage0->mar, stage0->objSense, 0.0, stage0->objx, stage0->objQ, stage0->senx, stage0->rhsx, stage0->matbeg,
+			stage0->matcnt, stage0->matind, stage0->matval, stage0->bdl, stage0->bdu, stage0->ctype, stage0->cname, stage0->rname);
+	if ( stage0->model == NULL ) {
+		errMsg("setup", "newMaster", "failed to load the master problem onto the solver", 0);
+		return NULL;
+	}
+
+#if 0
+	int     status;
+	char probName[NAMESIZE];
+	sprintf(probName, "newMaster.lp");
+	status = writeProblem(stage0->model, probName);
+	if (status) {
+		errMsg("write problem", "newMaster", "failed to write master problem to file", 0);
+		return NULL;
+	}
+#endif
+
+	return stage0;
+}//END newMaster()
