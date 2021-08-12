@@ -3,10 +3,6 @@
  *  Created on: Jul , 2021
  *      Author: Niloofar Fadavi, Harsha Gangammanavar
  */
-#include "./solverUtilities/utilities.h"
-#include "./solverUtilities/solver_gurobi.h"
-#include "./smpsReader/smps.h"
-#include "./smpsReader/prob.h"
 
 #include "stochasticQP.h"
 extern configType config;
@@ -14,34 +10,49 @@ extern configType config;
 /* Building the cell for the 2-SQP algorithms */
 cellType* buildCell(probType** prob , stocType* stoc) {
 
-	cellType* prb;
-	prb = (cellType*)mem_malloc(sizeof(cellType));
+	cellType* cell;
+	cell = (cellType*)mem_malloc(sizeof(cellType));
 
 	/* 1. construct the master problem */
-	prb->master = newMaster(prob[0]->sp);
-	if ( prb->master == NULL ) {
+	cell->master = newMaster(prob[0]->sp);
+	if ( cell->master == NULL ) {
 		errMsg("setup", "buildCell", "failed to setup master", 0);
 		return NULL;
 	}
 
 	/* 2. construct the subproblem */
-	prb->subprob = newSubproblem(prob[1]->sp);
-	if ( prb->subprob == NULL ) {
+	cell->subprob = newSubproblem(prob[1]->sp);
+	if ( cell->subprob == NULL ) {
 		errMsg("setup", "buildCell", "failed to setup subproblem", 0);
 		return NULL;
 	}
 
 	/* 3. construct the omega structure */
-	prb->omega = newOmega(stoc);
+	cell->omega = newOmega(stoc);
+
+
+	/*how to initialize maxcut*/
 
 	/* 4. construct the cuts structure */
+
+	
+	cutsType* cuts;              /* optimality cuts */
+	cuts = (cutsType*)mem_malloc(sizeof(cutsType));
+	cuts->vals = (oneCut**)arr_alloc(cell->maxCuts, oneCut*);
+
+
+	cutsType* fCuts;             /* feasibility cuts */
+	fCuts = (cutsType*)mem_malloc(sizeof(cutsType));
+	fCuts->vals = (oneCut**)arr_alloc(cell->maxCuts, oneCut*);
+
+
 
 	/* 5. Allocate memory to candidate and incumbent solution */
 
 
 
 
-	return prb;
+	return cell;
 }//END buildCell()
 
 
@@ -52,9 +63,9 @@ omegaType* newOmega(stocType* stoc) {
 	int cnt, i, base, idx;
 
 	omega = (omegaType*)mem_malloc(sizeof(omegaType));
-	omega->probs = (dVector) arr_alloc(numObs, double);
-	omega->weights = (iVector) arr_alloc(numObs, int);
-	omega->vals = (dVector*) arr_alloc(numObs, dVector);
+	omega->probs = (dVector) arr_alloc(config.MAX_OBS, double);
+	omega->weights = (iVector) arr_alloc(config.MAX_OBS, int);
+	omega->vals = (dVector*) arr_alloc(config.MAX_OBS, dVector);
 	omega->cnt = 0; omega->numRV = stoc->numOmega;
 
 	if (config.SAA == 1 ) {
@@ -446,6 +457,7 @@ oneProblem* newSubproblem(oneProblem* probSP) {
 		stage1->matbeg[i] = probSP->matbeg[i];
 		stage1->matcnt[i] = probSP->matcnt[i];
 		stage1->ctype[i] = probSP->ctype[i];
+		stage1->cname[i] = (cString)arr_alloc(NAMESIZE, char);
 		strcpy(stage1->cname[i], probSP->cname[i]);
 	}
 
@@ -453,6 +465,7 @@ oneProblem* newSubproblem(oneProblem* probSP) {
 	for (int i = 0; i < probSP->marsz; i++) {
 		stage1->rhsx[i] = probSP->rhsx[i];
 		stage1->senx[i] = probSP->senx[i];
+		stage1->rname[i] = (cString)arr_alloc(NAMESIZE, char);
 		strcpy(stage1->rname[i], probSP->rname[i]);
 	}
 
@@ -495,17 +508,17 @@ oneProblem *newMaster(oneProblem *probSP) {
 	stage0->model = NULL;
 	stage0->name = (cString)arr_alloc(NAMESIZE, char);
 	stage0->objname = (cString)arr_alloc(NAMESIZE, char);
-	stage0->objx = (dVector)arr_alloc(probSP->macsz, double);
-	stage0->bdl = (dVector)arr_alloc(probSP->macsz, double);
-	stage0->bdu = (dVector)arr_alloc(probSP->macsz, double);
-	stage0->ctype = (cString)arr_alloc(probSP->macsz, char);
+	stage0->objx = (dVector)arr_alloc(probSP->macsz + 1, double);
+	stage0->bdl = (dVector)arr_alloc(probSP->macsz +1, double);
+	stage0->bdu = (dVector)arr_alloc(probSP->macsz +1, double);
+	stage0->ctype = (cString)arr_alloc(probSP->macsz +1, char);
 	stage0->rhsx = (dVector)arr_alloc(probSP->marsz, double);
 	stage0->senx = (cString)arr_alloc(probSP->marsz, char);
-	stage0->matbeg = (iVector)arr_alloc(probSP->macsz, int);
-	stage0->matcnt = (iVector)arr_alloc(probSP->macsz, int);
+	stage0->matbeg = (iVector)arr_alloc(probSP->macsz+1, int);
+	stage0->matcnt = (iVector)arr_alloc(probSP->macsz+1, int);
 	stage0->matval = (dVector)arr_alloc(probSP->matsz, double);
 	stage0->matind = (iVector)arr_alloc(probSP->matsz, int);
-	stage0->cname = (cString*)arr_alloc(probSP->macsz, cString);
+	stage0->cname = (cString*)arr_alloc(probSP->macsz+1, cString);
 	stage0->rname = (cString*)arr_alloc(probSP->marsz, cString);
 	stage0->mac = probSP->mac;
 	stage0->type= probSP->type;			/* type of problem: LP, QP, MIP or MIQP */
@@ -525,7 +538,7 @@ oneProblem *newMaster(oneProblem *probSP) {
 	stage0->numnz = probSP->numnz;			/* number of non-zero elements in constraint matrix */
 	stage0->macsz = probSP->macsz;			/* number of columns */
 	stage0->marsz = probSP->marsz;			/* number of rows */
-	stage0->matsz = probSP->matsz;			/* number of rows */
+	
 
 
 	strcpy(stage0->objname, probSP->objname);
@@ -539,6 +552,7 @@ oneProblem *newMaster(oneProblem *probSP) {
 		stage0->matbeg[i] = probSP->matbeg[i];
 		stage0->matcnt[i] = probSP->matcnt[i];
 		stage0->ctype[i] = probSP->ctype[i];
+		stage0->cname[i] = (cString)arr_alloc(NAMESIZE, char);
 		strcpy(stage0->cname[i], probSP->cname[i]);
 	}
 
@@ -546,6 +560,7 @@ oneProblem *newMaster(oneProblem *probSP) {
 	for (int i = 0; i < probSP->marsz; i++) {
 		stage0->rhsx[i] = probSP->rhsx[i];
 		stage0->senx[i] = probSP->senx[i];
+		stage0->rname[i] = (cString)arr_alloc(NAMESIZE, char);
 		strcpy(stage0->rname[i], probSP->rname[i]);
 	}
 
@@ -556,6 +571,14 @@ oneProblem *newMaster(oneProblem *probSP) {
 	}
 
 	/* TODO: add an additional column for the approximation */
+	stage0->macsz = probSP->macsz + 1;
+	stage0->mac = probSP->mac + 1;
+	stage0->objx[stage0->macsz -1] = 1;
+	stage0->bdl[stage0->macsz - 1] = -GRB_INFINITY;
+	stage0->bdu[stage0->macsz - 1] = GRB_INFINITY;
+	stage0->ctype[stage0->macsz -1] = "C";
+	stage0->cname[stage0->macsz -1] = (cString)arr_alloc(NAMESIZE, char);
+	strcpy(stage0->cname[stage0->macsz -1], "eta");
 
 	/* Load the master problem into the solver */
 	stage0->model = setupProblem(stage0->name, stage0->mac, stage0->mar, stage0->objSense, 0.0, stage0->objx, stage0->objQ, stage0->senx, stage0->rhsx, stage0->matbeg,
@@ -565,7 +588,7 @@ oneProblem *newMaster(oneProblem *probSP) {
 		return NULL;
 	}
 
-#if 0
+#if 1
 	int     status;
 	char probName[NAMESIZE];
 	sprintf(probName, "newMaster.lp");

@@ -70,14 +70,14 @@ typedef struct {
 	//double		gamma;				/* Improvement in obejctive function */
 	//double 		quadScalar; 		/* the proximal parameter/quadratic scalar 'sigma' */
 	//bool        incumbChg;			/* set to be true if the incumbent solution has changed in an iteration */
-	//iVector     iCutIdx;			/* index of incumbent cuts in cell->cuts structure. If multicut is used, there will be one
-	//							   for each observation. */
+	//iVector     iCutIdx;			/* index of incumbent cuts in cell->cuts structure. If multicut is used, there will be one//							   for each observation. */
+
 	dVector		piM;
 	int      	maxCuts;            /* maximum number of cuts to be used*/
-	cutsType* cuts;              /* optimality cuts */
-	cutsType* fCuts;             /* feasibility cuts */
+	cutsType*   cuts;              /* optimality cuts */
+	cutsType*   fCuts;             /* feasibility cuts */
 
-	omegaType* omega;				/* all realizations observed during the algorithm */
+	omegaType*  omega;				/* all realizations observed during the algorithm */
 
 	bool        optFlag;
 	bool		spFeasFlag;			/* Indicates whether the subproblem is feasible */
@@ -93,10 +93,10 @@ typedef struct {
 
 
 typedef struct {
+
 	long long* RUN_SEED;		/* seed used during optimization */
 	long long* EVAL_SEED;		/* seed used during evaluation */
 	int 	NUM_SEEDS;			/* Number of run seeds provided */
-
 	double 	TOLERANCE; 			/* for zero identity test */
 	int		MIN_ITER;			/* minimum number of iterations */
 	int		MAX_ITER;			/* maximum number of iterations */
@@ -147,10 +147,10 @@ typedef struct {
 }basisType;
 
 void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir);
-cellType* buildmaster(probType** prob , omegaType* omega);
+cellType* buildCell(probType** prob, stocType* stoc);
 void printHelpMenu();
 
-int numObs(stocType* stoch);
+
 omegaType* newOmega(stocType* stoc);
 
 int readConfig(cString configFile);
