@@ -82,6 +82,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		prob[t]->sp->matind  = (iVector) arr_alloc(orig->matsz, int);
 		prob[t]->sp->cname   = (cString *) arr_alloc(prob[t]->sp->macsz, cString);
 		prob[t]->sp->rname   = (cString *) arr_alloc(prob[t]->sp->marsz, cString);
+
 		/*allocate memory to objQ*/
 
 		strcpy(prob[t]->sp->objname, orig->objname);

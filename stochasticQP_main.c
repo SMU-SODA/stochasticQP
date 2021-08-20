@@ -32,11 +32,31 @@ int main(int argc, char* argv[]) {
 
 	/*Build the algorithm cell..*/
 	cell = buildCell(prob, stoch);
+
 	if ( cell == NULL ) {
 		errMsg("setup", "main", "failed to build the cell", 0);
 		goto TERMINATE;
 	}
 
+	fullSolve( cell, cell->omega,  stoch, prob[1]->Cbar , cell->candidX , 0 );
+	
+
+	///*invoke the algorithm*/
+	//switch (config.ALGOTYPE)
+	//{case 0:
+	//	fullSolve();
+	//	break;
+	//case 1:
+	//	partSolve();
+	//	break;
+	//case 2:
+	//	dualSolve();
+	//	break;
+
+	//default:
+	//	errMsg("ALGO", "main", "Unknown algorithm type", 0);
+	//	goto TERMINATE;
+	//}
 	/* To be edited */
 //	double x = 0.1;
 //	for (int i = 0; i < omega->cnt; i++) {

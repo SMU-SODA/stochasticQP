@@ -12,6 +12,9 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 
 	cellType* cell;
 	cell = (cellType*)mem_malloc(sizeof(cellType));
+	cell->k = 0;
+	cell->LPcnt = 0;
+	cell->optFlag = false;
 
 	/* 1. construct the master problem */
 	cell->master = newMaster(prob[0]->sp);
@@ -19,6 +22,7 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 		errMsg("setup", "buildCell", "failed to setup master", 0);
 		return NULL;
 	}
+
 
 	/* 2. construct the subproblem */
 	cell->subprob = newSubproblem(prob[1]->sp);
@@ -32,27 +36,32 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 
 
 	/*how to initialize maxcut*/
+	cell->maxCuts = config.MAX_ITER;
+
+
+
 
 	/* 4. construct the cuts structure */
 
 	
-	cutsType* cuts;              /* optimality cuts */
-	cuts = (cutsType*)mem_malloc(sizeof(cutsType));
-	cuts->vals = (oneCut**)arr_alloc(cell->maxCuts, oneCut*);
+	cell->cuts = (cutsType*)mem_malloc(sizeof(cutsType));
+	cell->cuts->cnt = 0;
+	cell->cuts->vals = (oneCut**)arr_alloc(cell->maxCuts, oneCut*);
 
 
-	cutsType* fCuts;             /* feasibility cuts */
-	fCuts = (cutsType*)mem_malloc(sizeof(cutsType));
-	fCuts->vals = (oneCut**)arr_alloc(cell->maxCuts, oneCut*);
+	
+	cell->fCuts = (cutsType*)mem_malloc(sizeof(cutsType));
+	cell->fCuts->cnt = 0;
+	cell->fCuts->vals = (oneCut**)arr_alloc(cell->maxCuts, oneCut*);
 
 
 
 	/* 5. Allocate memory to candidate and incumbent solution */
-
-
-
-
-	return cell;
+	cell->incumbX = (dVector)arr_alloc(cell->master->mac + 1, double);
+	cell->candidX = (dVector)arr_alloc(cell->master->mac + 1, double);
+	cell->incumbEst = 0.0;
+	cell->candidEst = 0.0;
+		return cell;
 }//END buildCell()
 
 
@@ -116,16 +125,15 @@ omegaType* newOmega(stocType* stoc) {
 					idx = (int)((double)cnt / (double)base) % stoc->numVals[i];
 					omega->vals[cnt][i + 1] = stoc->vals[i][idx] - stoc->mean[i];
 					omega->probs[cnt] *= stoc->probs[i][idx];
-				}
-			}
-		}
-	}
+				}}}}
+
 	else {
 		omega->cnt = config.MAX_OBS;
 		config.SAA = 1;
 	}
 
 	return omega;
+
 }//END newOmega()
 
 
@@ -403,8 +411,8 @@ oneProblem* setRhs(oneProblem* subProb, dVector rhs) {
 //This function gets a oneproblem and builds a model to be solved by gurobi
 
 oneProblem* newSubproblem(oneProblem* probSP) {
-	oneProblem *stage1;
 
+	oneProblem *stage1;
 	stage1 = (oneProblem*)mem_malloc(sizeof(oneProblem));
 	stage1->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));   /*why do we write it?*/
 	stage1->objQ->col = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
@@ -576,7 +584,9 @@ oneProblem *newMaster(oneProblem *probSP) {
 	stage0->objx[stage0->macsz -1] = 1;
 	stage0->bdl[stage0->macsz - 1] = -GRB_INFINITY;
 	stage0->bdu[stage0->macsz - 1] = GRB_INFINITY;
-	stage0->ctype[stage0->macsz -1] = "C";
+	stage0->matbeg[stage0->macsz - 1] = probSP->matsz;			
+	stage0->matcnt[stage0->macsz - 1] =0;
+	stage0->ctype[stage0->macsz -1] = 'C';
 	stage0->cname[stage0->macsz -1] = (cString)arr_alloc(NAMESIZE, char);
 	strcpy(stage0->cname[stage0->macsz -1], "eta");
 

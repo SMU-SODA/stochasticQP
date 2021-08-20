@@ -105,7 +105,7 @@ typedef struct {
 	int		MULTICUT;			/* Set to 1 if multicut is to be solved */
 	int		CUT_MULT;			/* Determines the number of cuts to be used for approximate */
 	int 	MULTIPLE_REP;		/* When multiple replications are needed, set this to an integer number of replications */
-	int		ALGOTYPE;			/*0 we do not use the duals and we solve all sebproblems  , 1 reuse the partitions, 3 when we use the duals*/
+	int		ALGOTYPE;			/*0 we do not use the duals and we solve all sebproblems  , 1 reuse the partitions,2 when we use the duals*/
 	double	SAMPLE_FRACTION;	/* A fraction (0,1] to determine what fraction of samples are solved */
 	
 
@@ -162,3 +162,4 @@ oneProblem* newSubproblem(oneProblem* probSP);
 
 int chgObjxwObserv(modelPtr* lp, numType* num, coordType* coord, dVector cost, iVector indices, dVector observ);
 int chgRHSwObserv(modelPtr* lp, numType* num, coordType* coord, dVector observ, dVector spRHS, dVector X);
+int fullSolve(cellType* cell, omegaType* omega, stocType* stoch, sparseMatrix* C, double* x, int iternum);

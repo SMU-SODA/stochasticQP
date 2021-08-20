@@ -279,6 +279,7 @@ int solveProblem ( modelPtr *model ) {
 	int status, optimstatus;
 
 	status =  GRBoptimize(model);
+
 	if ( status ) {
 		solverErrMsg(status);
 		return 1;
@@ -341,6 +342,7 @@ int solveProblem ( modelPtr *model ) {
 }//END solveProblem()
 
 /* Obtain the optimal objective function value. */
+
 double getObjective ( modelPtr *model ) {
 	int status;
 	double objval;

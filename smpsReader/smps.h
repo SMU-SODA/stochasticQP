@@ -96,19 +96,28 @@ typedef struct {
 }statModel;
 
 typedef struct {
+
+
 	cString	type;				/* type of stocType being used */ 
 	bool	sim;				/* set to TRUE if an external simulator is used */
 	int		numOmega; 			/* number of stochastic elements stored in structure */
 	int		numGroups;          /*number of groups of rv that need to be simulated seprately*/
+
+
 	iVector	row; 				/* row number array in the original problem; -1 indicates objective function */
 	iVector	col; 				/* column number array in the original problem; -1 indicates right-hand side */
 	iVector	numVals;			/* number of realization for each random variable */
 	dVector	*vals; 				/* indexed array of discrete realizations of random variable */
+
+
 	dVector	*probs;				/* indexed array of probabilities associated with discrete realizations*/
 	iVector	numPerGroup;        /*how many are in each group*/
 	iVector	groupBeg;      
 	dVector	mean;         		/* mean of each rv */
+
+
 	statModel *mod;
+
 }stocType;
 
 /* subroutines in smps.c */

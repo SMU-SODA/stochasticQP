@@ -59,15 +59,19 @@ typedef struct {
 typedef struct {
 	int		ck;					/* Iteration when the cut was generated */
 	double  alpha;              /* scalar value for the right-hand side */
-	dVector  beta;               /* coefficients of the master problems's primal variables */
-	bool	isIncumb;			/* indicates if the cut is an incumbent cut */
-	double 	alphaIncumb;		/* right-hand side when using QP master, this is useful for quick updates */
+	dVector  beta;               /* coefficients of the mast
+								 er problems's primal variables */
+
+	//bool	isIncumb;			/* indicates if the cut is an incumbent cut */
+	//double 	alphaIncumb;		/* right-hand side when using QP master, this is useful for quick updates */
+
 	int 	rowNum;				/* row number for master problem in solver */
-	int		omegaID;			/* the observation ID used when multi-cut option is used */
-	iVector iStar;				/* Holds the ID for the sigma which is associated with each observation, dual index id, which dual we  */
-	int 	form;				/* determines the form of the cut (l-shaped regular, l-shaped callback, MIR, GMI */
+	//	int		omegaID;			/* the observation ID used when multi-cut option is used */
+	//iVector iStar;				/* Holds the ID for the sigma which is associated with each observation, dual index id, which dual we  */
+	//int 	form;				/* determines the form of the cut (l-shaped regular, l-shaped callback, MIR, GMI */
 	cString	name;
 }oneCut;
+
 
 typedef struct {
 	int    	cnt;                    /* number of cuts */
@@ -88,7 +92,6 @@ typedef struct{
 	sparseMatrix	*Dbar;			/* recourse matrix D_t */
 	dVector			mean;			/* Vector of mean values of random variables. */
 	int				omegaBeg;		/* Beginning of omega dVector */
-
 	dVector			meanX;			/* Mean value solution */
 	double			lb;				/* lower bounds on cost-to-go function */
 }probType;
@@ -103,5 +106,6 @@ dVector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc);
 void freeProbType(probType **prob, int T);
 void freeCoordType (coordType *coord);
 void printDecomposeSummary(FILE *fptr, cString probName, timeType *tim, probType **prob);
+
 
 #endif /* PROB_H_ */
