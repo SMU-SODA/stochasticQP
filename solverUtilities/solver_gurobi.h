@@ -76,7 +76,9 @@ int changeBDSArray (modelPtr *model, const char *attributeName, int numchgs, int
 
 int	addQPterms (modelPtr *model, int numqnz, int *qrow, int	*qcol, double *qval);
 int	addRows(modelPtr *ptr, int numRows, int numnz, int *rbeg, int *rind, double	*rval, char	*senx, double *rhsx, char **rname);
+
 int addRow(modelPtr *ptr, int numnz, double rhs, char sense, int *rmatind, double *rmatval, char *rowname);
+
 int addCols(modelPtr *ptr, int numvars, int numnz, int *cbeg, int *cind, double *cval, double *objx, double *lb, double *ub, char *ctype, char **cname);
 int	addCol (modelPtr *ptr, int numnz, int *cind, double *cval, double objx, double lb, double ub, char ctype, char *cname);
 int deleteRows ( modelPtr *ptr, int numRows, int *indices );

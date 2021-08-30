@@ -50,6 +50,7 @@ typedef struct{
 	iVector	matind;			/* sparse matrix representation: rows with non-zero entries */
 	dVector	matval;			/* sparse matrix representation: non-zero coefficients of the matrix */
 
+
 	cString	objname;		/* objective function name */
 	cString	*rname;			/* dVector of row names */
 	cString	*cname;			/* dVector of column names */

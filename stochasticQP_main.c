@@ -37,9 +37,10 @@ int main(int argc, char* argv[]) {
 		errMsg("setup", "main", "failed to build the cell", 0);
 		goto TERMINATE;
 	}
-
-	fullSolve( cell, cell->omega,  stoch, prob[1]->Cbar , cell->candidX , 0 );
-	
+	int i = 0;
+	while (i<10) {
+		fullSolve(cell, cell->omega, stoch, prob[1]->Cbar, cell->candidX, 0);
+	}
 
 	///*invoke the algorithm*/
 	//switch (config.ALGOTYPE)
