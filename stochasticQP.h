@@ -50,6 +50,32 @@ typedef struct {
 	iVector		ck;					/* Iteration when the element of generated */
 } sigmaType;
 
+/* structure for the problem type:
+ * c_t^\top x_t + \min  d_t^\top u_t + \expect{h_{t+}(s_{t+})}
+ *                 s.t. D_t u_t = b_t - C_tx_t
+ * where, x_{t+} = a_{t+} + A_{t+}x_t + B_{t+}u_t.
+ */
+typedef struct {
+	int		ck;					/* Iteration when the cut was generated */
+	double  alpha;              /* scalar value for the right-hand side */
+	dVector  beta;               /* coefficients of the master problems's primal variables */
+
+	// bool	isIncumb;			/* indicates if the cut is an incumbent cut */
+	// double alphaIncumb;		/* right-hand side when using QP master, this is useful for quick updates */
+
+	int 	rowNum;				/* row number for master problem in solver */
+	// int	omegaID;			/* the observation ID used when multi-cut option is used */
+	// iVector iStar;				/* Holds the ID for the sigma which is associated with each observation, dual index id, which dual we  */
+	// int 	form;				/* determines the form of the cut (l-shaped regular, l-shaped callback, MIR, GMI */
+	cString	name;
+}oneCut;
+
+
+typedef struct {
+	int    	cnt;                    /* number of cuts */
+	oneCut** vals;					/* values which define the set of cuts */
+}cutsType;
+
 typedef struct {
 	int         k;                  /* number of iterations */
 	int 		LPcnt; 				/* the number of LPs solved. */
@@ -136,10 +162,11 @@ typedef struct {
 	oneBasis** vals;		/* a structure for each basis */
 }basisType;
 
+
+
 void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir);
 cellType* buildCell(probType** prob, stocType* stoc);
 void printHelpMenu();
-
 
 omegaType* newOmega(stocType* stoc);
 
@@ -152,4 +179,9 @@ oneProblem* newSubproblem(oneProblem* probSP);
 
 int chgObjxwObserv(modelPtr* lp, numType* num, coordType* coord, dVector cost, iVector indices, dVector observ);
 int chgRHSwObserv(modelPtr* lp, numType* num, coordType* coord, dVector observ, dVector spRHS, dVector X);
-int fullSolve(cellType* cell, omegaType* omega, stocType* stoch, sparseMatrix* C, double* x, int iternum);
+oneCut *fullSolve(probType **prob, cellType* cell, stocType* stoch, double* x);
+
+/* Subroutines in algo.c */
+int addCut2Solver(oneProblem *master, oneCut *cut);
+oneCut *newCut(int numX);
+

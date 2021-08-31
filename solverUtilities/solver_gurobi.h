@@ -14,9 +14,13 @@
 
 #include "gurobi_c.h"
 #include "utilities.h"
+
 #define ENVptr 		GRBenv
 #define modelPtr 	GRBmodel
 #define GRB_OFF 	0
+#define GRB_GREATER_EQUAL GE
+#define GRB_LESS_EQUAL LE
+#define GRB_EQUAL EQ
 
 /* The following are used to determine the status of basis (constraint or variable)
  * The values in Gurobi are negative, i.e., however, we keep the positive values to allow for compatibility with CPLEX and Gurobi.

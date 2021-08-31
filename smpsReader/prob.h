@@ -51,32 +51,6 @@ typedef struct {
 	iVector	rvOffset;		/* Index where the random variable begin - right-hand side, transfer matrix, and cost coefficients. */
 }coordType;
 
-/* structure for the problem type:
- * c_t^\top x_t + \min  d_t^\top u_t + \expect{h_{t+}(s_{t+})}
- *                 s.t. D_t u_t = b_t - C_tx_t
- * where, x_{t+} = a_{t+} + A_{t+}x_t + B_{t+}u_t.
- */
-typedef struct {
-	int		ck;					/* Iteration when the cut was generated */
-	double  alpha;              /* scalar value for the right-hand side */
-	dVector  beta;               /* coefficients of the master problems's primal variables */
-
-	// bool	isIncumb;			/* indicates if the cut is an incumbent cut */
-	// double alphaIncumb;		/* right-hand side when using QP master, this is useful for quick updates */
-
-	int 	rowNum;				/* row number for master problem in solver */
-	// int	omegaID;			/* the observation ID used when multi-cut option is used */
-	// iVector iStar;				/* Holds the ID for the sigma which is associated with each observation, dual index id, which dual we  */
-	// int 	form;				/* determines the form of the cut (l-shaped regular, l-shaped callback, MIR, GMI */
-	cString	name;
-}oneCut;
-
-
-typedef struct {
-	int    	cnt;                    /* number of cuts */
-	oneCut** vals;					/* values which define the set of cuts */
-}cutsType;
-
 typedef struct{
 	oneProblem		*sp;			/* structure with complete problem information */
 	numType			*num;			/* structure which holds the problem dimensions */
