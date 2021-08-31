@@ -3,6 +3,8 @@
 #include "./smpsReader/smps.h"
 #include "./smpsReader/prob.h"
 
+#define WRITE_FILES
+
 typedef struct {
 	int		numRV;					/* Number of random variables */
 	int 	cnt;					/* Number of observations */
@@ -12,25 +14,19 @@ typedef struct {
 	dVector* vals;					/* Observation values */
 } omegaType;
 
-
 typedef struct {
 	int		cnt;					/* number of elements in the structure */
 	dVector* vals;					/* value of duals with random elements in right-hand side */
 }lambdaType;
-
-
 
 typedef struct {
 	double 	pib;					/* scalar pi x b */
 	dVector 	piC;					/* dVector pi x C */
 } pixbCType;
 
-
 typedef struct {
 	pixbCType** vals;				/* matrix of product terms (rows - entries in lambdaType, columns - entries in omegaType */
 } deltaType;
-
-
 
 typedef struct {
 	double	repTime;
@@ -53,8 +49,6 @@ typedef struct {
 	iVector		lambdaIdx;			/* Corresponding index in lambdaType */
 	iVector		ck;					/* Iteration when the element of generated */
 } sigmaType;
-
-
 
 typedef struct {
 	int         k;                  /* number of iterations */
@@ -91,7 +85,6 @@ typedef struct {
 	deltaType* delta;*/
 }cellType;
 
-
 typedef struct {
 
 	long long* RUN_SEED;		/* seed used during optimization */
@@ -107,16 +100,14 @@ typedef struct {
 	int 	MULTIPLE_REP;		/* When multiple replications are needed, set this to an integer number of replications */
 	int		ALGOTYPE;			/*0 we do not use the duals and we solve all sebproblems  , 1 reuse the partitions,2 when we use the duals*/
 	double	SAMPLE_FRACTION;	/* A fraction (0,1] to determine what fraction of samples are solved */
-	
+
 
 	int		SAA; 				/* Use SAA when continuous distribution in stoch file (1), or not (0) */
 	int		MAX_OBS;			/* Maximum number of iterations before which SAA is invoked */
 
-	
+
 	double  MAX_TIME;			/* Maximum per replication run time */
 }configType;
-
-
 
 typedef struct {
 	int				ck;			/* The first time the basis was encountered. */
@@ -136,7 +127,6 @@ typedef struct {
 
 /* The basis type data structure holds all the information regarding the basis identified during the course of the algorithm.
  * This structure will be at the heart of all calculations related to stochastic updates. */
-
 typedef struct {
 	int			basisDim;	/* The dimension of the basis matrix */
 	int			cnt;		/* Number of unique basis encountered by the algorithm */

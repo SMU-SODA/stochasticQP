@@ -34,34 +34,24 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 	/* 3. construct the omega structure */
 	cell->omega = newOmega(stoc);
 
-
-	/*how to initialize maxcut*/
+	/* 4. construct the cuts structure */
 	cell->maxCuts = config.MAX_ITER;
 
-
-
-
-	/* 4. construct the cuts structure */
-
-	
 	cell->cuts = (cutsType*)mem_malloc(sizeof(cutsType));
-	cell->cuts->cnt = 0;
 	cell->cuts->vals = (oneCut**)arr_alloc(cell->maxCuts, oneCut*);
+	cell->cuts->cnt = 0;
 
-
-	
 	cell->fCuts = (cutsType*)mem_malloc(sizeof(cutsType));
-	cell->fCuts->cnt = 0;
 	cell->fCuts->vals = (oneCut**)arr_alloc(cell->maxCuts, oneCut*);
-
-
+	cell->fCuts->cnt = 0;
 
 	/* 5. Allocate memory to candidate and incumbent solution */
-	cell->incumbX = (dVector)arr_alloc(cell->master->mac + 1, double);
-	cell->candidX = (dVector)arr_alloc(cell->master->mac + 1, double);
+	cell->incumbX = (dVector) duplicVector(prob[0]->meanX, prob[0]->num->cols);
+	cell->candidX = (dVector) duplicVector(prob[0]->meanX, prob[0]->num->cols);
 	cell->incumbEst = 0.0;
 	cell->candidEst = 0.0;
-		return cell;
+
+	return cell;
 }//END buildCell()
 
 
@@ -546,7 +536,7 @@ oneProblem *newMaster(oneProblem *probSP) {
 	stage0->numnz = probSP->numnz;			/* number of non-zero elements in constraint matrix */
 	stage0->macsz = probSP->macsz;			/* number of columns */
 	stage0->marsz = probSP->marsz;			/* number of rows */
-	
+
 
 
 	strcpy(stage0->objname, probSP->objname);

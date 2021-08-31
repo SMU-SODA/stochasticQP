@@ -23,14 +23,12 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 
 	/* Read the SMPS files */
 	openSolver();
-	readFiles(inputDir, probName, &orig, &tim, stoc);
 	if ( readFiles(inputDir, probName, &orig, &tim, stoc) ) /*where did we define stoch?*/ {
 		errMsg("read", "newProb_SMPS", "failed to read problem files using SMPS reader", 0);
 		goto TERMINATE;
 	}
 
 	(*numStages) = tim->numStages;  /*why we need the pranthesis? tm->numStages is int???? so why not &?*/
-
 	
 	/* allocate memory to elements of probType */
 	prob = (probType **) arr_alloc(tim->numStages, probType *); 
@@ -208,25 +206,21 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			prob[t]->bBar->col[prob[t]->bBar->cnt+1] = m - tim->row[t]+1;
 			prob[t]->bBar->cnt++;
 		}
+
 		int r2 = 0;
-		int r1 = 0;
-		int numvar = tim->col[t + 1] - tim->col[t];
 		for (int r1 = 0; r1 < orig->objQ->cnt; r1++) {
-			if (orig->objQ->col[r1] >= tim->col[t] & orig->objQ->col[r1] < tim->col[t + 1] & orig->objQ->row[r1] >= tim->col[t] & orig->objQ->row[r1] < tim->col[t + 1])
+			if ( (orig->objQ->col[r1] >= tim->col[t] & orig->objQ->col[r1] < tim->col[t + 1]) & (orig->objQ->row[r1] >= tim->col[t]) & (orig->objQ->row[r1] < tim->col[t + 1]) )
 			{
 
 				prob[t]->sp->objQ->col[r2] = orig->objQ->col[r1] - tim->col[t];
 				prob[t]->sp->objQ->row[r2] = orig->objQ->row[r1] - tim->col[t];
 				prob[t]->sp->objQ->val[r2] = orig->objQ->val[r1];
-				r2 = r2++;
+				r2++;
 			}
 		}
 		prob[t]->sp->objQ->cnt = r2;
 	}
 
-	
-	
-	
 	/* Now copy the terminal stage problem */
 	for ( m = tim->col[t]; m < orig->mac; m++ ) {
 		k = m - tim->col[t];
@@ -284,8 +278,6 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		prob[t]->bBar->cnt++;
 	}
 	
-	int r2=0;
-	int r1 = 0;
 	int numvar = orig->mar - tim->col[t];
 	///allocate mamory to q of prob t
 	prob[t]->sp->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix)); /*why do we write it?												 */
@@ -293,27 +285,21 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 	prob[t]->sp->objQ->row = (iVector)arr_alloc(numvar * numvar, int);
 	prob[t]->sp->objQ->val = (dVector)arr_alloc(numvar * numvar, double);
 
+	int r2 = 0;
 	for (int r1 = 0; r1 < orig->objQ->cnt; r1++) {
-		if (orig->objQ->col[r1] >= tim->col[t] & orig->objQ->row[r1] >= tim->col[t] )
+		if ((orig->objQ->col[r1] >= tim->col[t]) & (orig->objQ->row[r1] >= tim->col[t]) )
 		{			
 			prob[t]->sp->objQ->col[r2] = orig->objQ->col[r1]- tim->col[t];
 			prob[t]->sp->objQ->row[r2] = orig->objQ->row[r1]- tim->col[t];
 			prob[t]->sp->objQ->val[r2] = orig->objQ->val[r1];
-			r2 = r2++;
+			r2++;
 		}
 	}
 	prob[t]->sp->objQ->cnt = r2;
 
-
-
-
 #if defined(DECOMPOSE_CHECK)
 	/* write stage problems in LP format to verify decomposition */
 	char fname[BLOCKSIZE]; 
-	/*/why void for model*/
-
-
-
 	for ( t = 0; t < tim->numStages; t++) {
 		if ( !(prob[t]->sp->model = setupProblem(prob[t]->sp->name, prob[t]->sp->mac, prob[t]->sp->mar, prob[t]->sp->objSense, 0.0, prob[t]->sp->objx, prob[t]->sp->objQ, prob[t]->sp->senx,
 				prob[t]->sp->rhsx, prob[t]->sp->matbeg, prob[t]->sp->matcnt, prob[t]->sp->matind, prob[t]->sp->matval, prob[t]->sp->bdl, prob[t]->sp->bdu, prob[t]->sp->ctype,

@@ -3,7 +3,6 @@ extern configType config;
 
 int fullSolve(cellType* cell, omegaType* omega, stocType* stoch, sparseMatrix* C, double* x, int iternum) {
 
-	modelPtr* subModel;
 	double* CX; /*The rhs of the second stage*/
 	double** dualMatrix; /*A matrix of dual vectors accosiated with observations*/
 	double* pi; /*The dual solution of a given o*/
@@ -14,8 +13,9 @@ int fullSolve(cellType* cell, omegaType* omega, stocType* stoch, sparseMatrix* C
 	int* vind = (int*)arr_alloc(omega->numRV, int);
 	double* val = (double*)arr_alloc(omega->numRV +1, double);
 	int k = 0;
+
 	/*Memory assignment*/
-	CX = (double*)arr_alloc(cell->subprob->mar, double); /*Number of rows from the second-stage*/
+	CX = (double*) arr_alloc(cell->subprob->mar, double); /*Number of rows from the second-stage*/
 	dualMatrix = (dVector*)arr_alloc(omega->cnt, double*); /*A natrix of dual vectors for each observation*/
 	beta = (dVector)arr_alloc(omega->cnt, double); /*A vector of intersepts of the cuts associated with observations*/
 	alpha = (double**)arr_alloc(omega->cnt, double*);  /*A matrix of cut coefficints associated with observations*/
@@ -23,34 +23,28 @@ int fullSolve(cellType* cell, omegaType* omega, stocType* stoch, sparseMatrix* C
 	pi = (dVector)arr_alloc(cell->subprob->mar, double); /*A vector dual*/
 
 
-	/*Calculate the multiplication of C and X*/
-	for (int i = 0; i < cell->subprob->mar; i++) {
-     CX[i] = 0;}
+	/* 1, Create a new cut */
 
 
+	/* 2. Compute the right-hand side to solve subproblems */
+	/* Calculate the multiplication of C and X*/
 	for (int i = 0; i < C->cnt; i++) {
-	CX[C->row[i]] = CX[C->row[i]] + C->val[i + 1] * x[C->col[i]];}
+		CX[C->row[i]] = CX[C->row[i]] + C->val[i + 1] * x[C->col[i]];
+	}
 
-
-	/*loop through observations and solve them all*/
-
+	/* loop through observations and solve subporblem for all of them. */
 	for (int i = 0; i < omega->cnt; i++) {
 
-		/*change the rhs of subproblem*/
-		k = 0;
-
+		/* change the rhs of subproblem */
 		for (int j = 0; j < omega->numRV; j++) {
-
-			vind[j] = stoch->row[j] - cell->master->mar; /* save the index of stochastic constraints in subproblem*/
-
-		
-			val[j] = omega->vals[i][j + 1] + stoch->mean[j] - CX[vind[j]]; /*The values associated with the stochastic rhs*/ }
+			vind[j] = stoch->row[j] - cell->master->mar; 					/* save the index of stochastic constraints in subproblem*/
+			val[j] = omega->vals[i][j + 1] + stoch->mean[j] - CX[vind[j]]; 	/* The values associated with the stochastic rhs*/ }
 
 		if (changeRHSArray(cell->subprob->model, omega->numRV, vind, val)) {
 			errMsg("solver", "fullsolve", "failed to change the right-hand side in the solver", 0);
 			return 1;}
-		
-#if 1
+
+#if defined(WRITE_FILES)
 		char str[BLOCKSIZE];
 		sprintf(str, "subproblem.lp");
 		if (writeProblem(cell->subprob->model, str)) {
@@ -60,14 +54,12 @@ int fullSolve(cellType* cell, omegaType* omega, stocType* stoch, sparseMatrix* C
 		}
 #endif
 
-		
-
 		if (solveProblem(cell->subprob->model)) {
 			errMsg("solver", "fullsolve", "failed to solve the problem", 0);
-			return 1;}
+			return 1;
+		}
 
-
-			if (getDual(cell->subprob->model, pi, 0, cell->subprob->mar )) {
+		if (getDual(cell->subprob->model, pi, 0, cell->subprob->mar )) {
 			errMsg("solver", "fullsolve", "failed to getdual", 0);
 			return 1;
 		}
@@ -87,13 +79,13 @@ int fullSolve(cellType* cell, omegaType* omega, stocType* stoch, sparseMatrix* C
 
 	for (int t = 0; t < omega->cnt; t++) {
 
-			for (int l = 0; l < C->cnt; ++l) {
-				alpha[t][C->col[l]] =  alpha[t][C->col[l]] + dualMatrix[t][C->row[l]] * C->val[l+1]; /** dual*C **/
-			}
+		for (int l = 0; l < C->cnt; ++l) {
+			alpha[t][C->col[l]] =  alpha[t][C->col[l]] + dualMatrix[t][C->row[l]] * C->val[l+1]; /** dual*C **/
+		}
 
-		    for (int p = 0; p < cell->master->mac; p++) {
+		for (int p = 0; p < cell->master->mac; p++) {
 			beta[t] = beta[t] - alpha[t][p] * x[p]; /*extract the alpha.x from obj to get beta*/
-		    }
+		}
 	}
 
 	/*construct the cuts and add it to the master*/
@@ -137,7 +129,7 @@ int fullSolve(cellType* cell, omegaType* omega, stocType* stoch, sparseMatrix* C
 		}
 	}
 
-	
+
 	/* Add a new linear constraint to a model. */
 	if(addRow(cell->master->model, j, -newcut->alpha, GRB_LESS_EQUAL, rmatind, matvals, "cons"))
 	{

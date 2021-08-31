@@ -59,16 +59,15 @@ typedef struct {
 typedef struct {
 	int		ck;					/* Iteration when the cut was generated */
 	double  alpha;              /* scalar value for the right-hand side */
-	dVector  beta;               /* coefficients of the mast
-								 er problems's primal variables */
+	dVector  beta;               /* coefficients of the master problems's primal variables */
 
-	//bool	isIncumb;			/* indicates if the cut is an incumbent cut */
-	//double 	alphaIncumb;		/* right-hand side when using QP master, this is useful for quick updates */
+	// bool	isIncumb;			/* indicates if the cut is an incumbent cut */
+	// double alphaIncumb;		/* right-hand side when using QP master, this is useful for quick updates */
 
 	int 	rowNum;				/* row number for master problem in solver */
-	//	int		omegaID;			/* the observation ID used when multi-cut option is used */
-	//iVector iStar;				/* Holds the ID for the sigma which is associated with each observation, dual index id, which dual we  */
-	//int 	form;				/* determines the form of the cut (l-shaped regular, l-shaped callback, MIR, GMI */
+	// int	omegaID;			/* the observation ID used when multi-cut option is used */
+	// iVector iStar;				/* Holds the ID for the sigma which is associated with each observation, dual index id, which dual we  */
+	// int 	form;				/* determines the form of the cut (l-shaped regular, l-shaped callback, MIR, GMI */
 	cString	name;
 }oneCut;
 
@@ -95,9 +94,6 @@ typedef struct{
 	dVector			meanX;			/* Mean value solution */
 	double			lb;				/* lower bounds on cost-to-go function */
 }probType;
-
-
-
 
 /* subroutines in prob.c */
 probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int *numStages);

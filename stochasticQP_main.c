@@ -19,9 +19,16 @@ int main(int argc, char* argv[]) {
 	parseCmdLine(argc, argv, &probname, &inputDir);
 
 	/* read algorithm configuration file */
+#if _WIN64
 	strcpy(configFile, "C:\\Users\\Niloofar\\source\\repos\\stochasticQP\\config.sd");
+#else
+	strcpy(configFile, "./config.sd");
+#endif
 	if (readConfig(configFile))
 		goto TERMINATE;
+
+	/* set up output directory: using the outputDir in config file and the input problem name */
+	createOutputDir(outputDir, "stochasticQP", probname);
 
 	/*This function reads the problem and decomposes that into stages.*/
 	prob = newProbwSMPS(inputDir, probname, &stoch, &numStages);
@@ -32,39 +39,12 @@ int main(int argc, char* argv[]) {
 
 	/*Build the algorithm cell..*/
 	cell = buildCell(prob, stoch);
-
 	if ( cell == NULL ) {
 		errMsg("setup", "main", "failed to build the cell", 0);
 		goto TERMINATE;
 	}
-	int i = 0;
-	while (i<10) {
-		fullSolve(cell, cell->omega, stoch, prob[1]->Cbar, cell->candidX, 0);
-	}
 
-	///*invoke the algorithm*/
-	//switch (config.ALGOTYPE)
-	//{case 0:
-	//	fullSolve();
-	//	break;
-	//case 1:
-	//	partSolve();
-	//	break;
-	//case 2:
-	//	dualSolve();
-	//	break;
-
-	//default:
-	//	errMsg("ALGO", "main", "Unknown algorithm type", 0);
-	//	goto TERMINATE;
-	//}
-	/* To be edited */
-//	double x = 0.1;
-//	for (int i = 0; i < omega->cnt; i++) {
-//		if (randUniform() < x) {
-//
-//		}
-//	}
+	runAlgo();
 
 	TERMINATE: return 0;
 } /*END main()*/
@@ -109,7 +89,6 @@ void printHelpMenu() {
 	printf("         -o string  -> output directory where the result files will be written.\n");
 
 }//END printHelpMenu()
-
 
 int readConfig(cString configFile) {
 	FILE* fptr;
