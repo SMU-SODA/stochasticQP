@@ -68,9 +68,8 @@ int createProblemInit(const char *probname, modelPtr *model, int numvars, double
 /* Create a new optimization model, using the provided arguments to initialize the model data (objective function, variable bounds, constraint matrix,
 etc.). The model is then ready for optimization, or for modification (e.g., addition of variables or constraints, changes to variable types or bounds,
 etc.). */
-modelPtr *setupProblem(const char *Pname, int numvars, int numconstrs, int objsense, double	objcon,  double	*obj, char	*sense,
-		double *rhs, int *vbeg, int *vlen, int *vind, double *vval, double *lb, double *ub, char *vtype,
-		char **varnames, char **constrnames ) {
+modelPtr *setupProblem(const char *Pname, int numvars, int numconstrs, int objsense, double	objcon, double	*obj, sparseMatrix *objQ, char *sense,
+		double *rhs, int *vbeg, int *vlen, int *vind, double *vval, double *lb, double *ub, char *vtype, char **varnames, char **constrnames ) {
 	modelPtr *model;
 	int	status;
 
@@ -78,6 +77,14 @@ modelPtr *setupProblem(const char *Pname, int numvars, int numconstrs, int objse
 	if ( status ) {
 		solverErrMsg(status);
 		return NULL;
+	}
+
+	if ( objQ != NULL ) {
+		status =  GRBaddqpterms(model, objQ->cnt, objQ->row, objQ->col, objQ->val);
+		if ( status ) {
+			solverErrMsg(status);
+			return NULL;
+		}
 	}
 
 	return model;
@@ -271,6 +278,7 @@ int solveProblem ( modelPtr *model ) {
 	int status, optimstatus;
 
 	status =  GRBoptimize(model);
+
 	if ( status ) {
 		solverErrMsg(status);
 		return 1;
@@ -333,6 +341,7 @@ int solveProblem ( modelPtr *model ) {
 }//END solveProblem()
 
 /* Obtain the optimal objective function value. */
+
 double getObjective ( modelPtr *model ) {
 	int status;
 	double objval;
@@ -527,7 +536,7 @@ int getObjName(cString srcFile, cString *objName) {
 	fptr = fopen(srcFile, "r");
 	while ( fgets(line, sizeof line, fptr) != NULL ) {
 		sscanf(line, "%s %s", field1, field2);
-		if ( !(strncmp(field1, "N", 1)) ) {
+		if ( !(strcmp(field1, "N")) ) {
 			strcpy((*objName), field2);
 			break;
 		}

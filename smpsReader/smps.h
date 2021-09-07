@@ -48,6 +48,7 @@ typedef struct{
 	iVector	matind;			/* sparse matrix representation: rows with non-zero entries */
 	dVector	matval;			/* sparse matrix representation: non-zero coefficients of the matrix */
 
+
 	cString	objname;		/* objective function name */
 	cString	*rname;			/* dVector of row names */
 	cString	*cname;			/* dVector of column names */
@@ -58,9 +59,9 @@ typedef struct{
 	//	int		cstorsz;		/* memory size for storing column names */
 	//	cString	cstore;			/* column name cString */
 
-	int		macsz;			/* extended column size */
-	int		marsz;			/* extended row size */
-	int		matsz;			/* extended matrix size */
+	int		macsz;			/* extended column size ?///*/
+	int		marsz;			/* extended row size???????? */
+	int		matsz;			/* extended matrix size?????? */
 }oneProblem;
 
 typedef struct {
@@ -94,19 +95,28 @@ typedef struct {
 }statModel;
 
 typedef struct {
-	cString	type;				/* type of stocType being used */
+
+
+	cString	type;				/* type of stocType being used */ 
 	bool	sim;				/* set to TRUE if an external simulator is used */
 	int		numOmega; 			/* number of stochastic elements stored in structure */
-	int		numGroups;
+	int		numGroups;          /*number of groups of rv that need to be simulated seprately*/
+
+
 	iVector	row; 				/* row number array in the original problem; -1 indicates objective function */
 	iVector	col; 				/* column number array in the original problem; -1 indicates right-hand side */
 	iVector	numVals;			/* number of realization for each random variable */
 	dVector	*vals; 				/* indexed array of discrete realizations of random variable */
+
+
 	dVector	*probs;				/* indexed array of probabilities associated with discrete realizations*/
-	iVector	numPerGroup;
-	iVector	groupBeg;
+	iVector	numPerGroup;        /*how many are in each group*/
+	iVector	groupBeg;      
 	dVector	mean;         		/* mean of each rv */
+
+
 	statModel *mod;
+
 }stocType;
 
 /* subroutines in smps.c */
@@ -144,6 +154,7 @@ int setupSAA(stocType *stoc, cString fname, long long *seed, dVector *simObservV
 int readSimData(cString fname, dVector *simObservVals, int numRV, int *numSamples);
 int readSimLine(FILE **fid, dVector observ, int numRV, bool simulate);
 void computeSampleMean(dVector *vals, iVector weights, int numRV, int sampleSize, int numObs, dVector sampleMean);
+
 
 
 #endif /* SMPSREADER_SMPS_H_ */

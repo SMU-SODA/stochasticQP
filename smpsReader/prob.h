@@ -10,7 +10,7 @@
 
 #include "smps.h"
 
-#define DECOMPOSE_CHECK
+#define DECOMPOSE_CHECK /*what is this*/
 
 /* Structure that holds various dimensions of the stage problem */
 typedef struct {
@@ -35,6 +35,7 @@ typedef struct {
     int 	rvDOmCnt;		/* number of RVs in recourse matrix D */
 }numType;
 
+
 /* structure to hold coordinate information at each stage */
 typedef struct {
 	iVector	allRVRows;		/* list of all random variable rows */
@@ -50,11 +51,6 @@ typedef struct {
 	iVector	rvOffset;		/* Index where the random variable begin - right-hand side, transfer matrix, and cost coefficients. */
 }coordType;
 
-/* structure for the problem type:
- * c_t^\top x_t + \min  d_t^\top u_t + \expect{h_{t+}(s_{t+})}
- *                 s.t. D_t u_t = b_t - C_tx_t
- * where, x_{t+} = a_{t+} + A_{t+}x_t + B_{t+}u_t.
- */
 typedef struct{
 	oneProblem		*sp;			/* structure with complete problem information */
 	numType			*num;			/* structure which holds the problem dimensions */
@@ -69,7 +65,6 @@ typedef struct{
 	sparseMatrix	*Dbar;			/* recourse matrix D_t */
 	dVector			mean;			/* Vector of mean values of random variables. */
 	int				omegaBeg;		/* Beginning of omega dVector */
-
 	dVector			meanX;			/* Mean value solution */
 	double			lb;				/* lower bounds on cost-to-go function */
 }probType;
@@ -81,5 +76,6 @@ dVector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc);
 void freeProbType(probType **prob, int T);
 void freeCoordType (coordType *coord);
 void printDecomposeSummary(FILE *fptr, cString probName, timeType *tim, probType **prob);
+
 
 #endif /* PROB_H_ */

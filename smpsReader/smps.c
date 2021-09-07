@@ -10,6 +10,7 @@
  */
 
 #include "smps.h"
+#include "../solverUtilities/utilities.h"
 
 int readFiles(cString inputDir, cString probName, oneProblem **orig, timeType **tim, stocType **stoc) {
 
@@ -18,6 +19,7 @@ int readFiles(cString inputDir, cString probName, oneProblem **orig, timeType **
 	if ( (*orig) == NULL ) {
 		errMsg("read", "readFiles", "failed to read problem core file", 0);
 		return 1;
+	
 	}
 
 	/* read problem time file */
@@ -73,8 +75,15 @@ oneProblem *readCore(cString inputDir, cString probName) {
 		rename(dstFile, srcFile);
 	}
 	else {
-		errMsg("read", "readCore", "failed to open problem core file", 0);
-		return NULL;
+		sprintf(srcFile, "%s%s\\%s.mps", inputDir, probName, probName);
+		if ((readProblem(srcFile, &model))) /*why do we need the pointer?*/
+		{
+			errMsg("solver", "readCore", "failed to read and copy the problem data", 0);
+			return NULL;
+		}
+		fptr = fopen(srcFile, "r");
+		//errMsg("read", "readCore", "failed to open problem core file", 0);
+	//	return NULL;
 	}
 
 	/* NAME section: read problem name and compare with that read earlier */
@@ -171,8 +180,7 @@ oneProblem *readCore(cString inputDir, cString probName) {
 		orig->matcnt[c] = orig->matbeg[c+1] - orig->matbeg[c];
 	orig->matcnt[c] = nzcnt - orig->matbeg[c];
 
-	/* Allocate memory to hold the names of problem elements */
-	orig->objname = (cString) arr_alloc(NAMESIZE, char);
+	
 
 
 	/* (5) Constraint and variable names. */
@@ -274,7 +282,7 @@ timeType *readTime(cString inputDir, cString probName, oneProblem *orig) {
 				tim->col[n] = m;
 
 				if ( !(strcmp(field2, orig->objname)) )
-					m = -1;
+					m = 0;
 				else {
 					m = 0;
 					while (m < orig->mar ) {

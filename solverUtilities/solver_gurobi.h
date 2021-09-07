@@ -18,6 +18,9 @@
 #define ENVptr 		GRBenv
 #define modelPtr 	GRBmodel
 #define GRB_OFF 	0
+#define GRB_GREATER_EQUAL GE
+#define GRB_LESS_EQUAL LE
+#define GRB_EQUAL EQ
 
 /* The following are used to determine the status of basis (constraint or variable)
  * The values in Gurobi are negative, i.e., however, we keep the positive values to allow for compatibility with CPLEX and Gurobi.
@@ -63,8 +66,8 @@ void solverErrMsg();
 /* Model creation and modification */
 int createProblem(char *probname, modelPtr *model);
 int createProblemInit(const char *probname, modelPtr *model, int numvars, double *objx, double *lb, double *ub, char *vtype, char **varnames);
-modelPtr *setupProblem(const char *Pname, int numvars, int numconstrs, int objsense, double	objcon,  double	*obj, char	*sense, double *rhs, int *vbeg,
-		int *vlen, int *vind, double *vval, double *lb, double *ub, char *vtype, char **varnames, char **constrname);
+modelPtr *setupProblem(const char *Pname, int numvars, int numconstrs, int objsense, double	objcon, double	*obj, sparseMatrix *objQ, char *sense,
+		double *rhs, int *vbeg, int *vlen, int *vind, double *vval, double *lb, double *ub, char *vtype, char **varnames, char **constrnames );
 modelPtr *cloneProblem (modelPtr *orig);
 
 int	changeCoefficients ( modelPtr *model, int numchgs, int *cind, int *vind, double *val );
@@ -77,7 +80,9 @@ int changeBDSArray (modelPtr *model, const char *attributeName, int numchgs, int
 
 int	addQPterms (modelPtr *model, int numqnz, int *qrow, int	*qcol, double *qval);
 int	addRows(modelPtr *ptr, int numRows, int numnz, int *rbeg, int *rind, double	*rval, char	*senx, double *rhsx, char **rname);
+
 int addRow(modelPtr *ptr, int numnz, double rhs, char sense, int *rmatind, double *rmatval, char *rowname);
+
 int addCols(modelPtr *ptr, int numvars, int numnz, int *cbeg, int *cind, double *cval, double *objx, double *lb, double *ub, char *ctype, char **cname);
 int	addCol (modelPtr *ptr, int numnz, int *cind, double *cval, double objx, double lb, double ub, char ctype, char *cname);
 int deleteRows ( modelPtr *ptr, int numRows, int *indices );
