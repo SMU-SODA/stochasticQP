@@ -1,0 +1,8 @@
+\ Model qafiro_1_copy
+\ LP format - for model browsing. Use MPS format to capture full model detail.
+Minimize
+ 
+Subject To
+ X50: X26 <= -0.1356510803278689
+Bounds
+End

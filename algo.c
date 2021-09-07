@@ -16,8 +16,8 @@ extern configType config;
 int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
 	oneCut *cut;
 
-	while ( cell->k < config.MAX_ITER ) {
-
+	while ( cell->k < 10) {
+		cell->k++;
 		/* 1. Check optimality */
 
 		/* 2. Switch between algorithms to add a new affine functions. */
@@ -34,6 +34,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
 
 		default:
 			errMsg("ALGO", "main", "Unknown algorithm type", 0);
+
 			goto TERMINATE;
 		}
 
@@ -43,6 +44,8 @@ int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
 		cell->cuts->cnt++;
 
 		/* 3b. Update the master problem by adding the cut*/
+
+
 		if ( addCut2Solver(cell->master, cut) ) {
 			errMsg("solver", "fullSolve", "failed to add cut to the master problem", 0);
 			return 1;
@@ -64,10 +67,14 @@ int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
 			return 1;
 		}
 
-		if ( getPrimal(cell->master->model, cell->candidX, 0, prob[0]->num->cols) ) {
+		double objvalmaster;
+		objvalmaster = getObjective(cell->master->model);
+
+		if (getPrimal(cell->master->model, cell->candidX, 0, prob[0]->num->cols) ) {
 			errMsg("solver", "fullSolve", "failed to obtain the candidate solution", 0);
 			return 1;
 		}
+
 	}
 
 	///*invoke the algorithm*/
@@ -93,8 +100,10 @@ int addCut2Solver(oneProblem *master, oneCut *cut) {
 	rmatind = (iVector) arr_alloc(master->mac, int);
 	matvals = (dVector) arr_alloc(master->mac ,double);
 	int j = 0;
-
-	for (int i = 0; i < master->mac ;++i) {
+	matvals[j] = 1;
+	rmatind[j] = master->mac - 1;
+	j++;
+	for (int i = 0; i < master->mac-1 ;++i) {
 		if (cut->beta[i] != 0) {
 			matvals[j] = cut->beta[i];
 			rmatind[j] = i;

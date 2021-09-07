@@ -184,4 +184,4 @@ oneCut *fullSolve(probType **prob, cellType* cell, stocType* stoch, double* x);
 /* Subroutines in algo.c */
 int addCut2Solver(oneProblem *master, oneCut *cut);
 oneCut *newCut(int numX);
-
+int runAlgo(probType** prob, stocType* stoc, cellType* cell);

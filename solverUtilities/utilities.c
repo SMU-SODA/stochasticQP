@@ -30,13 +30,21 @@ void createOutputDir(cString outputDir, cString algoName, cString probName) {
 	char buffer[2*BLOCKSIZE];
 
 	strcat(outputDir,algoName);
-	strcat(outputDir,"/");
+#if _WIN64
+	strcat(outputDir,"\\");
+#else
+    strcat(outputDir, "/");
+#endif
 	if ( stat(outputDir, &st) ) {
 		sprintf(buffer, "mkdir %s", outputDir);
 		system(buffer);
 	}
 	strcat(outputDir, probName);
+#if _WIN64
+	strcat(outputDir, "\\");
+#else
 	strcat(outputDir, "/");
+#endif
 	if ( stat(outputDir, &st) ) {
 		sprintf(buffer, "mkdir %s", outputDir);
 		system(buffer);

@@ -44,9 +44,9 @@ int main(int argc, char* argv[]) {
 		goto TERMINATE;
 	}
 
-	runAlgo();
+	 runAlgo(prob, stoch, cell);
+     TERMINATE: return 0;
 
-	TERMINATE: return 0;
 } /*END main()*/
 
 void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir) {
