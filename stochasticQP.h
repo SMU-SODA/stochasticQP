@@ -185,3 +185,5 @@ oneCut *fullSolve(probType **prob, cellType* cell, stocType* stoch, double* x);
 int addCut2Solver(oneProblem *master, oneCut *cut);
 oneCut *newCut(int numX);
 int runAlgo(probType** prob, stocType* stoc, cellType* cell);
+updateRHSwState(numType* num, coordType* coord, sparseVector* bBar, sparseMatrix* Cbar, dVector X,
+	dVector obs, dVector rhs);
