@@ -12,7 +12,7 @@
 #ifndef SMPSREADER_SMPS_H_
 #define SMPSREADER_SMPS_H_
 
-#include "solver_gurobi.h"
+#include "../solverUtilities/solver_gurobi.h"
 
 #undef SMPS_CHECK
 

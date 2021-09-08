@@ -58,7 +58,6 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		prob[t]->sp->numBin = 0;
 		prob[t]->sp->matsz  = 0;
 		prob[t]->sp->numnz  = 0;
-		prob[t]->sp->type   = PROB_QP; /*should be changed*/
 		prob[t]->sp->objSense = orig->objSense;
 
 		/* stage oneProblem */
@@ -185,9 +184,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			}
 		}
 
-		/* if integer or binary variables are encountered, then label the stage problem as a mixed integer LP */
-		if ( prob[t]->sp->numInt + prob[t]->sp->numBin > 0 )
-			prob[t]->sp->type = PROB_MILP;
+		
 
 		/* copy row information for non-terminal stage */
 		for ( m = tim->row[t]; m < tim->row[t+1]; m++ ) {
@@ -292,8 +289,28 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			r2++;
 		}
 	}
+
 	prob[t]->sp->objQ->cnt = r2;
 
+	/* if integer or binary variables are encountered, then label the stage problem as a mixed integer LP */
+	if (prob[t]->sp->objQ->cnt != 0) {
+		if (prob[t]->sp->numInt + prob[t]->sp->numBin > 0) {
+			prob[t]->sp->type = PROB_MIQP;
+		}
+		else {
+			prob[t]->sp->type = PROB_QP;
+		}
+	}
+	else { 
+	
+		if (prob[t]->sp->numInt + prob[t]->sp->numBin > 0) {
+			prob[t]->sp->type = PROB_MILP;
+		}
+		else {
+			prob[t]->sp->type = PROB_LP;
+		}
+	}
+	
 #if defined(DECOMPOSE_CHECK)
 	/* write stage problems in LP format to verify decomposition */
 	char fname[BLOCKSIZE]; 

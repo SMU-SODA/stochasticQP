@@ -16,7 +16,7 @@ extern configType config;
 int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
 	oneCut *cut = NULL;
 
-	while ( cell->k < 10) {
+	while ( cell->k < 20) {
 		cell->k++;
 		/* 1. Check optimality */
 
