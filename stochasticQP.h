@@ -4,6 +4,8 @@
 #include "./smpsReader/prob.h"
 
 #define WRITE_FILES
+#define ALGO_CHECK
+#undef STOCH_CHECK
 
 typedef struct {
 	int		numRV;					/* Number of random variables */
@@ -162,24 +164,31 @@ typedef struct {
 	oneBasis** vals;		/* a structure for each basis */
 }basisType;
 
+/* Subroutine stochasticQP_main.c */
 void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir);
-cellType* buildCell(probType** prob, stocType* stoc);
 void printHelpMenu();
 
+/* fullSolve.c */
+oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x);
+
+/* Source.c */
+cellType* buildCell(probType** prob, stocType* stoc);
+int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector obsVals, dVector piS, double *mubBar);
+dVector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, dVector X, dVector observ);
+dVector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, dVector observ) ;
+int computeMU(modelPtr *model, int numCols, double *mubBar);
 omegaType* newOmega(stocType* stoc);
 
 int readConfig(cString configFile);
 void freeConfig();
 oneProblem* setRhs(oneProblem* subProb, dVector rhs);
-int computeRHS(modelPtr* lp, numType* num, coordType* coord, sparseVector* bBar, sparseMatrix* Cbar, dVector X, dVector obs);
 oneProblem *newMaster(oneProblem *probSP);
 oneProblem* newSubproblem(oneProblem* probSP);
 
 int chgObjxwObserv(modelPtr* lp, numType* num, coordType* coord, dVector cost, iVector indices, dVector observ);
 int chgRHSwObserv(modelPtr* lp, numType* num, coordType* coord, dVector observ, dVector spRHS, dVector X);
-oneCut *fullSolve(probType **prob, cellType* cell, stocType* stoch, double* x);
 
 /* Subroutines in algo.c */
-int addCut2Solver(oneProblem *master, oneCut *cut);
+int addCut2Solver(modelPtr *model, oneCut *cut, int lenX);
 oneCut *newCut(int numX);
 int runAlgo(probType** prob, stocType* stoc, cellType* cell);

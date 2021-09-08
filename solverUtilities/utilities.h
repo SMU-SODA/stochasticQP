@@ -25,9 +25,6 @@
 #define 	INF					DBL_MAX
 
 #define		MAXBITS				sizeof(int) * 8
-#define		GE					'G'
-#define		LE					'L'
-#define		EQ					'E'
 
 typedef 	char				*cString;
 typedef		double				*dVector;

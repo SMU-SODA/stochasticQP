@@ -705,7 +705,6 @@ dVector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 		}
 	}
 
-	printf("Lower bound calculate = ");
 	printVector(lb-1, tim->numStages-1, NULL);
 
 	mem_free(colIdx); mem_free(rowIdx);

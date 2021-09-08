@@ -24,10 +24,6 @@ int main(int argc, char* argv[]) {
 	if (readConfig(configFile))
 		goto TERMINATE;
 
-<<<<<<< HEAD
-	/* read the problem */
-	readFiles(inputDir, probname, &orig, &tim, &stoc);
-=======
 	/* set up output directory: using the outputDir in config file and the input problem name */
 	createOutputDir(outputDir, "stochasticQP", probname);
 
@@ -37,12 +33,7 @@ int main(int argc, char* argv[]) {
 		errMsg("read", "main", "failed to read files or setup the probType", 0);
 		goto TERMINATE;
 	}
->>>>>>> refs/heads/Main.Niloofar
 
-<<<<<<< HEAD
-	/* close the solver environment */
-	closeSolver();
-=======
 	/*Build the algorithm cell..*/
 	cell = buildCell(prob, stoch);
 	if ( cell == NULL ) {
@@ -51,9 +42,8 @@ int main(int argc, char* argv[]) {
 	}
 
 	 runAlgo(prob, stoch, cell);
-     TERMINATE: return 0;
->>>>>>> refs/heads/Main.Niloofar
 
+	 TERMINATE: return 0;
 } /*END main()*/
 
 void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir) {

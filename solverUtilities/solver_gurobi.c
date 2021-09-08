@@ -314,7 +314,8 @@ int solveProblem ( modelPtr *model ) {
 
 	if (optimstatus == GRB_OPTIMAL) {
 		goto TERMINATE;
-	} else if (optimstatus == GRB_INFEASIBLE) {
+	}
+	else if (optimstatus == GRB_INFEASIBLE) {
 		printf("Model is infeasible\n\n");
 
 		status = GRBcomputeIIS(model);
