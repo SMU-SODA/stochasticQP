@@ -5,9 +5,6 @@
  *      Author: Harsha Gangammanavar
  */
 
-#include "../solverUtilities/utilities.h"
-#include "../solverUtilities/solver_gurobi.h"
-#include "smps.h"
 #include "prob.h"
 
 /* Decomposes the problem _orig_ into subproblems as well as decomposes the stochastic information _stoc_ into stage stochastic information. The decomposition
@@ -708,7 +705,6 @@ dVector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 		}
 	}
 
-	printf("Lower bound calculate = ");
 	printVector(lb-1, tim->numStages-1, NULL);
 
 	mem_free(colIdx); mem_free(rowIdx);

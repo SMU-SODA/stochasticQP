@@ -9,8 +9,7 @@
  *
  */
 
-#include "../solverUtilities/solver_gurobi.h"
-#include "../solverUtilities/utilities.h"
+#include "solver_gurobi.h"
 
 ENVptr *env;
 extern cString outputDir;
@@ -315,7 +314,8 @@ int solveProblem ( modelPtr *model ) {
 
 	if (optimstatus == GRB_OPTIMAL) {
 		goto TERMINATE;
-	} else if (optimstatus == GRB_INFEASIBLE) {
+	}
+	else if (optimstatus == GRB_INFEASIBLE) {
 		printf("Model is infeasible\n\n");
 
 		status = GRBcomputeIIS(model);
@@ -568,6 +568,7 @@ sparseMatrix *getQmatrix(modelPtr* model, int numvar) {
 
 	return objQ ;
 } //END getQmatrix()
+
 /********************************************************************** Input/Output **********************************************************************/
 /* Read a model from a file. */
 int readProblem(cString probpath, modelPtr **model) {

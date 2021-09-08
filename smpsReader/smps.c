@@ -129,7 +129,6 @@ oneProblem *readCore(cString inputDir, cString probName) {
 		goto TERMINATE;
 	}
 
-
 	/*extract Q matrix*/
 	orig->objQ = getQmatrix(model, orig->mac);
 	if (orig->objQ == NULL) {
@@ -521,7 +520,7 @@ int readIndepDiscrete(FILE *fptr, cString *fields, int maxOmegas, int maxVals, c
 			break;										// Encountered ENDATA or a new group of random variables
 		n = stoc->numOmega - 1;
 		if ( n > maxOmegas ) {
-			errMsg("allocation", "readIndep", "reached maxOmega limit for INDEP format", 0);
+			errMsg("allocation", "readIndepDiscrete", "reached maxOmega limit for INDEP format", 0);
 			return 1;
 		}
 		while (n >= 0 ) {
@@ -555,7 +554,7 @@ int readIndepDiscrete(FILE *fptr, cString *fields, int maxOmegas, int maxVals, c
 				}
 			}
 			if ( n == orig->mac ) {
-				errMsg("read", "readIndep", "unknown column name in the stoch file", 0);
+				errMsg("read", "readIndepDiscrete", "unknown column name in the stoch file", 0);
 				return 1;
 			}
 			stoc->col[stoc->numOmega-1] = n;
@@ -570,7 +569,7 @@ int readIndepDiscrete(FILE *fptr, cString *fields, int maxOmegas, int maxVals, c
 				}
 			}
 			if ( n == orig->mar ) {
-				errMsg("read", "readIndep", "unknown row name in the stoch file", 0);
+				errMsg("read", "readIndepDiscrete", "unknown row name in the stoch file", 0);
 				return 1;
 			}
 			stoc->row[stoc->numOmega-1] = n;

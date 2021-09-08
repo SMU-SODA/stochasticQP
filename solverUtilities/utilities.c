@@ -5,7 +5,7 @@
  *      Author: Harsha Gangammanavar
  */
 
-#include "../solverUtilities/utilities.h"
+#include "utilities.h"
 
 extern long MEM_USED;
 

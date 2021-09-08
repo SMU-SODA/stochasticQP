@@ -18,9 +18,9 @@
 #define ENVptr 		GRBenv
 #define modelPtr 	GRBmodel
 #define GRB_OFF 	0
-#define GRB_GREATER_EQUAL GE
-#define GRB_LESS_EQUAL LE
-#define GRB_EQUAL EQ
+#define GE GRB_GREATER_EQUAL
+#define LE GRB_LESS_EQUAL
+#define EQ GRB_EQUAL
 
 /* The following are used to determine the status of basis (constraint or variable)
  * The values in Gurobi are negative, i.e., however, we keep the positive values to allow for compatibility with CPLEX and Gurobi.

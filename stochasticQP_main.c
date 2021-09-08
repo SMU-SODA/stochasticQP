@@ -1,6 +1,3 @@
-#include "./smpsReader/smps.h"
-#include "./smpsReader/prob.h"
-#include "./solverUtilities/solver_gurobi.h"
 #include "stochasticQP.h"
 
 cString outputDir;
@@ -45,8 +42,8 @@ int main(int argc, char* argv[]) {
 	}
 
 	 runAlgo(prob, stoch, cell);
-     TERMINATE: return 0;
 
+	 TERMINATE: return 0;
 } /*END main()*/
 
 void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir) {

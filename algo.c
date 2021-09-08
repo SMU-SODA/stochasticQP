@@ -14,7 +14,7 @@
 extern configType config;
 
 int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
-	oneCut *cut;
+	oneCut *cut = NULL;
 
 	while ( cell->k < 10) {
 		cell->k++;
@@ -23,7 +23,11 @@ int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
 		/* 2. Switch between algorithms to add a new affine functions. */
 		switch (config.ALGOTYPE) {
 		case 0:
-			cut = fullSolve(prob, cell, stoc, cell->candidX);
+			cut = fullSolveCut(prob[1], cell, stoc, cell->candidX);
+			if ( cut == NULL ) {
+				errMsg("algorithm", "runAlgo", "failed to create the cut using full solve", 0);
+				goto TERMINATE;
+			}
 			break;
 		case 1:
 			partSolve();
@@ -34,9 +38,13 @@ int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
 
 		default:
 			errMsg("ALGO", "main", "Unknown algorithm type", 0);
-
 			goto TERMINATE;
 		}
+
+#if defined(ALGO_CHECK)
+		double objEst = vXvSparse(cell->candidX, prob[0]->dBar) + cut->alpha - vXv(cut->beta, cell->candidX, NULL, prob[0]->num->cols);
+		printf("\tCandidate estimate = %lf\n", objEst);
+#endif
 
 		/* 3. Add the affine function to the master problem. */
 		/* 3a. Add cut to the set */
@@ -44,9 +52,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
 		cell->cuts->cnt++;
 
 		/* 3b. Update the master problem by adding the cut*/
-
-
-		if ( addCut2Solver(cell->master, cut) ) {
+		if ( addCut2Solver(cell->master->model, cut, prob[0]->num->cols) ) {
 			errMsg("solver", "fullSolve", "failed to add cut to the master problem", 0);
 			return 1;
 		}
@@ -74,19 +80,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
 			errMsg("solver", "fullSolve", "failed to obtain the candidate solution", 0);
 			return 1;
 		}
-
 	}
-
-	///*invoke the algorithm*/
-
-	/* To be edited */
-	//	double x = 0.1;
-	//	for (int i = 0; i < omega->cnt; i++) {
-	//		if (randUniform() < x) {
-	//
-	//		}
-	//	}
-
 
 	return 0;
 
@@ -94,38 +88,31 @@ int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
 	return 1;
 }//END runALgo()
 
-int addCut2Solver(oneProblem *master, oneCut *cut) {
-	dVector matvals;
+int addCut2Solver(modelPtr *model, oneCut *cut, int lenX) {
 	iVector rmatind;
-	rmatind = (iVector) arr_alloc(master->mac, int);
-	matvals = (dVector) arr_alloc(master->mac ,double);
-	int j = 0;
-	matvals[j] = 1;
-	rmatind[j] = master->mac - 1;
-	j++;
-	for (int i = 0; i < master->mac-1 ;++i) {
-		if (cut->beta[i] != 0) {
-			matvals[j] = cut->beta[i];
-			rmatind[j] = i;
-			j++;
-		}
+
+	rmatind = (iVector) arr_alloc(lenX+1, int);
+
+	rmatind[0] = lenX;
+	for (int i = 1; i <= lenX;++i) {
+		rmatind[i] = i-1;
 	}
 
 	static int cummCutNum = 0;
+
 	/* Set up the cut name */
 	sprintf(cut->name, "cut_%04d", cummCutNum++);
 
 	/* Add a new linear constraint to a model. */
-	if(addRow(master->model, j, cut->alpha, GE, rmatind, matvals, cut->name)) {
+	if( addRow(model, lenX, cut->alpha, GE, rmatind, cut->beta, cut->name) ) {
 		errMsg("solver", "addCut2Solver", "failed to addrow", 0);
 		return 1;
 	}
 
 	mem_free(rmatind);
-	mem_free(matvals);
 
 	return 0;
-}//END addCuts2Cell()
+}//END addCuts2Solver()
 
 /* This function allocates memory for the arrays inside a single cut, and initializes its values accordingly.  The cut structure
  * itself is assumed to be already allocated.  Note, each beta dVector contains room for its one-norm, thought it just gets filled
