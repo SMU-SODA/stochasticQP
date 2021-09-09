@@ -1293,6 +1293,7 @@ void freeOneProblem(oneProblem *p) {
 		if(p->matcnt) mem_free(p->matcnt);
 		if(p->cname) mem_free(p->cname);
 		if(p->rname) mem_free(p->rname);
+		if(p->objQ) freeSparseMatrix(p->objQ);
 		mem_free(p);
 	}
 

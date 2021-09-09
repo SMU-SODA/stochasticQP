@@ -37,11 +37,11 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 	cell->maxCuts = config.MAX_ITER;
 
 	cell->cuts = (cutsType*)mem_malloc(sizeof(cutsType));
-	cell->cuts->vals = (oneCut**)arr_alloc(cell->maxCuts, oneCut*);
+	cell->cuts->vals = (oneCut**) arr_alloc(cell->maxCuts, oneCut*);
 	cell->cuts->cnt = 0;
 
 	cell->fCuts = (cutsType*)mem_malloc(sizeof(cutsType));
-	cell->fCuts->vals = (oneCut**)arr_alloc(cell->maxCuts, oneCut*);
+	cell->fCuts->vals = (oneCut**) arr_alloc(cell->maxCuts, oneCut*);
 	cell->fCuts->cnt = 0;
 
 	/* 5. Allocate memory to candidate and incumbent solution */

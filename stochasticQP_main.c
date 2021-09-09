@@ -45,8 +45,14 @@ int main(int argc, char* argv[]) {
 	}
 
 	 runAlgo(prob, stoch, cell);
-	 TERMINATE: return 0;
 
+	 printf("Successfully completed executing the algorithm.\n");
+
+	 /* Free all the structures */
+	 freeProbType(prob, 2);
+	 mem_free(probname);
+	 mem_free(inputDir);
+	 TERMINATE: return 0;
 } /*END main()*/
 
 void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir) {

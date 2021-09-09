@@ -45,9 +45,8 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		prob[t]->bBar->val = (dVector) arr_alloc(orig->mar+1, double);
 		prob[t]->bBar->cnt = 0;
 
-		/*???/*/
 		if ( t < tim->numStages - 1 ) {
-			prob[t]->sp->mar = prob[t]->sp->marsz = tim->row[t+1] - tim->row[t]; /*what is the extended size?*/
+			prob[t]->sp->mar = prob[t]->sp->marsz = tim->row[t+1] - tim->row[t];
 			prob[t]->sp->mac = prob[t]->sp->macsz = tim->col[t+1] - tim->col[t];
 		}
 		else {
@@ -119,12 +118,11 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			prob[t]->Dbar->cnt = 0;
 		}
 
-		int numvar = tim->col[t + 1] - tim->col[t];
 		///allocate mamory to q of prob t
 		prob[t]->sp->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix)); /*why do we write it?												 */
-		prob[t]->sp->objQ->col = (iVector)arr_alloc(numvar * numvar, int);
-		prob[t]->sp->objQ->row = (iVector)arr_alloc(numvar * numvar, int);
-		prob[t]->sp->objQ->val = (dVector)arr_alloc(numvar * numvar, double);
+		prob[t]->sp->objQ->col = (iVector)arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, int);
+		prob[t]->sp->objQ->row = (iVector)arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, int);
+		prob[t]->sp->objQ->val = (dVector)arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, double);
 	}
 	t = 0;
 	for ( t = 0; t < tim->numStages-1; t++ ) {
