@@ -17,7 +17,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
 	oneCut *cut = NULL;
 
 
-	while ( cell->k < 3) {
+	while ( cell->k < 25) {
 		cell->k++;
 		/* 1. Check optimality */
 

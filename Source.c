@@ -16,7 +16,8 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 	cell->k = 0;
 	cell->LPcnt = 0;
 	cell->optFlag = false;
-
+	cell->piM = NULL;
+	cell->time = NULL;
 	/* 1. construct the master problem */
 	cell->master = newMaster(prob[0]->sp);
 	if ( cell->master == NULL ) {
@@ -55,11 +56,32 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 }//END buildCell()
 
 void cellfree(cellType * cell){
+	if (cell->master) {
+		mem_free(cell->master->name);
+		for (int n = 0; n < cell->master->mac; n++) {
+			mem_free(cell->master->cname[n]);
+		}
+		for (int n = 0; n < cell->master->mar; n++) {
+			mem_free(cell->master->rname[n]);
+		}
+		freeOneProblem(cell->master);
+	}
+	if (cell->subprob) {
+		mem_free(cell->subprob->name);
+		for (int n = 0; n < cell->master->mac; n++) {
+			mem_free(cell->master->cname[n]);
+		}
+		for (int n = 0; n < cell->subprob->mar; n++) {
+			mem_free(cell->subprob->rname[n]);
+		}
+		freeOneProblem(cell->subprob);
+	}
 
-	freeOneProblem(cell->master);
-	freeOneProblem(cell->subprob);
-	freeOmegaType(cell->omega,1); /*????*/
+	
+
+	freeOmegaType(cell->omega,false); /*????*/
 	if (cell->candidX)mem_free(cell->candidX);
+	if (cell->incumbX)mem_free(cell->candidX);
 	if (cell->piM)mem_free(cell->piM);
 	freecut(cell->cuts);
 	freecut(cell->fCuts);
@@ -67,16 +89,25 @@ void cellfree(cellType * cell){
 	mem_free(cell);
 }
 void freecut(cutsType * cut){
-	for (int i = 0; i < cut->cnt; i++) {
-		freeonecut(cut->vals[i]);
-			}
-	if (cut)mem_free(cut);
+	if (cut) {
+
+	if (cut->vals)	{	
+		for (int i = 0; i < cut->cnt; i++) {
+			freeonecut(cut->vals[i]);
+		}
+		mem_free(cut->vals);
+	}
+		mem_free(cut);
+	}
 }
 
 void freeonecut(oneCut* cut) {
-	if(cut->beta)mem_free(cut->beta);
-	if (cut->name)mem_free(cut->name);
-	if (cut)mem_free(cut);
+	if (cut) {
+		if (cut->beta)mem_free(cut->beta);
+		if (cut->name)mem_free(cut->name);
+		mem_free(cut);
+	}
+		
 };
 
 
@@ -313,10 +344,7 @@ oneProblem* newSubproblem(oneProblem* probSP) {
 
 	oneProblem *stage1;
 	stage1 = (oneProblem*)mem_malloc(sizeof(oneProblem));
-	stage1->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));   /*why do we write it?*/
-	stage1->objQ->col = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
-	stage1->objQ->row = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
-	stage1->objQ->val = (dVector)arr_alloc(probSP->mac * probSP->mac, double);
+	
 	stage1->model = NULL;
 	stage1->name = (cString)arr_alloc(NAMESIZE, char);
 	stage1->objname = (cString)arr_alloc(NAMESIZE, char);
@@ -334,14 +362,21 @@ oneProblem* newSubproblem(oneProblem* probSP) {
 	stage1->rname = (cString*)arr_alloc(probSP->marsz, cString);
 	stage1->mac = probSP->mac;
 	stage1->type= probSP->type;			/* type of problem: LP, QP, MIP or MIQP */
+	if (probSP->objQ->cnt > 0) {
+		stage1->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));   /*why do we write it?*/
+		stage1->objQ->col = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
+		stage1->objQ->row = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
+		stage1->objQ->val = (dVector)arr_alloc(probSP->mac * probSP->mac, double);
 
-	/* Copy the quadratic part of the objective */
-	stage1->objQ->cnt = probSP->objQ->cnt;
-	for (int i = 0; i < probSP->objQ->cnt; i++) {
-		stage1->objQ->val[i] = probSP->objQ->val[i];
-		stage1->objQ->col[i] = probSP->objQ->col[i];
+		/* Copy the quadratic part of the objective */
+		stage1->objQ->cnt = probSP->objQ->cnt;
+		for (int i = 0; i < probSP->objQ->cnt; i++) {
+			stage1->objQ->val[i] = probSP->objQ->val[i];
+			stage1->objQ->col[i] = probSP->objQ->col[i];
+			stage1->objQ->row[i] = probSP->objQ->row[i];
+		}
 	}
-
+	else { stage1->objQ = NULL; }
 	stage1->objSense = probSP->objSense;
 	stage1->mac = probSP->mac;				/* number of columns */
 	stage1->mar = probSP->mar;				/* number of rows */
@@ -408,10 +443,6 @@ oneProblem *newMaster(oneProblem *probSP) {
 	oneProblem* stage0 = NULL;
 
 	stage0 = (oneProblem*)mem_malloc(sizeof(oneProblem));
-	stage0->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));   /*why do we write it?*/
-	stage0->objQ->col = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
-	stage0->objQ->row = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
-	stage0->objQ->val = (dVector)arr_alloc(probSP->mac * probSP->mac, double);
 	stage0->model = NULL;
 	stage0->name = (cString)arr_alloc(NAMESIZE, char);
 	stage0->objname = (cString)arr_alloc(NAMESIZE, char);
@@ -431,12 +462,21 @@ oneProblem *newMaster(oneProblem *probSP) {
 	stage0->type= probSP->type;			/* type of problem: LP, QP, MIP or MIQP */
 
 	/* Copy the quadratic part of the objective */
-	stage0->objQ->cnt = probSP->objQ->cnt;
-	for (int i = 0; i < probSP->objQ->cnt; i++) {
-		stage0->objQ->val[i] = probSP->objQ->val[i];
-		stage0->objQ->col[i] = probSP->objQ->col[i];
-	}
+	if (probSP->objQ->cnt > 0) {
+		stage0->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));   /*why do we write it?*/
+		stage0->objQ->col = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
+		stage0->objQ->row = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
+		stage0->objQ->val = (dVector)arr_alloc(probSP->mac * probSP->mac, double);
 
+
+		stage0->objQ->cnt = probSP->objQ->cnt;
+		for (int i = 0; i < probSP->objQ->cnt; i++) {
+			stage0->objQ->val[i] = probSP->objQ->val[i];
+			stage0->objQ->col[i] = probSP->objQ->col[i];
+			stage0->objQ->row[i] = probSP->objQ->row[i];
+		}
+	}
+	else { stage0->objQ = NULL; }
 	stage0->objSense = probSP->objSense;
 	stage0->mac = probSP->mac;				/* number of columns */
 	stage0->mar = probSP->mar;				/* number of rows */
