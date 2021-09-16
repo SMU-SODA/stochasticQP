@@ -137,7 +137,7 @@ void freeOneProblem(oneProblem *p);
 void freeTimeType(timeType *tim);
 void freeStocType(stocType *stoc);
 void freeStatModel(statModel *model);
-
+void freetimeType(timeType *);
 /* subroutines in rvgen.c */
 int generateOmegaIdx(stocType *stoc, long long *seed);
 void generateOmega(stocType *stoc, dVector observ, double minVal, long long *seed, FILE **fptr);

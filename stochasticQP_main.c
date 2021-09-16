@@ -52,8 +52,10 @@ int main(int argc, char* argv[]) {
 	 freeProbType(prob, 2);
 	 mem_free(probname);
 	 mem_free(inputDir);
+	 cellfree(cell);
+	 freeStocType(stoch);
 	 TERMINATE: return 0;
-} /*END main()*/
+} /*END main()*/ 
 
 void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir) {
 

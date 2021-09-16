@@ -194,3 +194,7 @@ oneCut *newCut(int numX);
 int runAlgo(probType** prob, stocType* stoc, cellType* cell);
 updateRHSwState(numType* num, coordType* coord, sparseVector* bBar, sparseMatrix* Cbar, dVector X,
 	dVector obs, dVector rhs);
+void cellfree(cellType* cell);
+void freecut(cutsType* cut);
+void freeonecut(oneCut* cut);
+void freeOmegaType(omegaType* omega, bool partial);

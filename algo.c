@@ -16,7 +16,8 @@ extern configType config;
 int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
 	oneCut *cut = NULL;
 
-	while ( cell->k < 20) {
+
+	while ( cell->k < 3) {
 		cell->k++;
 		/* 1. Check optimality */
 
@@ -80,6 +81,8 @@ int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
 			errMsg("solver", "fullSolve", "failed to obtain the candidate solution", 0);
 			return 1;
 		}
+
+
 	}
 
 	return 0;

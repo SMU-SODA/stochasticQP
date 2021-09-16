@@ -111,4 +111,5 @@ iVector iVectorIntersect(iVector a, iVector b, int lenA, int lenB);
 unsigned long *encodeIntvec(iVector stream, int len, int wordLength, int maxValue);
 iVector decodeIntvec(unsigned long *codeWord, int len, int wordLength, int maxValue);
 
+
 #endif /* UTILS_H_ */

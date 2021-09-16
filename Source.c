@@ -5,6 +5,7 @@
  */
 
 #include "stochasticQP.h"
+ #include "./solverUtilities/utilities.h"
 extern configType config;
 
 /* Building the cell for the 2-SQP algorithms */
@@ -52,6 +53,32 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 
 	return cell;
 }//END buildCell()
+
+void cellfree(cellType * cell){
+
+	freeOneProblem(cell->master);
+	freeOneProblem(cell->subprob);
+	freeOmegaType(cell->omega,1); /*????*/
+	if (cell->candidX)mem_free(cell->candidX);
+	if (cell->piM)mem_free(cell->piM);
+	freecut(cell->cuts);
+	freecut(cell->fCuts);
+	if (cell->time)mem_free(cell->time);
+	mem_free(cell);
+}
+void freecut(cutsType * cut){
+	for (int i = 0; i < cut->cnt; i++) {
+		freeonecut(cut->vals[i]);
+			}
+	if (cut)mem_free(cut);
+}
+
+void freeonecut(oneCut* cut) {
+	if(cut->beta)mem_free(cut->beta);
+	if (cut->name)mem_free(cut->name);
+	if (cut)mem_free(cut);
+};
+
 
 int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector obsVals, dVector piS, double *mubBar) {
 	dVector rhs = NULL, cost = NULL;
@@ -267,8 +294,7 @@ omegaType* newOmega(stocType* stoc) {
 
 void freeOmegaType(omegaType* omega, bool partial) {
 	int n;
-
-	if (omega->vals) {
+		if (omega->vals) {
 		for (n = 0; n < omega->cnt; n++)
 			if (omega->vals[n])
 				mem_free(omega->vals[n]);
@@ -280,8 +306,7 @@ void freeOmegaType(omegaType* omega, bool partial) {
 	}
 	if (omega->probs) mem_free(omega->probs);
 	if (omega->weights) mem_free(omega->weights);
-	mem_free(omega);
-
+	    mem_free(omega);
 }//END freeOmegaType()
 
 oneProblem* newSubproblem(oneProblem* probSP) {
