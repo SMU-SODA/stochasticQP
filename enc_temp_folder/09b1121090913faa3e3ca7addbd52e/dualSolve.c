@@ -128,7 +128,7 @@ oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, double* x) {
 		fixedAlpha = -vXv(prob[1]->bBar, lambda->pi[obs] + 1, NULL, prob[1]->num->rows)
 			- vXv(prob[1]->ylbar, lambda->mu3[obs], NULL, prob[1]->num->cols) + vXv(prob[1]->yubar, lambda->mu2[obs], NULL, prob[1]->num->cols);
 
-		alpha1 = fixedAlpha -vXvSparse( lambda->pi[obs] + 1, bOmega )	+ vXvSparse( lambda->mu2[obs]+1, yuOmega);
+		alpha1 = fixedAlpha -vXvSparse( lambda->pi[obs] + 1, bOmega , prob[1]->num->rows)	+ vXvSparse( lambda->mu2[obs]+1, yuOmega, prob[1]->num->cols);
 		Bx = vXv(sigma->vals[obs]->piCar, cell->candidX + 1, NULL, prob[0]->num->cols);
 		lql = getObjective(cell->subprob->model) - Bx - alpha1;
 

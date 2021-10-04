@@ -201,5 +201,5 @@ void cellfree(cellType* cell);
 void freecut(cutsType* cut);
 void freeonecut(oneCut* cut);
 void freeOmegaType(omegaType* omega, bool partial);
-oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, double* x);
+oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x);
 int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS, double*,double* mu2, double* mu3);
