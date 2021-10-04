@@ -169,7 +169,10 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector 
 		return 1;
 	}
 
-	if ( computeMU(subproblem->model, prob->num->cols, mubBar) ) {
+	double* dj;
+	dj = (dVector)arr_alloc(prob->num->cols + 1, double); /*why numcols+1?*/
+
+	if ( computeMU(subproblem->model, prob->num->cols, mubBar,dj) ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
 		return 1;
 	}
@@ -180,6 +183,88 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector 
 	return 0;
 }// END solveSubprob()
 
+
+
+
+int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS,double* muBar, double* mu2, double* mu3) {
+	dVector rhs = NULL, cost = NULL;
+	iVector	indices;
+
+	indices = (iVector)arr_alloc(maximum(prob->num->rows, prob->num->cols), int);
+	for (int n = 0; n < maximum(prob->num->rows, prob->num->cols); n++)
+		indices[n] = n;
+
+	/* (a) compute the right-hand side using current observation and first-stage solution */
+	rhs = computeRHS(prob->num, prob->coord, prob->bBar, prob->Cbar, Xvect, obsVals);
+	if (rhs == NULL) {
+		errMsg("algorithm", "solveSubprob", "failed to compute subproblem right-hand side", 0);
+		return 1;
+	}
+
+	/* (b) change the right-hand side in the solver */
+	if (changeRHSArray(subproblem->model, prob->num->rows, indices, rhs + 1)) {
+		errMsg("solver", "solve_subprob", "failed to change the right-hand side in the solver", 0);
+		return 1;
+	}
+
+	if (prob->num->rvdOmCnt > 0) {
+		/* (c) compute the cost coefficients using current observation */
+		cost = computeCostCoeff(prob->num, prob->coord, prob->dBar, obsVals);
+		if (cost == NULL) {
+			errMsg("algorithm", "solveSubprob", "failed to compute subproblem cost coefficients", 0);
+			return 1;
+		}
+
+		/* (d) change cost coefficients in the solver */
+		if (changeObjCoeffArray(subproblem->model, prob->num->cols, indices, cost + 1)) {
+			errMsg("solver", "solve_subprob", "failed to change the cost coefficients in the solver", 0);
+			return 1;
+		}
+	}
+
+	/* (e) Solve the subproblem to obtain the optimal dual solution. */
+	if (solveProblem(subproblem->model)) {
+		errMsg("algorithm", "solveSubprob", "failed to solve subproblem in solver", 0);
+		return 1;
+	}
+
+#if defined(WRITE_FILES)
+	writeProblem(subproblem->model, "cellSubprob.lp");
+#endif
+
+#if defined(STOCH_CHECK)
+	double obj;
+	obj = getObjective(subproblem->model);
+	printf("\t\tObjective value of Subproblem  = %lf;\t", obj);
+#endif
+
+	/* Record the dual and reduced cost on bounds. */
+	if (getDual(subproblem->model, piS, 0, prob->num->rows)) {
+		errMsg("algorithm", "stochasticUpdates", "failed to get the dual", 0);
+		return 1;
+	}
+	double* dj;
+	dj = (dVector)arr_alloc(prob->num->cols + 1, double);
+
+	if (computeMU(subproblem->model, prob->num->cols, muBar , dj)) {
+		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
+		return 1;
+	}
+	/*request for status*/
+
+	for (int i = 0; i < prob->num->cols; i++) {
+		if (dj[i+1] >= 0) {
+			mu2[i+1] = dj[i+1];
+		}
+	
+	else if (dj[i+1] < 0) { mu3[i+1] = dj[i+1]; }
+}
+
+	if (rhs) mem_free(rhs);
+	if (cost) mem_free(cost);
+	if (indices) mem_free(indices);
+	return 0;
+}// END solveSubprob()
 /* This function computes the right hand side of the subproblem, based on a given X dVector and a given observation of omega.
  * It is defined as:
  * 			rhs = R(omega) - T(omega) x X
@@ -199,12 +284,15 @@ dVector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMat
 	bomega.cnt = num->rvbOmCnt;	bomega.col = coord->rvbOmRows; bomega.val = coord->rvOffset[0] + observ;
 	Comega.cnt = num->rvCOmCnt; Comega.col = coord->rvCOmCols; Comega.row = coord->rvCOmRows; Comega.val = coord->rvOffset[1] + observ;
 
+
 	/* Start with the values of b(omega) -- both fixed and varying */
-	rhs = expandVector(bBar->val, bBar->col, bBar->cnt, num->rows);
+	rhs = expandVector(bBar->val , bBar->col , bBar->cnt , num->rows);
 	for (cnt = 1; cnt <= bomega.cnt; cnt++)
 		rhs[bomega.col[cnt]] += bomega.val[cnt];
 
+
 	/* (cumulatively) subtract values of C(omega) x X -- both fixed and varying */
+
 	rhs = MSparsexvSub(Cbar, X, rhs);
 	rhs = MSparsexvSub(&Comega, X, rhs);
 
@@ -226,13 +314,13 @@ dVector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, dVe
 
 
 /* This function compute the reduced cost of every second stage variables. They will be used to calculate the \mu x b and then added to the \pi x b. */
-int computeMU(modelPtr *model, int numCols, double *mubBar) {
-	dVector	dj, u;
+int computeMU(modelPtr *model, int numCols, double *mubBar, double * dj) {
+	dVector u;
 	int		n;
 
 	(*mubBar) = 0.0;
 
-	dj = (dVector) arr_alloc(numCols+1, double);
+	
 	u = (dVector) arr_alloc(numCols+1, double);
 
 	if ( getPrimal(model, u, 0, numCols) ) {
@@ -247,6 +335,32 @@ int computeMU(modelPtr *model, int numCols, double *mubBar) {
 	for (n = 1; n <= numCols;  n++) {
 		(*mubBar) += dj[n]*u[n];
 	}
+
+	mem_free(u); mem_free(dj);
+	return 0;
+}//END compute_mu()
+
+
+
+//his function compute the reduced cost of every second stage variables.They will be used to calculate the \mu x band then added to the \pi x b.* /
+int computeMUdual(modelPtr * model, int numCols, double* dj) {
+	dVector u;
+	int		n;
+
+
+
+	u = (dVector)arr_alloc(numCols + 1, double);
+
+	if (getPrimal(model, u, 0, numCols)) {
+		errMsg("solver", "computeMU", "failed to obtain primal solution", 0);
+		return 1;
+	}
+	if (getDualSlack(model, dj, 0, numCols)) {
+		errMsg("solver", "computeMu", "failed to obtain dual slacks", 0);
+		return 1;
+	}
+
+
 
 	mem_free(u); mem_free(dj);
 	return 0;

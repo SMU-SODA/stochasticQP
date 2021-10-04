@@ -27,6 +27,7 @@ typedef struct {
 	int 	rvColCnt;		/* number of columns effected by randomness */
     int 	rvaOmCnt;		/* number of RVs in dynamics noise dVector a */
 	int 	rvbOmCnt;		/* number of RVs in right-hand side */
+	int 	rvyuOmCnt;		/* number of RVs in right-hand side */
     int 	rvcOmCnt;		/* number of RVs in state-cost coefficients */
     int 	rvdOmCnt;		/* number of RVs in stage-cost coefficients */
     int 	rvAOmCnt;		/* number of RVs in dynamics state-matrix A */
@@ -45,6 +46,7 @@ typedef struct {
 	iVector	rvCols;			/* list of all columns in transfer matrix with at least one random element */
 	iVector	rvRows;			/* list of all rows with at least one random variable */
 	iVector	rvbOmRows;		/* list of all right-hand sides with random variables */
+	iVector	rvyuOmRows;		/* list of all upper bounds with random variables */
 	iVector	rvdOmCols;		/* list of all columns with cost coefficients with random variables */
 	iVector	rvCOmCols;		/* list of all columns with coefficients with random variables */
 	iVector	rvCOmRows;		/* list of all rows with coefficients with random variables */
@@ -59,14 +61,18 @@ typedef struct{
 	sparseVector	*bBar;			/* right-hand side b_t */
 	sparseVector	*cBar;			/* state cost coefficients c_t */
 	sparseVector	*dBar;			/* objective function coefficients d_t */
+	sparseVector    * yubar;        /* the mean value of upperbound of variables */
+	sparseVector    * ylbar;        /* the mean value of upperbound of variables */
 	sparseMatrix	*Abar;			/* dynamics state matrix A_{t+} */
 	sparseMatrix	*Bbar;			/* dynamics decision matrix B_{t+} */
 	sparseMatrix	*Cbar;			/* transfer matrix C_t */
 	sparseMatrix	*Dbar;			/* recourse matrix D_t */
+
 	dVector			mean;			/* Vector of mean values of random variables. */
 	int				omegaBeg;		/* Beginning of omega dVector */
 	dVector			meanX;			/* Mean value solution */
 	double			lb;				/* lower bounds on cost-to-go function */
+
 }probType;
 
 /* subroutines in prob.c */

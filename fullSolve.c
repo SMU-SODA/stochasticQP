@@ -23,7 +23,7 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 		}
 		cell->LPcnt++;
 
-		/* 2b. Compute the cut coefficients for individual observation. */
+		/* 2b. Compute the cut coefficients for individual observation. */ 
 		bOmega.val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
 		COmega.val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
 

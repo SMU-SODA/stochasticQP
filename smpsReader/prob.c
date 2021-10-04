@@ -352,10 +352,16 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		else {
 			if ( !(prob[t]->coord = (coordType *) mem_malloc(sizeof(coordType))) )
 				errMsg("allocation", "newProb", "prob[t]->coord",0);
+
+
 			prob[t]->num->prevCols = prob[t-1]->num->cols;
 			prob[t]->num->prevRows = prob[t-1]->num->rows;
+
+
 			prob[t]->coord->CCols = findElems(prob[t]->Cbar->col, prob[t]->Cbar->cnt, &prob[t]->num->cntCcols);
 			prob[t]->coord->CRows = findElems(prob[t]->Cbar->row, prob[t]->Cbar->cnt, &prob[t]->num->cntCrows);
+
+
 			prob[t]->coord->allRVCols = prob[t]->coord->allRVRows = prob[t]->coord->rvCols = prob[t]->coord->rvRows = NULL;
 			prob[t]->coord->rvCOmCols = prob[t]->coord->rvCOmRows = prob[t]->coord->rvbOmRows = prob[t]->coord->rvdOmCols = NULL;
 		}
@@ -375,6 +381,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			}
 			t--;
 		}
+
 		else {
 			/* randomness in either objective function coefficients or the transfer matrix */
 			t = 0;
@@ -407,13 +414,17 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		prob[t]->num->numRV++;
 		prob[t]->mean[prob[t]->num->numRV] = (*stoc)->mean[m];
 
-		/* The order of random variables is: (i) right-hand side, (ii) transfer matrix, and (iii) cost-coefficients. */
+		/* The order of random variables is: (i) right-hand side, (ii) transfer matrix, and (iii) cost-coefficients (iiii) upperbounds. */
 		if ( (*stoc)->col[m] == -1 && (*stoc)->row[m] != -1 ) {
+
+
 			/* Right-hand side */
 			if ( prob[t]->num->rvbOmCnt == 0 ) {
 				prob[t]->coord->rvbOmRows = (iVector) arr_alloc((*stoc)->numOmega+1, int);
 				prob[t]->coord->rvOffset[0] = rvOffset;
 			}
+
+
 			prob[t]->coord->allRVCols[prob[t]->num->numRV] = -1;
 			prob[t]->coord->allRVRows[prob[t]->num->numRV] = (*stoc)->row[m]-tim->row[t]+1;
 			prob[t]->coord->rvbOmRows[++prob[t]->num->rvbOmCnt] = prob[t]->coord->allRVRows[prob[t]->num->numRV];
@@ -450,6 +461,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 
 	/* Modify the dBar, bBar and Cbar with mean values computed from stoch file */
 	rvOffset = 0;
+
 	for ( t = 1; t < tim->numStages; t++ ) {
 		/* Right-hand side */
 		for ( m = 1; m <= prob[t]->num->rvbOmCnt; m++ ) {
@@ -485,6 +497,11 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		}
 		rvOffset += prob[t]->num->numRV;
 	}
+
+
+
+	
+
 
 	printf("2. Decomposition complete.\n");
 

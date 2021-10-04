@@ -23,18 +23,19 @@ int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
 
 		/* 2. Switch between algorithms to add a new affine functions. */
 		switch (config.ALGOTYPE) {
-		case 0:
+		case 1:
 			cut = fullSolveCut(prob[1], cell, stoc, cell->candidX);
 			if ( cut == NULL ) {
 				errMsg("algorithm", "runAlgo", "failed to create the cut using full solve", 0);
 				goto TERMINATE;
 			}
 			break;
-		case 1:
+
+		case 2:
 			partSolve();
 			break;
-		case 2:
-			dualSolve();
+		case 0:
+			dualSolve(prob, cell, stoc, cell->candidX);
 			break;
 
 		default:

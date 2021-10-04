@@ -32,6 +32,7 @@ int main(int argc, char* argv[]) {
 
 	/*This function reads the problem and decomposes that into stages.*/
 	prob = newProbwSMPS(inputDir, probname, &stoch, &numStages);
+
 	if ( prob == NULL ) {
 		errMsg("read", "main", "failed to read files or setup the probType", 0);
 		goto TERMINATE;
