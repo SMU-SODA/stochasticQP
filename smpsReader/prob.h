@@ -46,10 +46,11 @@ typedef struct {
 	iVector	rvCols;			/* list of all columns in transfer matrix with at least one random element */
 	iVector	rvRows;			/* list of all rows with at least one random variable */
 	iVector	rvbOmRows;		/* list of all right-hand sides with random variables */
-	iVector	rvyuOmRows;		/* list of all upper bounds with random variables */
-	iVector	rvdOmCols;		/* list of all columns with cost coefficients with random variables */
 	iVector	rvCOmCols;		/* list of all columns with coefficients with random variables */
 	iVector	rvCOmRows;		/* list of all rows with coefficients with random variables */
+	iVector	rvdOmCols;		/* list of all columns with cost coefficients with random variables */
+	iVector	rvyuOmRows;		/* list of all upper bounds with random variables */
+	iVector	rvylOmRows;		/* list of all lower bounds with random variables */
 	iVector	rvOffset;		/* Index where the random variable begin - right-hand side, transfer matrix, and cost coefficients. */
 }coordType;
 

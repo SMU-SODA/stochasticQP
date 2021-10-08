@@ -370,11 +370,20 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 	/* decompose the stochastic elements of the problem. Go through the list of random variable and assign them to
 	 * appropriate parts (right-hand side and objective coefficients). */
 	int rvOffset = 0;
+	int rhs = 0;
+	int upper = 0;
+	int cost = 0;
+	int transfer = 0;
+
 	for ( m = 0; m < (*stoc)->numOmega; m++ ) {
+
+
+
 		if ( (*stoc)->col[m] == -1 ) {
 			/* randomness in right-hand side */
 			t = 0;
 			while ( t < tim->numStages ) {
+				prob[t]->num->rvyuOmCnt = 0;
 				if ( (*stoc)->row[m] < tim->row[t] )
 					break;
 				t++;
@@ -403,7 +412,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 				errMsg("allocation", "newProb", "prob->coord->allRVCols", 0);
 			if ( !(prob[t]->coord->allRVRows= (iVector) arr_alloc((*stoc)->numOmega+1, int)) )
 				errMsg("allocation", "newProb", "prob->coord->allRVRows", 0);
-			if ( !(prob[t]->coord->rvOffset = (iVector) arr_alloc(3, int)))
+			if ( !(prob[t]->coord->rvOffset = (iVector) arr_alloc(4, int)))
 				errMsg("allocation", "newProb", "prob->coord->rOffset", 0);
 			if ( !(prob[t]->mean = (dVector) arr_alloc((*stoc)->numOmega+1, double)) )
 				errMsg("allocation", "newProb", "prob->mean", 0);
@@ -413,34 +422,51 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 
 		prob[t]->num->numRV++;
 		prob[t]->mean[prob[t]->num->numRV] = (*stoc)->mean[m];
-
+		
 		/* The order of random variables is: (i) right-hand side, (ii) transfer matrix, and (iii) cost-coefficients (iiii) upperbounds. */
+		
 		if ( (*stoc)->col[m] == -1 && (*stoc)->row[m] != -1 ) {
-
 
 			/* Right-hand side */
 			if ( prob[t]->num->rvbOmCnt == 0 ) {
-				prob[t]->coord->rvbOmRows = (iVector) arr_alloc((*stoc)->numOmega+1, int);
+				prob[t]->coord->rvbOmRows = (iVector) arr_alloc(prob[t]->num->rows , int);
 				prob[t]->coord->rvOffset[0] = rvOffset;
+
 			}
-
-
+			prob[t]->num->rvbOmCnt++;
 			prob[t]->coord->allRVCols[prob[t]->num->numRV] = -1;
 			prob[t]->coord->allRVRows[prob[t]->num->numRV] = (*stoc)->row[m]-tim->row[t]+1;
 			prob[t]->coord->rvbOmRows[++prob[t]->num->rvbOmCnt] = prob[t]->coord->allRVRows[prob[t]->num->numRV];
+			rhs++;
 		}
+		/*upper bound*/
+		else if ((*stoc)->col[m] != -1 && (*stoc)->row[m] == -2) {
+			upper++;
+			if (prob[t]->num->rvyuOmCnt == 0) {
+				prob[t]->coord->rvyuOmRows = (iVector)arr_alloc(prob[t]->num->cols + 1, int);
+			}
+			prob[t]->coord->rvyuOmRows[prob[t]->num->rvyuOmCnt] = (*stoc)->col[m];
+			prob[t]->num->rvyuOmCnt++;
+			}
+
 		else if ( (*stoc)->col[m] != -1 && (*stoc)->row[m] != -1 ) {
+			/*if ((*stoc)->row[m] == -2) {
+				upper++;
+			}*/
+
 			/* Transfer matrix */
-			if ( prob[t]->num->rvCOmCnt == 0 ) {
+			 if ( prob[t]->num->rvCOmCnt == 0 ) {
 				prob[t]->coord->rvCOmCols = (iVector) arr_alloc((*stoc)->numOmega, int);
 				prob[t]->coord->rvCOmRows = (iVector) arr_alloc((*stoc)->numOmega, int);
 				prob[t]->coord->rvOffset[1] = rvOffset;
+				transfer++;
 			}
 			prob[t]->coord->allRVCols[prob[t]->num->numRV] = (*stoc)->col[m]-tim->col[t]+1;
 			prob[t]->coord->allRVRows[prob[t]->num->numRV] = (*stoc)->row[m]-tim->row[t]+1;
 			prob[t]->num->rvCOmCnt++;
 			prob[t]->coord->rvCOmCols[prob[t]->num->rvCOmCnt] = prob[t]->coord->allRVCols[prob[t]->num->numRV];
 			prob[t]->coord->rvCOmRows[prob[t]->num->rvCOmCnt] = prob[t]->coord->allRVRows[prob[t]->num->numRV];
+			
 		}
 		else {
 			/* Cost coefficients */
@@ -451,7 +477,15 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			prob[t]->coord->allRVCols[prob[t]->num->numRV] = (*stoc)->col[m]-tim->col[t]+1;
 			prob[t]->coord->allRVRows[prob[t]->num->numRV] = -1;
 			prob[t]->coord->rvdOmCols[++prob[t]->num->rvdOmCnt] = prob[t]->coord->allRVCols[prob[t]->num->numRV];
+			cost++;
 		}
+		/*update rvofset*/
+		prob[t]->coord->rvOffset[0] = 0;
+		prob[t]->coord->rvOffset[1] = rhs ;
+		prob[t]->coord->rvOffset[2] = rhs+transfer ;
+		prob[t]->coord->rvOffset[3] =rhs+ transfer + cost ;
+		prob[t]->num->rvyuOmCnt = prob[t]->num->rvyuOmCnt;
+
 	}
 
 	for ( t = 1; t < tim->numStages; t++ ) {
@@ -463,6 +497,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 	rvOffset = 0;
 
 	for ( t = 1; t < tim->numStages; t++ ) {
+
 		/* Right-hand side */
 		for ( m = 1; m <= prob[t]->num->rvbOmCnt; m++ ) {
 			i = 1;
@@ -475,6 +510,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		}
 
 		/* Transfer matrix */
+
 		for ( m = 1; m <= prob[t]->num->rvCOmCnt; m++ ) {
 			i = 1;
 			while ( i <= prob[t]->num->rvCOmCnt ) {
@@ -508,8 +544,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 	/* Solve the mean value problem */
 	if ( (meanX = meanProblem(orig, (*stoc))) == NULL) {
 		errMsg("setup", "newProbwSMPS", "failed to solve the mean-value problem", 0);
-		goto TERMINATE;
-	}
+		goto TERMINATE;	}
 
 	/* Compute the stage-wise lower bounds */
 	lb = calcLowerBound(orig, tim, (*stoc));
@@ -523,6 +558,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 	prob[t]->meanX = NULL;
 
 	if (meanX) mem_free(meanX);
+
 	if (tim) freeTimeType(tim);
 	if (orig) freeOneProblem(orig);
 	mem_free(lb);
@@ -569,7 +605,21 @@ dVector meanProblem(oneProblem *orig, stocType *stoc) {
 				errMsg("setup", "meanProblem", "failed to change the coefficients with mean values", 0);
 				return NULL;
 			}
+		}else if (stoc->row[n] == -2) {
+			status = changeBDSelement(orig->model,"UB", stoc->col[n], stoc->mean[n]);
+			if (status) {
+				errMsg("setup", "meanProblem", "failed to change the coefficients with mean values for upperbounds", 0);
+				return NULL;
+			}
 		}
+		else if (stoc->row[n] == -3) {
+			status = changeBDSelement(orig->model, "LB", stoc->col[n], stoc->mean[n]);
+			if (status) {
+				errMsg("setup", "meanProblem", "failed to change the coefficients with mean values for upperbounds", 0);
+				return NULL;
+			}
+		}
+
 		else if (stoc->col[n] == -1 ) {
 			status = changeRHSelement (orig->model, stoc->row[n], stoc->mean[n]);
 			if ( status ) {

@@ -159,7 +159,7 @@ oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, double* x) {
 
 		for (int obs = 0; obs < subset; obs++) {
 			max = -10 ^ 10;
-			violate = -vXvSparse(lambda->pi[obs] + 1, bOmega, prob[1]->num->rows) + vXvSparse(lambda->mu2[obs] + 1, yuOmega, prob[1]->num->cols);
+			violate = -vXvSparse(lambda->pi[obs] + 1, bOmega) + vXvSparse(lambda->mu2[obs] + 1, yuOmega);
 			estimat = sigma->vals[obs]->fixed + violate;
 			if (estimat > max) {
 				delta->vals[rand]->interceptBar = sigma->vals[obs]->interceptBar+ violate;
