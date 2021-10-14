@@ -196,6 +196,7 @@ int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVec
 
 	/* (a) compute the right-hand side using current observation and first-stage solution */
 	rhs = computeRHS(prob->num, prob->coord, prob->bBar, prob->Cbar, Xvect, obsVals);
+
 	if (rhs == NULL) {
 		errMsg("algorithm", "solveSubprob", "failed to compute subproblem right-hand side", 0);
 		return 1;
@@ -276,19 +277,32 @@ int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVec
  * R is b, and T is C
  \***********************************************************************/
 dVector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, dVector X, dVector observ) {
+
 	int cnt;
 	dVector rhs;
 	sparseVector bomega;
+	sparseVector yuomega;
 	sparseMatrix Comega;
 
-	bomega.cnt = num->rvbOmCnt;	bomega.col = coord->rvbOmRows; bomega.val = coord->rvOffset[0] + observ;
+	bomega.cnt = num->rvbOmCnt;	
+	bomega.col = coord->rvbOmRows; 
+	bomega.val = coord->rvOffset[0] + observ;
+
+
+
+
 	Comega.cnt = num->rvCOmCnt; Comega.col = coord->rvCOmCols; Comega.row = coord->rvCOmRows; Comega.val = coord->rvOffset[1] + observ;
 
 
 	/* Start with the values of b(omega) -- both fixed and varying */
+
 	rhs = expandVector(bBar->val , bBar->col , bBar->cnt , num->rows);
 	for (cnt = 1; cnt <= bomega.cnt; cnt++)
 		rhs[bomega.col[cnt]] += bomega.val[cnt];
+
+
+
+
 
 
 	/* (cumulatively) subtract values of C(omega) x X -- both fixed and varying */
@@ -376,10 +390,11 @@ omegaType* newOmega(stocType* stoc) {
 	omega->probs = (dVector) arr_alloc(config.MAX_OBS, double);
 	omega->weights = (iVector) arr_alloc(config.MAX_OBS, int);
 	omega->vals = (dVector*) arr_alloc(config.MAX_OBS, dVector);
-	omega->cnt = 0; omega->numRV = stoc->numOmega;
+	omega->cnt = 0; 
+omega->numRV = stoc->numOmega;
 
 	if (config.SAA == 1 ) {
-		config.SAA = 1;
+		config.SAA = 0;
 		omega->cnt = config.MAX_OBS;
 		return omega;
 	}
@@ -414,7 +429,7 @@ omegaType* newOmega(stocType* stoc) {
 			i++;
 		}
 
-		if (!config.SAA) {
+		if (config.SAA) {
 			omega->vals = (dVector*)mem_realloc(omega->vals, omega->cnt * sizeof(dVector));
 			omega->probs = (dVector)mem_realloc(omega->probs, omega->cnt * sizeof(double));
 			for (cnt = 0; cnt < omega->cnt; cnt++) {

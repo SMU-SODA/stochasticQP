@@ -28,6 +28,7 @@ typedef struct {
     int 	rvaOmCnt;		/* number of RVs in dynamics noise dVector a */
 	int 	rvbOmCnt;		/* number of RVs in right-hand side */
 	int 	rvyuOmCnt;		/* number of RVs in right-hand side */
+	int 	rvylOmCnt;		/* number of RVs in lower bound */
     int 	rvcOmCnt;		/* number of RVs in state-cost coefficients */
     int 	rvdOmCnt;		/* number of RVs in stage-cost coefficients */
     int 	rvAOmCnt;		/* number of RVs in dynamics state-matrix A */

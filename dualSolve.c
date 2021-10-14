@@ -96,7 +96,9 @@ oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, double* x) {
 		double muBar;
 
 		/* 2a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
-		if (solveSubprobdual(prob, cell->subprob, cell->candidX, cell->omega->vals[solveSet[obs]], lambda->pi[obs], &mubBar, lambda->mu2[obs], lambda->mu3[obs])) {
+
+		if (solveSubprobdual(prob[1], cell->subprob, cell->candidX, cell->omega->vals[solveSet[obs]], lambda->pi[obs], &mubBar, lambda->mu2[obs], lambda->mu3[obs]))
+		{
 			errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 			goto TERMINATE;
 		}
@@ -164,7 +166,10 @@ oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, double* x) {
 			if (estimat > max) {
 				delta->vals[rand]->interceptBar = sigma->vals[obs]->interceptBar+ violate;
 				delta->vals[rand]->piCar = sigma->vals[obs]->piCar;
-			}		}
+			}		
+		
+		
+		}
 		
 
 	/* calculate maximum delta alpha for the observation and keep it as an inexact solution*/

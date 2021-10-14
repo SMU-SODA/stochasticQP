@@ -45,6 +45,18 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		prob[t]->bBar->val = (dVector) arr_alloc(orig->mar+1, double);
 		prob[t]->bBar->cnt = 0;
 
+		prob[t]->yubar = (sparseVector*)mem_malloc(sizeof(sparseVector));
+		prob[t]->yubar->col = (iVector)arr_alloc(orig->mac + 1, int);
+		prob[t]->yubar->val = (dVector)arr_alloc(orig->mac + 1, double);
+		prob[t]->yubar->cnt = 0;
+
+
+
+		prob[t]->ylbar = (sparseVector*)mem_malloc(sizeof(sparseVector));
+		prob[t]->ylbar->col = (iVector)arr_alloc(orig->mac + 1, int);
+		prob[t]->ylbar->val = (dVector)arr_alloc(orig->mac + 1, double);
+		prob[t]->ylbar->cnt = 0;
+
 		if ( t < tim->numStages - 1 ) {
 			prob[t]->sp->mar = prob[t]->sp->marsz = tim->row[t+1] - tim->row[t];
 			prob[t]->sp->mac = prob[t]->sp->macsz = tim->col[t+1] - tim->col[t];
@@ -218,9 +230,23 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		k = m - tim->col[t];
 
 		prob[t]->dBar->val[prob[t]->dBar->cnt+1] = orig->objx[m];
-
 		prob[t]->dBar->col[prob[t]->dBar->cnt+1] = m-tim->col[t]+1;
 		prob[t]->dBar->cnt++;
+
+
+
+
+		prob[t]->yubar->val[prob[t]->yubar->cnt + 1] = orig->bdu[m];
+		prob[t]->yubar->col[prob[t]->yubar->cnt + 1] = m - tim->col[t] + 1;
+		prob[t]->yubar->cnt++;
+
+
+
+		prob[t]->ylbar->val[prob[t]->ylbar->cnt + 1] = orig->bdl[m];
+		prob[t]->ylbar->col[prob[t]->ylbar->cnt + 1] = m - tim->col[t] + 1;
+		prob[t]->ylbar->cnt++;
+
+
 		prob[t]->sp->objx[k] = orig->objx[m];
 		prob[t]->sp->bdl[k] = orig->bdl[m];
 		prob[t]->sp->bdu[k] = orig->bdu[m];
@@ -230,7 +256,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			return NULL;
 		}
 		else
-			prob[t]->sp->ctype[k] = orig->ctype[m];
+		prob[t]->sp->ctype[k] = orig->ctype[m];
 
 
 
@@ -433,7 +459,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 				prob[t]->coord->rvOffset[0] = rvOffset;
 
 			}
-			prob[t]->num->rvbOmCnt++;
+			
 			prob[t]->coord->allRVCols[prob[t]->num->numRV] = -1;
 			prob[t]->coord->allRVRows[prob[t]->num->numRV] = (*stoc)->row[m]-tim->row[t]+1;
 			prob[t]->coord->rvbOmRows[++prob[t]->num->rvbOmCnt] = prob[t]->coord->allRVRows[prob[t]->num->numRV];
@@ -448,6 +474,15 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			prob[t]->coord->rvyuOmRows[prob[t]->num->rvyuOmCnt] = (*stoc)->col[m];
 			prob[t]->num->rvyuOmCnt++;
 			}
+		/*lower bound*/
+		else if ((*stoc)->col[m] != -1 && (*stoc)->row[m] == -3) {
+			upper++;
+			if (prob[t]->num->rvylOmCnt == 0) {
+				prob[t]->coord->rvylOmRows = (iVector)arr_alloc(prob[t]->num->cols + 1, int);
+			}
+			prob[t]->coord->rvylOmRows[prob[t]->num->rvylOmCnt] = (*stoc)->col[m];
+			prob[t]->num->rvylOmCnt++;
+		}
 
 		else if ( (*stoc)->col[m] != -1 && (*stoc)->row[m] != -1 ) {
 			/*if ((*stoc)->row[m] == -2) {
@@ -484,7 +519,8 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		prob[t]->coord->rvOffset[1] = rhs ;
 		prob[t]->coord->rvOffset[2] = rhs+transfer ;
 		prob[t]->coord->rvOffset[3] =rhs+ transfer + cost ;
-		prob[t]->num->rvyuOmCnt = prob[t]->num->rvyuOmCnt;
+		prob[t]->coord->rvOffset[4] = rhs + transfer + cost + upper;
+		
 
 	}
 
@@ -507,6 +543,32 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 				i++;
 			}
 			prob[t]->bBar->val[i] = (*stoc)->mean[rvOffset + prob[t]->coord->rvOffset[0]+m-1];
+		}
+
+
+
+		/* Upper bound  */
+		for (m = 1; m <= prob[t]->num->rvyuOmCnt; m++) {
+			i = 1;
+			while (i <= prob[t]->yubar->cnt) {
+				if (prob[t]->yubar->col[i] == prob[t]->coord->rvyuOmRows[m])
+					break;
+				i++;
+			}
+			prob[t]->yubar->val[i] = (*stoc)->mean[rvOffset + prob[t]->coord->rvOffset[3] + m - 1];
+		}
+
+
+		/* Lower bound */
+
+		for (m = 1; m <= prob[t]->num->rvylOmCnt; m++) {
+			i = 1;
+			while (i <= prob[t]->ylbar->cnt) {
+				if (prob[t]->ylbar->col[i] == prob[t]->coord->rvyuOmRows[m])
+					break;
+				i++;
+			}
+			prob[t]->yubar->val[i] = (*stoc)->mean[rvOffset + prob[t]->coord->rvOffset[4] + m - 1];
 		}
 
 		/* Transfer matrix */
@@ -546,7 +608,8 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		errMsg("setup", "newProbwSMPS", "failed to solve the mean-value problem", 0);
 		goto TERMINATE;	}
 
-	/* Compute the stage-wise lower bounds */
+	/* Compute the stage-wise lower bounds -
+	TO DO: NEEDS TO BE UPDATED TO ACCOUNT RANDOMNESS IN BOUNDS */
 	lb = calcLowerBound(orig, tim, (*stoc));
 
 	int offset = 0;
@@ -716,7 +779,9 @@ dVector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 	/* Extract bBar */
 	bBar = duplicVector(orig->rhsx-1, orig->mar);
 	for ( int n = 0; n < stoc->numOmega; n++ )
-		bBar[stoc->row[n]] = stoc->mean[n];
+		if (stoc->col[n] == -1) {
+			bBar[stoc->row[n]] = stoc->mean[n];
+		}
 
 	printf("\tLower bounds computed = ");
 
