@@ -1,6 +1,3 @@
-#include "./smpsReader/smps.h"
-#include "./smpsReader/prob.h"
-#include "./solverUtilities/solver_gurobi.h"
 #include "stochasticQP.h"
 
 cString outputDir;
@@ -80,6 +77,10 @@ void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir) 
 				outputDir = (char*)arr_alloc(2 * BLOCKSIZE, char);
 				strcpy(outputDir, argv[++i]); break;
 			}
+			case 'a': {
+				config.ALGOTYPE = atoi(argv[++i]);
+				break;
+			}
 			}
 		}
 		else {
@@ -137,6 +138,8 @@ int readConfig(cString configFile) {
 			fscanf(fptr, "%lf", &config.EPSILON);
 		else if (!(strcmp(line, "MULTICUT")))
 			fscanf(fptr, "%d", &config.MULTICUT);
+		else if (!(strcmp(line, "ALGOTYPE")))
+			fscanf(fptr, "%d", &config.ALGOTYPE);
 
 		else if (!(strcmp(line, "EVAL_SEED"))) {
 			fscanf(fptr, "%lld", &config.EVAL_SEED[r2 + 1]);

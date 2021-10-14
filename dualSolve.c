@@ -23,7 +23,7 @@ oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, double* x) {
 
 	/* Allocate memory to delta, delta structure contains a vector of pixbCType.  pixbCType is the fixed section we need to store for each solution
 	, in our quadratic case, it is beta=mu1.C (dvector)and the fixed section of -1/2 lambda Q lambda - xi mu1 + [-yunderscoreBar, ybarBar] [mu2 , mu3] (double) */
-	
+
     deltaType* delta;
 	delta = (deltaType*)mem_malloc(sizeof(deltaType));
 	delta->vals = (pixbCType**)arr_alloc( subset, pixbCType*);
@@ -140,7 +140,7 @@ oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, double* x) {
 
 
 		}
-	
+
 	double estimat;
 	for (int rand = 0; rand < cell->omega->cnt - subset; rand++) {
 		/*obtain the random sections associated with obs*/
@@ -166,11 +166,11 @@ oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, double* x) {
 			if (estimat > max) {
 				delta->vals[rand]->interceptBar = sigma->vals[obs]->interceptBar+ violate;
 				delta->vals[rand]->piCar = sigma->vals[obs]->piCar;
-			}		
-		
-		
+			}
+
+
 		}
-		
+
 
 	/* calculate maximum delta alpha for the observation and keep it as an inexact solution*/
 
@@ -180,7 +180,7 @@ oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, double* x) {
 
 	}
 	/*solve the subproblem inexactly for the rest of observations in notsolve*/
-	
+
 
 
 TERMINATE:

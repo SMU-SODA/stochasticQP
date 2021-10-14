@@ -5,7 +5,7 @@
  */
 
 #include "stochasticQP.h"
- #include "./solverUtilities/utilities.h"
+
 extern configType config;
 
 /* Building the cell for the 2-SQP algorithms */
