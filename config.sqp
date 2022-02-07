@@ -5,19 +5,16 @@ TOLERANCE    0.001
 MIN_ITER 1
 
 // Maximum number of iterations
-MAX_ITER   1000
+MAX_ITER   10
 
 // Master type: 0 for LP, 1 for MILP, 5 for QP and 7 for MIQP
 MASTER_TYPE 5
 
 // Set to (1) if sample average approximation is to be constructed
 SAA 0
-
 // Number of observations to be used to set the sample average approximation
 MAX_OBS 600
 
-// Type of algorithm to use
-ALGOTYPE 1
 
 // Run seeds
 RUN_SEED    3554548844580680
@@ -83,4 +80,3 @@ EVAL_SEED	7200786232212849811
 EVAL_SEED	3531095045851544
 EVAL_SEED	8536356961121783
 EVAL_SEED	4742397086462006
-
