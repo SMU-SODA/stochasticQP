@@ -111,7 +111,7 @@ void freeonecut(oneCut* cut) {
 };
 
 
-int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector obsVals, dVector piS, double *mubBar) {
+int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector obsVals, dVector piS, double *mubBar, double* mu2, double* mu3) {
 	dVector rhs = NULL, cost = NULL;
 	iVector	indices;
 
@@ -132,6 +132,8 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector 
 		return 1;
 	}
 
+	/**To do: change the bounds in the solver**/
+
 	if ( prob->num->rvdOmCnt > 0 ) {
 		/* (c) compute the cost coefficients using current observation */
 		cost = computeCostCoeff(prob->num, prob->coord, prob->dBar, obsVals);
@@ -147,8 +149,9 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector 
 		}
 	}
 
+
 	/* (e) Solve the subproblem to obtain the optimal dual solution. */
-	if ( solveProblem(subproblem->model) ) {
+    	if ( solveProblem(subproblem->model) ) {
 		errMsg("algorithm", "solveSubprob", "failed to solve subproblem in solver", 0);
 		return 1;
 	}
@@ -172,7 +175,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector 
 	double* dj;
 	dj = (dVector)arr_alloc(prob->num->cols + 1, double); /*why numcols+1?*/
 
-	if ( computeMU(subproblem->model, prob->num->cols, mubBar,dj) ) {
+	if ( computeMU(subproblem->model, prob->num->cols, mubBar,dj , mu2, mu3) ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
 		return 1;
 	}
@@ -187,6 +190,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector 
 
 
 int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS,double* muBar, double* mu2, double* mu3) {
+	
 	dVector rhs = NULL, cost = NULL;
 	iVector	indices;
 
@@ -230,7 +234,7 @@ int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVec
 	}
 
 #if defined(WRITE_FILES)
-	writeProblem(subproblem->model, "cellSubprob.lp");
+	writeProblem(subproblem->model, "cellSubprob.qp");
 #endif
 
 #if defined(STOCH_CHECK)
@@ -247,10 +251,11 @@ int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVec
 	double* dj;
 	dj = (dVector)arr_alloc(prob->num->cols + 1, double);
 
-	if (computeMU(subproblem->model, prob->num->cols, muBar , dj)) {
+	if (computeMU(subproblem->model, prob->num->cols, muBar , dj, mu2, mu3)) {
 		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
 		return 1;
 	}
+
 	/*request for status*/
 
 	for (int i = 0; i < prob->num->cols; i++) {
@@ -262,6 +267,7 @@ int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVec
 }
 
 	if (rhs) mem_free(rhs);
+	if (dj) mem_free(dj);
 	if (cost) mem_free(cost);
 	if (indices) mem_free(indices);
 	return 0;
@@ -328,29 +334,38 @@ dVector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, dVe
 
 
 /* This function compute the reduced cost of every second stage variables. They will be used to calculate the \mu x b and then added to the \pi x b. */
-int computeMU(modelPtr *model, int numCols, double *mubBar, double * dj) {
+int computeMU(modelPtr *model, int numCols, double *mubBar, double * dj, double* mu2,double* mu3) {
 	dVector u;
 	int		n;
 
 	(*mubBar) = 0.0;
-
-	
+		
 	u = (dVector) arr_alloc(numCols+1, double);
+	
 
 	if ( getPrimal(model, u, 0, numCols) ) {
 		errMsg("solver", "computeMU", "failed to obtain primal solution", 0);
 		return 1;
 	}
+
 	if (getDualSlack(model, dj, 0, numCols) ) {
 		errMsg("solver", "computeMu", "failed to obtain dual slacks", 0);
 		return 1;
 	}
 
-	for (n = 1; n <= numCols;  n++) {
+	for (n = 1; n <= numCols;  n++) { 
 		(*mubBar) += dj[n]*u[n];
 	}
-
-	mem_free(u); mem_free(dj);
+	for (int i = 1; i < numCols;i++) {
+		if (dj[i] >= 0) {
+			mu3[i] = dj[i];
+		}
+		else
+		{
+			mu2[i] = dj[i];
+		}
+	}
+	mem_free(u); 
 	return 0;
 }//END compute_mu()
 

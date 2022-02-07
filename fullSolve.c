@@ -5,8 +5,10 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 	sparseVector bOmega;
 	dVector 	 pi, piCBar, beta;
 	double 		 alpha, mubBar;
-
+	double* mu2, *mu3;
 	pi = (dVector) arr_alloc(prob->num->rows+1, double);
+	mu2 = (dVector)arr_alloc(prob->num->cols + 1, double);
+	mu3 = (dVector)arr_alloc(prob->num->cols + 1, double);
 	bOmega.cnt = prob->num->rvbOmCnt; bOmega.col = prob->coord->rvbOmRows;
 	COmega.cnt = prob->num->rvCOmCnt; COmega.col = prob->coord->rvCOmCols; COmega.row = prob->coord->rvCOmRows;
 
@@ -17,7 +19,7 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 	for (int obs = 0; obs < cell->omega->cnt; obs++) {
 
 		/* 2a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
-		if ( solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], pi, &mubBar) ) {
+		if ( solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], pi, &mubBar,mu2,mu3) ) {
 			errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 			goto TERMINATE;
 		}

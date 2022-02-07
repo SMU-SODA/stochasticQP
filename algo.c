@@ -13,10 +13,58 @@
 
 extern configType config;
 
-int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
+int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
+
+	
+	double subset = 0.1 * cell->omega->cnt; /*initialize the number of samples you want to take from Omega in each iteration*/
+	/*Assign memory to the basket of fixed sections of alpha and beta, if you are going to use dual-based algorithm*/
+	double SigmaSize = subset * config.MAX_ITER;
+	sigmaType* sigma; /* Sigma is a collection of fixed parts of alpha and beta which is independent of the observation */
+	sigma = (sigmaType*)mem_malloc(sizeof(sigmaType));
+	sigma->vals = (pixbCType**)arr_alloc(SigmaSize, pixbCType*);
+	sigma->cnt = 0;
+	for (int i = 0; i < SigmaSize; i++) {
+		sigma->vals[i] = (pixbCType*)mem_malloc(sizeof(pixbCType));
+	}
+	for (int i = 0; i < SigmaSize; i++) {
+		sigma->vals[i]->piCar = (double*)arr_alloc(prob[0]->num->cols + 1, double);
+	}
+
+	int* indexx;
+	/* Assign memory to lambda structure which is the set of dual solutions we obtained so far. pi is related to equality constraints, mu2 
+	coresponds to upper bounds and mu3 corresponds to lower bounds */
+
+	lambdaType* lambda;
+	lambda = (lambdaType*)mem_malloc(sizeof(lambdaType));
+	lambda->pi = (double**)arr_alloc(SigmaSize, double*);
+	lambda->mu2 = (double**)arr_alloc(SigmaSize, double*);
+	lambda->mu3 = (double**)arr_alloc(SigmaSize, double*);
+	for (int i = 0; i < SigmaSize; i++) {
+		lambda->pi[i] = (double*)arr_alloc(prob[1]->num->rows + 1, double);
+		lambda->mu2[i] = (double*)arr_alloc(prob[1]->num->cols + 1, double);
+		lambda->mu3[i] = (double*)arr_alloc(prob[1]->num->cols + 1, double);
+	}
+	lambda->cnt = 0;
+
+	/* assign memory to deta structure, this will record the deltaAlpha and deltaBetha associated with each observation*/
+	deltaType* delta;
+	delta = (deltaType*)mem_malloc(sizeof(deltaType));
+	delta->vals = (lambdadeltaType***)arr_alloc(cell->omega->cnt, lambdadeltaType**);
+	for (int i = 0; i < cell->omega->cnt; i++) {
+		delta->vals[i] = (lambdadeltaType**)arr_alloc(SigmaSize, lambdadeltaType*);
+	}
+	for (int i = 0; i < cell->omega->cnt; i++) {
+		for (int j = 0; j < SigmaSize; j++) {
+			delta->vals[i][j] = (lambdadeltaType*)mem_malloc(sizeof(lambdadeltaType));
+			delta->vals[i][j]->dbeta=(sparseVector*)mem_malloc(sizeof(sparseVector));
+			delta->vals[i][j]->dbeta->val = (double*)arr_alloc(prob[0]->num->cols + 1, double); /*TO DO: Change it to a reasonable size*/
+			delta->vals[i][j]->dbeta->col = (int*)arr_alloc(prob[0]->num->cols + 1,int);
+		}
+	}
+
+
+
 	oneCut *cut = NULL;
-
-
 	while ( cell->k < 25) {
 		cell->k++;
 		/* 1. Check optimality */
@@ -31,7 +79,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType *cell) {
 			}
 			break;
 		case 1:
-			dualSolve(prob, cell, stoc, cell->candidX);
+			dualSolve(prob, cell, stoc,  sigma,  delta, lambda, cell->candidX, subset);
 			break;
 		case 2:
 			partSolve();

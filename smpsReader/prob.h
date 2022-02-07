@@ -69,12 +69,10 @@ typedef struct{
 	sparseMatrix	*Bbar;			/* dynamics decision matrix B_{t+} */
 	sparseMatrix	*Cbar;			/* transfer matrix C_t */
 	sparseMatrix	*Dbar;			/* recourse matrix D_t */
-
 	dVector			mean;			/* Vector of mean values of random variables. */
 	int				omegaBeg;		/* Beginning of omega dVector */
 	dVector			meanX;			/* Mean value solution */
 	double			lb;				/* lower bounds on cost-to-go function */
-
 }probType;
 
 /* subroutines in prob.c */

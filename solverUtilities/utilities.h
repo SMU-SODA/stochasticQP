@@ -44,7 +44,7 @@ typedef struct sparseVector_{
 	dVector	val;
 }sparseVector;
 
-typedef struct sparseMatrix_{
+typedef struct{
 	int		cnt;
 	iVector	col;
 	iVector	row;

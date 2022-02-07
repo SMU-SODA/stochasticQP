@@ -18,19 +18,27 @@ typedef struct {
 
 typedef struct {
 	int		cnt;					/* number of elements in the structure */
-	dVector* pi;					/* value of duals(associated with equality constraints) with random elements in right-hand side */
-	dVector* mu2;					/* value of  duals (reduced costs) with random elements in right-hand side(upperbound) */
-	dVector* mu3;					/* value of  duals (reduced costs) with random elements in right-hand side(lowerbound) */
+	double** pi;					/* value of duals(associated with equality constraints) with random elements in right-hand side */
+	double** mu2;					/* value of  duals (reduced costs) with random elements in right-hand side(upperbound) */
+	double** mu3;					/* value of  duals (reduced costs) with random elements in right-hand side(lowerbound) */
 }lambdaType;
 
 typedef struct {
 	double  	interceptBar;				             	/* scalar pi x b */
-	dVector 	piCar;		     			/* dVector pi x C */
+	dVector 	piCar;		     		                 	/* dVector pi x C */
 	double      fixed;
 } pixbCType;
 
+
 typedef struct {
-	pixbCType** vals;				/* matrix of product terms (rows - entries in lambdaType, columns - entries in omegaType */
+	double dalpha;
+	sparseVector* dbeta;
+} lambdadeltaType;
+
+
+typedef struct {
+	lambdadeltaType *** vals;
+	int cnt;
 } deltaType;
 
 typedef struct {
@@ -175,10 +183,10 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 
 /* Source.c */
 cellType* buildCell(probType** prob, stocType* stoc);
-int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector obsVals, dVector piS, double *mubBar);
+int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector obsVals, dVector piS, double *mubBar, double* mu2 , double* mu3);
 dVector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, dVector X, dVector observ);
 dVector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, dVector observ) ;
-int computeMU(modelPtr *model, int numCols, double *mubBar, double* dj);
+int computeMU(modelPtr *model, int numCols, double *mubBar, double* dj , double* mu2, double* mu3);
 int computeMUdual(modelPtr* model, int numCols, double* dj);
 omegaType* newOmega(stocType* stoc);
 
@@ -201,5 +209,8 @@ void cellfree(cellType* cell);
 void freecut(cutsType* cut);
 void freeonecut(oneCut* cut);
 void freeOmegaType(omegaType* omega, bool partial);
-oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, double* x);
+
+oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, sigmaType *sigma ,deltaType * delta, lambdaType* lambda, double* x ,double solveset);
 int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS, double*,double* mu2, double* mu3);
+int calcSigma(probType* prob, dVector pi, dVector mu2, dVector m3);
+int stochasticUpdates(probType** prob, cellType* cell, stocType* stoch, double* x, int rand);

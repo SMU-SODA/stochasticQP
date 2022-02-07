@@ -1,200 +1,155 @@
 #include "stochasticQP.h"
 
-oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, double* x) {
-	double mubBar;
-	int subset = 20;
-
-	/* Allocate memory to sigma, sigma structure contains a vector of pixbCType.  pixbCType is the fixed section we need to store for each solution
-	, in our quadratic case, it is beta=mu1.Cbar (dvector) and the fixed section of -1/2 lambda Q lambda - xiBar mu1 + [-yunderscore, ybar] [mu2 , mu3] (double) */
-
-
-	sigmaType* sigma;
-	sigma = (sigmaType*)mem_malloc(sizeof(sigmaType));
-	sigma->vals = (pixbCType**)arr_alloc(subset, pixbCType*);
-
-
-	for (int i = 0; i < subset; i++) {
-		sigma->vals[i] = (pixbCType*)mem_malloc(sizeof(pixbCType));}
-
-	for (int i = 0; i < subset; i++) {
-		sigma->vals[i]->piCar  = (double*)arr_alloc(prob[0]->num->cols + 1, double);
-	}
-
-
-	/* Allocate memory to delta, delta structure contains a vector of pixbCType.  pixbCType is the fixed section we need to store for each solution
-	, in our quadratic case, it is beta=mu1.C (dvector)and the fixed section of -1/2 lambda Q lambda - xi mu1 + [-yunderscoreBar, ybarBar] [mu2 , mu3] (double) */
-
-    deltaType* delta;
-	delta = (deltaType*)mem_malloc(sizeof(deltaType));
-	delta->vals = (pixbCType**)arr_alloc( subset, pixbCType*);
-	for (int i = 0; i < subset;i++) {
-	   delta->vals[i] = (pixbCType*)mem_malloc(sizeof(pixbCType));
-    }
-
-   for (int i = 0; i < subset; i++) {
-	   delta->vals[i]->piCar = (double*)arr_alloc(  prob[0]->num->cols +1 , double);
-   }
-
-   /* Create lambdatype stracture to store the reduced costs and  pi */
-   lambdaType* lambda;
-   lambda = (lambdaType*)mem_malloc(sizeof(lambdaType));
-   /* alocate memory to lambda structure*/
-   lambda->pi = (double**)arr_alloc(subset, double*);
-   lambda->mu2 = (double**)arr_alloc(subset , double*);
-   lambda->mu3 = (double**)arr_alloc(subset, double*);
-   for (int i = 0; i < subset; i++) {
-    lambda->pi[i] = (double*)arr_alloc(prob[0]->num->rows + 1, double);
-	lambda->mu2[i] = (double*)arr_alloc(prob[0]->num->cols + 1, double);
-	lambda->mu3[i] = (double*)arr_alloc(prob[0]->num->cols + 1, double);
-	}
 
 
 
+
+
+
+
+
+
+oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, sigmaType*sigma ,deltaType* delta, lambdaType * lambda ,double* x, double solveset) {
+
+	/*initialization of the parameters*/
+	sparseMatrix *COmega; /* Presenting the C matrix associated with an observation(I mean the difference from Cbar)*/
+	sparseVector *bOmega;  /* Presenting the b vector associated with an observation(I mean the difference from bBar)*/
+	bOmega = (sparseVector*)mem_malloc(sizeof(sparseVector));
+	COmega = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));
+	bOmega->cnt = prob[1]->num->rvbOmCnt;
+	bOmega->col = prob[1]->coord->rvbOmRows;
+	COmega->cnt = prob[1]->num->rvCOmCnt;
+	COmega->col = prob[1]->coord->rvCOmCols;
+	COmega->row = prob[1]->coord->rvCOmRows;
+	sparseVector* ybar; /* Presenting the upperbound  vector associated with an observation(I mean the difference from yBar)*/
+	sparseVector* yund; /* Presenting the lowerbound  vector associated with an observation(I mean the difference from mean of yunderscore)*/
+	ybar = (sparseVector*)mem_malloc(sizeof(sparseVector));
+	yund = (sparseVector*)mem_malloc(sizeof(sparseVector));
+	ybar->cnt = prob[1]->num->rvyuOmCnt; ybar->col = prob[1]->coord->rvyuOmRows;
+	yund->cnt = prob[1]->num->rvbOmCnt; yund->col = prob[1]->coord->rvylOmRows;
+	double tempobj; /* holds the best dual objective function value when we are searching over lambda for a suboptimal solution*/
+	double alpha; /*presenting an alpha value we obtained using a dual solution while searching through lambda*/
+	double* beta; /*presenting an beta value we obtained using a dual solution while searching through lambda*/
+	double* dbeta; /**presenting delta beta while searching through lambda*/
+	int *omegaP; /*representing the set of opservations we want to solve exactly*/
+	int* omegaQ; /*representing the set of opservations we want to solve approximatly*/
+	omegaP = (int*)arr_alloc(solveset, int); 
+	omegaQ = (int*)arr_alloc(cell->omega->cnt - solveset,int);
+	double  bestalpha;
+	double*  bestbetha;
+	double * s;
+	double dalpha = 0;
+	double* Y;
+	Y = (double*)arr_alloc(prob[1]->num->cols+1, double);
 	 /* 1. Create a new cut */
 	 oneCut* cut = newCut(prob[1]->num->cols);
-
-	/*2. Create the subset of observations for which you want to solve and put the others in another set*/
-	int* solveSet;
-	int* notsolve;
 	int j = 0;
-	solveSet = (int*)arr_alloc(subset,int);
-	notsolve = (int*)arr_alloc(cell->omega->cnt - subset, int);
-
-
-	for (int rand = 0; rand < subset; rand++) {
-		solveSet[rand] = randInteger(cell->omega->cnt); /*the set we want to solve*/
+	/*Creat a subset of observations you want to solve*/
+	for (int i = 0; i < solveset; i++) {
+		omegaP[i] = randInteger(cell->omega->cnt); 
 	}
-
-	for (int obs = 0; obs < cell->omega->cnt; obs++) {
-		for (int i = 0; i < subset; i++) {
-			if (solveSet[i] == obs) {
-				notsolve[j] = obs;  /*the set we do not want to solve*/
-				j++;
+	/*Put the remaining observations in another set omegaQ*/
+	int cnt = 0;
+	int stat = 1;
+	for (int i = 0; i < cell->omega->cnt; i++) {
+		for (int j = 0; j < solveset; j++) {
+			if (omegaP[j] == i) {
+				stat = 0;
 			}
 		}
-	}
-
-
-
-
-	sparseVector* bOmega;
-	sparseMatrix* COmega;
-	sparseVector* yuOmega;
-
-	bOmega = (sparseVector*)mem_malloc(sizeof(sparseVector)); /* The random section of rhs */
-	yuOmega = (sparseVector*)mem_malloc(sizeof(sparseVector)); /* The random section of y upperbounds */
-	COmega = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix)); /* The random section of C */
-
-	double fixedAlpha;
-	double alpha,alpha1,Bx;
-	double lql;
-
-
-	/* 2. loop through subset solveset and solve the subpeoblem */
-
-	for (int obs = 0; obs < subset; obs++) {
-		double muBar;
-
-		/* 2a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
-
-		if (solveSubprobdual(prob[1], cell->subprob, cell->candidX, cell->omega->vals[solveSet[obs]], lambda->pi[obs], &mubBar, lambda->mu2[obs], lambda->mu3[obs]))
+		if (stat)
 		{
-			errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
-			goto TERMINATE;
+			omegaQ[cnt] = i;
+			cnt++;
 		}
-
-
-		/*obtain the random sections associated with obs*/
-		bOmega->cnt = prob[1]->num->rvbOmCnt; 
-		bOmega->col = prob[1]->coord->rvbOmRows;
-		bOmega->val = cell->omega->vals[solveSet[obs]] + prob[1]->coord->rvOffset[0];
-
-		COmega->cnt = prob[1]->num->rvCOmCnt; COmega->col = prob[1]->coord->rvCOmCols;
-		COmega->row = prob[1]->coord->rvCOmRows;
-		COmega->val = cell->omega->vals[solveSet[obs]] + prob[1]->coord->rvOffset[1];
-
-		yuOmega->cnt = prob[1]->num->rvyuOmCnt;
-		yuOmega->col = prob[1]->coord->rvyuOmRows;
-		yuOmega->val = cell->omega->vals[solveSet[obs]] + prob[1]->coord->rvOffset[2];
-
-
-		/* put pi.Cbar in sigma (fixed part of beta which does not change when C is deterministic) */
-		sigma->vals[obs]->piCar = vxMSparse(lambda->pi[obs]+1,
-
-		prob[1]->Cbar, prob[1]->num->rows);     /*check if pi is from 0,lambda->pi[obs]+1?????*/
-
-		/* finding fixed part of alpha equal to -1/2 lambda Q lambda - xiBar .pi - yl.mu3 + yuBar.mu2 */
-
-		/* first  find -1/2 lambda Q lambda = obj -(beta x  - xi(obs) .pi - yl.mu3 + yu(obs).mu2)*/
-		/*- xi(obs) .pi - yl.mu3 + yu(obs).mu2*/
-		fixedAlpha = -vXv(prob[1]->bBar, lambda->pi[obs] + 1, NULL, prob[1]->num->rows)
-			- vXv(prob[1]->ylbar, lambda->mu3[obs], NULL, prob[1]->num->cols) + vXv(prob[1]->yubar, lambda->mu2[obs], NULL, prob[1]->num->cols);
-
-		alpha1 = fixedAlpha -vXvSparse( lambda->pi[obs] + 1, bOmega )	+ vXvSparse( lambda->mu2[obs]+1, yuOmega);
-		Bx = vXv(sigma->vals[obs]->piCar, cell->candidX + 1, NULL, prob[0]->num->cols);
-		lql = getObjective(cell->subprob->model) - Bx - alpha1;
-
-		alpha = alpha1 + lql;
-		sigma->vals[obs]->fixed = alpha + Bx ;
-		sigma->vals[obs]->interceptBar = alpha;
-
-
-		}
-
-	double estimat;
-	for (int rand = 0; rand < cell->omega->cnt - subset; rand++) {
-		/*obtain the random sections associated with obs*/
-		bOmega->cnt = prob[1]->num->rvbOmCnt;
-		bOmega->col = prob[1]->coord->rvbOmRows;
-		bOmega->val = cell->omega->vals[notsolve[rand]] + prob[1]->coord->rvOffset[0];
-
-		COmega->cnt = prob[1]->num->rvCOmCnt; COmega->col = prob[1]->coord->rvCOmCols;
-		COmega->row = prob[1]->coord->rvCOmRows;
-		COmega->val = cell->omega->vals[notsolve[rand]] + prob[1]->coord->rvOffset[1];
-
-		yuOmega->cnt = prob[1]->num->rvyuOmCnt;
-		yuOmega->col = prob[1]->coord->rvyuOmRows;
-		yuOmega->val = cell->omega->vals[notsolve[rand]] + prob[1]->coord->rvOffset[2];
-		double max =- 10 ^ 10; /* set it to a large number */
-		double violate;
-	/*calculate -delta xi.pi + delta ybar.m2 for a given observation*/
-
-		for (int obs = 0; obs < subset; obs++) {
-			max = -10 ^ 10;
-			violate = -vXvSparse(lambda->pi[obs] + 1, bOmega) + vXvSparse(lambda->mu2[obs] + 1, yuOmega);
-			estimat = sigma->vals[obs]->fixed + violate;
-			if (estimat > max) {
-				delta->vals[rand]->interceptBar = sigma->vals[obs]->interceptBar+ violate;
-				delta->vals[rand]->piCar = sigma->vals[obs]->piCar;
-			}
-
-
-		}
-
-
-	/* calculate maximum delta alpha for the observation and keep it as an inexact solution*/
-
-
-    /* build the cut calculating linear coefs and return it */
-
-
+		stat = 1;
 	}
-	/*solve the subproblem inexactly for the rest of observations in notsolve*/
 
+	 /**/
+	 double 		 mubBar;
+     dVector pi;
+	 pi = (dVector)arr_alloc(prob[1]->num->rows + 1, double);
 
+	/* 2. loop through subset solveset and solve the subproblems */
 
-TERMINATE:
+	 for (int i = 0; i < solveset; i++) {
+		 /* 2a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
+		 cnt = lambda->cnt;
+		 if (solveSubprob(prob[1], cell->subprob, cell->candidX, cell->omega->vals[i], lambda->pi[i], &mubBar, lambda->mu2[i], lambda->mu3[i])) {
+			 errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
+			 goto TERMINATE;
+		 }
+	 }
+ //    /*Calculate fixred section of beta = Cbar*pi (pi is the dual vector associated with equality constraints)*/
+	//sigma->vals[obs]->piCar = vxMSparse(pi, prob[1]->Cbar, prob[1]->num->prevCols);
+
+	///*Calculate fixred section of alpha -.5 yQy  + bbar* pi + yunder nu - ybar mu)*/
+	//sigma->vals[obs]->interceptBar= -0.5*vXv(vxMSparse(Y, prob[1]->sp->objQ, prob[1]->num->cols),Y, indexx , prob[1]->num->cols) + vXvSparse(pi, prob[1]->bBar) + mubBar ;
+	//sigma->cnt++;
+	///* Store the information of the dual solutions obtaned in matrix lambda*/
+	//lambda->pi = pi  ;
+	//}
+	//for(int obs = 0; obs < cell->omega->cnt-subset; obs++) {
+	//	maxobj = -1000;
+	//	for (int i = 0; i < sigma->cnt ;i++) {
+
+	//		/* 2b. Compute the cut coefficients for individual observation. */
+	//		bOmega->val = cell->omega->vals[obs] + prob[1]->coord->rvOffset[0];
+	//		COmega->val = cell->omega->vals[obs] + prob[1]->coord->rvOffset[1];
+	//		ybar->val = cell->omega->vals[obs] + prob[1]->coord->rvOffset[2];
+	//		yund->val = cell->omega->vals[obs] + prob[1]->coord->rvOffset[3];
+
+	//	/* calculate alpha */
+	//	dalpha = vXvSparse(lambda->pi[i], bOmega ,prob[1]->num->rows) - vXvSparse(lambda->mu2[i], yund, prob[1]->num->cols) + vXvSparse(lambda->mu3[i], ybar, prob[1]->num->cols);
+	//	alpha = sigma->vals[i]->interceptBar + dalpha ;
+
+ //        /* Calculate beta*/
+	//	dbeta = vxMSparse(lambda->pi[i], COmega, prob[1]->num->prevCols);
+	//	int* dbetaindex;
+	//	dbetaindex = (int*)arr_alloc(prob[1]->num->prevCols, int);
+
+	//	/*find out the number of nonzero elements and their location*/
+	//	for(int j = 0; j < prob[1]->num->prevCols ;j++) {
+	//		if (dbeta[j]) {
+	//			delta->vals[j]->dbeta->cnt++;
+	//			}
+	//		
+	//	/*Assign memory to the index section of deltab */
+
+	//		delta->vals[i]->dbeta->col = (int*)mem_malloc(prob[1]->num->prevCols + 1, int);
+	//	    delta->vals[i]->dbeta->val= (double*)mem_malloc(prob[1]->num->prevCols + 1, double);
+	//		int cnt = 0;
+	//		for (int j = 0; j < prob[1]->num->prevCols; j++) {
+	//			if (dbeta[j]) {
+	//				cnt++;
+	//				delta->vals[i]->dbeta->val[cnt]= dbeta[j];
+	//				delta->vals[i]->dbeta->col[cnt]=j;
+	//			}
+	//		}
+	//		delta->vals[i]->dalpha = dalpha;
+
+	//	
+
+	//	vPlusv(dbeta, sigma->vals[i]->piCar, 1, prob[1]->num->prevCols);
+	//	beta = dbeta;
+
+	//	tempobj = alpha + vXv(beta, cell->candidX, indexx, prob[1]->num->prevCols);
+ //       /*calculate estimated Obj value beta x+alpha*/
+	//	if (tempobj> maxobj) {
+	//	maxobj = alpha + vXv(beta, cell->candidX, indexx , prob[1]->num->prevCols);
+	//	bestalpha = alpha;
+	//	bestbetha = beta;
+	//	}
+	//	/* 2c. Aggregate the cut coefficients by weighting by observation probability. */
+	//	cut->alpha += cell->omega->probs[obs] * bestalpha;
+	//	for (int c = 1; c <= prob[1]->num->prevCols; c++)
+	//		cut->beta[c] += cell->omega->probs[obs] * bestbetha[c];
+
+	//	mem_free(bestbetha);
+	//}
+	//}
+    TERMINATE:
 	return NULL;
-}//END fullSolve()
+}//END dualsolve()
 
 
-/* This function computes the right hand side of the subproblem, based on a given X dVector and a given observation of omega.
- * It is defined as:
- *             rhs = r(omega) - C(omega) x X
- * and is calculated as:
- *             rhs = (rbar - Cbar x X) + (rOmega - Comega x X)
- *
- * where the "bar" denotes the fixed or mean value, and the "omega" denotes a random variation from this mean. The function
- * allocates an array for the dVector, which must be freed by the customer.  Also, the zeroth position of this rhs dVector is
- * reserved, and the actual values begin at rhs[1].
- \***********************************************************************/
