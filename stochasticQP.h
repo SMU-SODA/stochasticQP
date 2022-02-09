@@ -212,5 +212,6 @@ void freeOmegaType(omegaType* omega, bool partial);
 
 oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, sigmaType *sigma ,deltaType * delta, lambdaType* lambda, double* x ,double solveset);
 int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS, double*,double* mu2, double* mu3);
-int calcSigma(probType* prob, dVector pi, dVector mu2, dVector m3);
-int stochasticUpdates(probType** prob, cellType* cell, stocType* stoch, double* x, int rand);
+int calcSigma(sigmaType* sigma, cellType* cell  ,probType** prob, dVector pi, dVector mu2, dVector mu3 , sparseVector* bOmega, sparseMatrix* COmega,
+		sparseVector* yuOmega , int obs);
+int stochasticUpdates(probType** prob, cellType* cell, stocType* stoch, lambdaType* lambda,sigmaType* sigma  ,double* x ,int rand);

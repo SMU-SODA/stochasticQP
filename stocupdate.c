@@ -1,4 +1,5 @@
 #include "stochasticQP.h"
+
 int stochasticUpdates(probType** prob, cellType* cell, stocType* stoch, lambdaType* lambda,sigmaType* sigma  ,double* x ,int rand) {
 
 	double* pi, * mu2, * mu3;
@@ -38,14 +39,15 @@ int stochasticUpdates(probType** prob, cellType* cell, stocType* stoch, lambdaTy
 	yuOmega->col = prob[1]->coord->rvyuOmRows;
 	yuOmega->val = cell->omega->vals[rand] + prob[1]->coord->rvOffset[3];
 
-	calcSigma(sigma, cell, prob, pi, mu2, mu3, bOmega, COmega, yuOmega, rand);
+//	calcSigma(sigma, cell, prob, pi, mu2, mu3, bOmega, COmega, yuOmega, rand);
 
 	mem_free(mu2);
 	mem_free(mu3);
 	mem_free(pi);
 }
 
-int calcSigma(sigmaType* sigma, cellType* cell  ,probType** prob, dVector pi, dVector mu2, dVector mu3 , sparseVector* bOmega, sparseMatrix* COmega, sparseVector* yuOmega , int obs) {
+int calcSigma(sigmaType* sigma, cellType* cell  ,probType** prob, dVector pi, dVector mu2, dVector mu3 , sparseVector* bOmega, sparseMatrix* COmega,
+		sparseVector* yuOmega , int obs) {
 	double fixedAlpha , alpha1 , lql , alpha, Bx ;
 	/*Check if a the sigma structure should be updated */
 	

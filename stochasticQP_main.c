@@ -17,9 +17,9 @@ int main(int argc, char* argv[]) {
 
 	/* read algorithm configuration file */
 #if _WIN64
-	strcpy(configFile, "C:\\Users\\Niloofar\\source\\repos\\stochasticQP\\config.sd");
+	strcpy(configFile, "C:\\Users\\Niloofar\\source\\repos\\stochasticQP\\config.sqp");
 #else
-	strcpy(configFile, "./config.sd");
+	strcpy(configFile, "./config.sqp");
 #endif
 	if (readConfig(configFile))
 		goto TERMINATE;

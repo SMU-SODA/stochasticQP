@@ -30,9 +30,8 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 		sigma->vals[i]->piCar = (double*)arr_alloc(prob[0]->num->cols + 1, double);
 	}
 
-	int* indexx;
 	/* Assign memory to lambda structure which is the set of dual solutions we obtained so far. pi is related to equality constraints, mu2 
-	coresponds to upper bounds and mu3 corresponds to lower bounds */
+	corresponds to upper bounds and mu3 corresponds to lower bounds */
 
 	lambdaType* lambda;
 	lambda = (lambdaType*)mem_malloc(sizeof(lambdaType));
