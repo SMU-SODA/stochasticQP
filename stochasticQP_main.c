@@ -42,17 +42,17 @@ int main(int argc, char* argv[]) {
 		goto TERMINATE;
 	}
 
-	 runAlgo(prob, stoch, cell);
+	runAlgo(prob, stoch, cell);
 
-	 printf("Successfully completed executing the algorithm.\n");
+	printf("Successfully completed executing the algorithm.\n");
 
-	 /* Free all the structures */
-	 freeProbType(prob, 2);
-	 mem_free(probname);
-	 mem_free(inputDir);
-	 cellfree(cell);
-	 freeStocType(stoch);
-	 TERMINATE: return 0;
+	/* Free all the structures */
+	freeProbType(prob, 2);
+	mem_free(probname);
+	mem_free(inputDir);
+	cellfree(cell);
+	freeStocType(stoch);
+	TERMINATE: return 0;
 } /*END main()*/ 
 
 void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir) {
@@ -149,10 +149,10 @@ int readConfig(cString configFile) {
 				config.EVAL_SEED = (long long*)mem_realloc(config.EVAL_SEED, (maxReps + 1) * sizeof(long long));
 			}
 		}
-		
+
 		else if (!(strcmp(line, "CUT_MULT")))
 			fscanf(fptr, "%d", &config.CUT_MULT);
-	
+
 		else if (!(strcmp(line, "MULTIPLE_REP")))
 			fscanf(fptr, "%d", &config.MULTIPLE_REP);
 
@@ -164,7 +164,7 @@ int readConfig(cString configFile) {
 
 		else if (!(strcmp(line, "SAMPLE_FRACTION")))
 			fscanf(fptr, "%lf", &config.SAMPLE_FRACTION);
-		
+
 
 		else if (!(strcmp(line, "MAX_TIME")))
 			fscanf(fptr, "%lf", &config.MAX_TIME);

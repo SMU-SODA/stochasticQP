@@ -10,11 +10,14 @@ MAX_ITER   10
 // Master type: 0 for LP, 1 for MILP, 5 for QP and 7 for MIQP
 MASTER_TYPE 5
 
+// Type of algorithm to employ
+ALGOTYPE 0
+
 // Set to (1) if sample average approximation is to be constructed
 SAA 0
+
 // Number of observations to be used to set the sample average approximation
 MAX_OBS 600
-
 
 // Run seeds
 RUN_SEED    3554548844580680
