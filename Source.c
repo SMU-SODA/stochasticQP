@@ -18,6 +18,7 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 	cell->optFlag = false;
 	cell->piM = NULL;
 	cell->time = NULL;
+
 	/* 1. construct the master problem */
 	cell->master = newMaster(prob[0]->sp);
 	if ( cell->master == NULL ) {
@@ -52,10 +53,26 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 	cell->incumbEst = 0.0;
 	cell->candidEst = 0.0;
 
+	double SigmaSize = 0.1 * cell->omega->cnt * config.MAX_ITER;
+
+	/*6. Allocate memory to SigmaType, LambdaType, DeltaType*/
+	if (config.ALGOTYPE == DUALLBASED) {
+		cell->lambda = newLambda(SigmaSize, prob);
+		cell->sigma = newSigma(SigmaSize, prob);
+		cell->delta = newDelta( SigmaSize, prob,cell);
+	}
+	else {
+		cell->lambda = NULL;
+		cell->sigma = NULL;
+		cell->delta = NULL;
+	}
+
 	return cell;
 }//END buildCell()
 
-void cellfree(cellType * cell){
+void cellfree(cellType * cell)
+{
+	int numobs = cell->omega->cnt;
 	if (cell->master) {
 		mem_free(cell->master->name);
 		for (int n = 0; n < cell->master->mac; n++) {
@@ -77,8 +94,6 @@ void cellfree(cellType * cell){
 		freeOneProblem(cell->subprob);
 	}
 
-	
-
 	freeOmegaType(cell->omega,false); /*????*/
 	if (cell->candidX)mem_free(cell->candidX);
 	if (cell->incumbX)mem_free(cell->candidX);
@@ -86,8 +101,93 @@ void cellfree(cellType * cell){
 	freecut(cell->cuts);
 	freecut(cell->fCuts);
 	if (cell->time)mem_free(cell->time);
+	freeSigma(cell->sigma);
+	freeLambda(cell->lambda);
+	freeDelta(cell->delta, numobs);
+
+	
 	mem_free(cell);
+
+} /**End free Cell**/
+
+void freeSigma(sigmaType* sigma) {
+	if (sigma) {
+		if (sigma->vals) {
+			for (int i = 0; i < sigma->cnt; i++) {
+
+				if (sigma->vals[i])
+				{
+					if (sigma->vals[i]->piCar) {
+						mem_free(sigma->vals[i]->piCar);
+					}
+					
+				
+				}
+				mem_free(sigma->vals[i]);
+			}
+			mem_free(sigma->vals);
+		}
+	mem_free(sigma);
+	}
+	
+}; /**EndFreeSigma**/
+
+void freeLambda(lambdaType* lambda) {
+
+	if (lambda)
+	{
+		if (lambda->pi)
+		{
+			for (int i = 0; i < lambda->cnt;i++) {
+				mem_free(lambda->pi[i]);
+			}
+			mem_free(lambda->pi);
+		}
+		if (lambda->mu2) 
+		{
+			for (int i = 0; i < lambda->cnt; i++) {
+				mem_free(lambda->mu2[i]);
+			}
+			mem_free(lambda->mu2);
+		}
+		if (lambda->mu3)
+		{
+			for (int i = 0; i < lambda->cnt; i++) 
+			{
+				mem_free(lambda->mu3[i]);
+			}
+			mem_free(lambda->mu3);
+		}
+		mem_free(lambda);
+		}	
+}; /*EndfreeLambda*/
+
+void freeDelta(deltaType* delta, int numobs) {
+	if (delta) {
+		if (delta->vals) {
+			for (int i = 0; i < delta->cnt; i++) {
+				if (delta->vals[i]) {
+					for (int j = 0; j < numobs; i++) {
+						freeLambda(delta->vals[i][j]);
+					}
+					mem_free(delta->vals[i]);
+				}
+				mem_free(delta->vals);
+			}
+		}
+		mem_free(delta);
+	}
+};/*End freeDelta*/
+
+
+void freeLambdaDelta(lambdadeltaType* lambdadelta){
+
+	if (lambdadelta) {
+	
+		freeSparseVector(lambdadelta->dbeta);
+	}
 }
+
 void freecut(cutsType * cut){
 	if (cut) {
 
@@ -467,6 +567,63 @@ omega->numRV = stoc->numOmega;
 
 }//END newOmega()
 
+lambdaType* newLambda(double SigmaSize, probType** prob) {
+	lambdaType* lambda = NULL;
+	/* Assign memory to lambda structure which is the set of dual solutions we obtained so far. pi is related to equality constraints, mu2
+corresponds to upper bounds and mu3 corresponds to lower bounds */
+
+	lambda = (lambdaType*)mem_malloc(sizeof(lambdaType));
+	lambda->pi = (double**)arr_alloc(SigmaSize, double*);
+	lambda->mu2 = (double**)arr_alloc(SigmaSize, double*);
+	lambda->mu3 = (double**)arr_alloc(SigmaSize, double*);
+
+	for (int i = 0; i < SigmaSize; i++) {
+		lambda->pi[i] = (double*)arr_alloc(prob[1]->num->rows + 1, double);
+		lambda->mu2[i] = (double*)arr_alloc(prob[1]->num->cols + 1, double);
+		lambda->mu3[i] = (double*)arr_alloc(prob[1]->num->cols + 1, double);
+	}
+
+	lambda->cnt = 0;
+	return lambda;
+
+}//END newLambda()
+
+sigmaType* newSigma(double SigmaSize, probType** prob ) {
+	sigmaType* sigma = NULL; /* Sigma is a collection of fixed parts of alpha and beta which is independent of the observation */
+	sigma = (sigmaType*)mem_malloc(sizeof(sigmaType));
+	sigma->vals = (pixbCType**)arr_alloc(SigmaSize, pixbCType*);
+	sigma->cnt = 0;
+	for (int i = 0; i < SigmaSize; i++) {
+		sigma->vals[i] = (pixbCType*)mem_malloc(sizeof(pixbCType));
+	}
+	for (int i = 0; i < SigmaSize; i++) {
+		sigma->vals[i]->piCar = (double*)arr_alloc(prob[0]->num->cols + 1, double);
+	}
+	return sigma;
+
+}//END newSigma()
+
+deltaType* newDelta(double SigmaSize, probType** prob , cellType* cell) {
+	deltaType* delta = NULL;
+	/* assign memory to deta structure, this will record the deltaAlpha and deltaBetha associated with each observation*/
+
+	delta = (deltaType*)mem_malloc(sizeof(deltaType));
+	delta->vals = (lambdadeltaType***)arr_alloc(cell->omega->cnt, lambdadeltaType**);
+	for (int i = 0; i < cell->omega->cnt; i++) {
+		delta->vals[i] = (lambdadeltaType**)arr_alloc(SigmaSize, lambdadeltaType*);
+	}
+	for (int i = 0; i < cell->omega->cnt; i++) {
+		for (int j = 0; j < SigmaSize; j++) {
+			delta->vals[i][j] = (lambdadeltaType*)mem_malloc(sizeof(lambdadeltaType));
+			delta->vals[i][j]->dbeta = (sparseVector*)mem_malloc(sizeof(sparseVector));
+			delta->vals[i][j]->dbeta->val = (double*)arr_alloc(prob[0]->num->cols + 1, double); /*TO DO: Change it to a reasonable size*/
+			delta->vals[i][j]->dbeta->col = (int*)arr_alloc(prob[0]->num->cols + 1, int);
+		}
+	}
+
+	return delta;
+
+}//END newDelta()
 void freeOmegaType(omegaType* omega, bool partial) {
 	int n;
 		if (omega->vals) {
@@ -692,3 +849,27 @@ oneProblem *newMaster(oneProblem *probSP) {
 
 	return stage0;
 }//END newMaster()
+
+
+void sample(int* omegaP, int numsample, int numobs) {
+	for (int i = 0; i < numsample; i++) {
+		omegaP[i] = randInteger(numobs);
+	}
+}
+void subtractSample(int * omegaP, int* omegaQ , int numobs, int numsample) {
+	int cnt = 0;
+	int stat = 1;
+	for (int i = 0; i < numobs; i++) {
+		for (int j = 0; j < numsample; j++) {
+			if (omegaP[j] == i) {
+				stat = 0;
+			}
+		}
+		if (stat)
+		{
+			omegaQ[cnt] = i;
+			cnt++;
+		}
+		stat = 1;
+	}
+}

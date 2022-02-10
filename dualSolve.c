@@ -41,34 +41,19 @@ oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, sigmaType*si
 	double dalpha = 0;
 	double* Y;
 	Y = (double*)arr_alloc(prob[1]->num->cols+1, double);
-	 /* 1. Create a new cut */
-	 oneCut* cut = newCut(prob[1]->num->cols);
-	int j = 0;
-	/*Creat a subset of observations you want to solve*/
-	for (int i = 0; i < solveset; i++) {
-		omegaP[i] = randInteger(cell->omega->cnt); 
-	}
-	/*Put the remaining observations in another set omegaQ*/
-	int cnt = 0;
-	int stat = 1;
-	for (int i = 0; i < cell->omega->cnt; i++) {
-		for (int j = 0; j < solveset; j++) {
-			if (omegaP[j] == i) {
-				stat = 0;
-			}
-		}
-		if (stat)
-		{
-			omegaQ[cnt] = i;
-			cnt++;
-		}
-		stat = 1;
-	}
+	int cnt;
+	double 		 mubBar;
+	dVector pi;
+	pi = (dVector)arr_alloc(prob[1]->num->rows + 1, double);
 
-	 /**/
-	 double 		 mubBar;
-     dVector pi;
-	 pi = (dVector)arr_alloc(prob[1]->num->rows + 1, double);
+	 /* 1. Initialize a new cut */
+	 oneCut* cut = newCut(prob[1]->num->cols);
+	
+	 /*Creat a subset of observations you want to solve*/
+	 Sample(omegaP , solveset , cell->omega->cnt);
+
+	/*Put the remaining observations in another set omegaQ*/
+	 subtractSet(omegaP, omegaQ , cell->omega->cnt , solveset);
 
 	/* 2. loop through subset solveset and solve the subproblems */
 
@@ -148,6 +133,8 @@ oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, sigmaType*si
 	//	mem_free(bestbetha);
 	//}
 	//}
+	 mem_free(omegaP);
+	 mem_free(omegaQ);
     TERMINATE:
 	return NULL;
 }//END dualsolve()

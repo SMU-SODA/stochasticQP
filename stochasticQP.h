@@ -7,6 +7,12 @@
 #define ALGO_CHECK
 #undef STOCH_CHECK
 
+typedef enum {
+	DUALLBASED,
+	FULL,
+	PARTITIONBASED
+} algoType;
+
 typedef struct {
 	int		numRV;					/* Number of random variables */
 	int 	cnt;					/* Number of observations */
@@ -118,9 +124,9 @@ typedef struct {
 
 	runTime* time;				/* Run time structure */
 
-	/*lambdaType* lambda;
+  lambdaType* lambda;
 	sigmaType* sigma;
-	deltaType* delta;*/
+	deltaType* delta;
 }cellType;
 
 typedef struct {
@@ -209,9 +215,19 @@ void cellfree(cellType* cell);
 void freecut(cutsType* cut);
 void freeonecut(oneCut* cut);
 void freeOmegaType(omegaType* omega, bool partial);
-
+void freeSigma(sigmaType* sigma);
+void freeLambda(lambdaType* lambda);
+void freeDelta(deltaType *delta , int numobs);
 oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, sigmaType *sigma ,deltaType * delta, lambdaType* lambda, double* x ,double solveset);
 int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS, double*,double* mu2, double* mu3);
 int calcSigma(sigmaType* sigma, cellType* cell  ,probType** prob, dVector pi, dVector mu2, dVector mu3 , sparseVector* bOmega, sparseMatrix* COmega,
 		sparseVector* yuOmega , int obs);
 int stochasticUpdates(probType** prob, cellType* cell, stocType* stoch, lambdaType* lambda,sigmaType* sigma  ,double* x ,int rand);
+sigmaType* newSigma(double SigmaSize, probType** prob);
+lambdaType* newLambda(double SigmaSize, probType** prob);
+deltaType* newDelta(double SigmaSize, probType** prob, cellType* cell);
+void freeDelta(deltaType* delta, cellType* cell);
+void freeLambda(lambdaType* lambda);
+void freeSigma(sigmaType* sigma);
+void sample(int* omegaP, int numsample, int numobs);
+void subtractSample(int* omegaP, int* omegaQ, int numobs, int numsample);
