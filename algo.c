@@ -16,10 +16,10 @@ extern configType config;
 int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 
 	
-	double subset = 0.1 * cell->omega->cnt; /*initialize the number of samples you want to take from Omega in each iteration*/
+	double subset = config.SAMPLE_FRACTION * cell->omega->cnt; /*initialize the number of samples you want to take from Omega in each iteration*/
 	
 	oneCut *cut = NULL;
-	while ( cell->k < 25) {
+	while ( cell->k < config.MAX_ITER) {
 		cell->k++;
 		/* 1. Check optimality */
 
@@ -33,7 +33,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 			}
 			break;
 		case 0:
-			dualSolve(prob, cell, stoc,  cell->sigma,  cell->delta, cell->lambda, cell->candidX, subset);
+			dualSolve(prob, cell, stoc, cell->candidX, subset);
 			break;
 		case 2:
 			partSolve();

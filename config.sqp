@@ -19,6 +19,9 @@ SAA 0
 // Number of observations to be used to set the sample average approximation
 MAX_OBS 600
 
+// A fraction (0,1] to determine what fraction of samples are solved
+SAMPLE_FRACTION 0.1
+
 // Run seeds
 RUN_SEED    3554548844580680
 RUN_SEED    4650175399072632

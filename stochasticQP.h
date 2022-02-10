@@ -218,7 +218,7 @@ void freeOmegaType(omegaType* omega, bool partial);
 void freeSigma(sigmaType* sigma);
 void freeLambda(lambdaType* lambda);
 void freeDelta(deltaType *delta , int numobs);
-oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, sigmaType *sigma ,deltaType * delta, lambdaType* lambda, double* x ,double solveset);
+oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch , double* x ,double solveset);
 int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS, double*,double* mu2, double* mu3);
 int calcSigma(sigmaType* sigma, cellType* cell  ,probType** prob, dVector pi, dVector mu2, dVector mu3 , sparseVector* bOmega, sparseMatrix* COmega,
 		sparseVector* yuOmega , int obs);
@@ -230,4 +230,4 @@ void freeDelta(deltaType* delta, cellType* cell);
 void freeLambda(lambdaType* lambda);
 void freeSigma(sigmaType* sigma);
 void sample(int* omegaP, int numsample, int numobs);
-void subtractSample(int* omegaP, int* omegaQ, int numobs, int numsample);
+void  subtractSample(int * omegaP, int* omegaQ , int numobs, int numsample);

@@ -53,7 +53,7 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 	cell->incumbEst = 0.0;
 	cell->candidEst = 0.0;
 
-	double SigmaSize = 0.1 * cell->omega->cnt * config.MAX_ITER;
+	double SigmaSize = config.SAMPLE_FRACTION * cell->omega->cnt * config.MAX_ITER;
 
 	/*6. Allocate memory to SigmaType, LambdaType, DeltaType*/
 	if (config.ALGOTYPE == DUALLBASED) {

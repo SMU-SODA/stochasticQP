@@ -9,7 +9,7 @@
 
 
 
-oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, sigmaType*sigma ,deltaType* delta, lambdaType * lambda ,double* x, double solveset) {
+oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch ,double* x, double solveset) {
 
 	/*initialization of the parameters*/
 	sparseMatrix *COmega; /* Presenting the C matrix associated with an observation(I mean the difference from Cbar)*/
@@ -49,18 +49,19 @@ oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, sigmaType*si
 	 /* 1. Initialize a new cut */
 	 oneCut* cut = newCut(prob[1]->num->cols);
 	
-	 /*Creat a subset of observations you want to solve*/
-	 Sample(omegaP , solveset , cell->omega->cnt);
+	 /*2. Creat a subset of observations you want to solve*/
+	 sample(omegaP , solveset , cell->omega->cnt);
 
 	/*Put the remaining observations in another set omegaQ*/
-	 subtractSet(omegaP, omegaQ , cell->omega->cnt , solveset);
+	 subtractSample(omegaP, omegaQ , cell->omega->cnt , solveset);
 
-	/* 2. loop through subset solveset and solve the subproblems */
+	/* 3. loop through subset solveset and solve the subproblems */
 
 	 for (int i = 0; i < solveset; i++) {
 		 /* 2a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
-		 cnt = lambda->cnt;
-		 if (solveSubprob(prob[1], cell->subprob, cell->candidX, cell->omega->vals[i], lambda->pi[i], &mubBar, lambda->mu2[i], lambda->mu3[i])) {
+		 cnt = cell->lambda->cnt;
+		 if (solveSubprob(prob[1], cell->subprob, cell->candidX, cell->omega->vals[i], cell->lambda->pi[i], &mubBar, cell->lambda->mu2[i]
+			 , cell->lambda->mu3[i])) {
 			 errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 			 goto TERMINATE;
 		 }
