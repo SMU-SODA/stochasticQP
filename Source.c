@@ -58,8 +58,8 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 	/*6. Allocate memory to SigmaType, LambdaType, DeltaType*/
 	if (config.ALGOTYPE == DUALLBASED) {
 		cell->lambda = newLambda(SigmaSize, prob);
-		cell->sigma = newSigma(SigmaSize, prob);
-		cell->delta = newDelta( SigmaSize, prob,cell);
+		cell->sigma  = newSigma(SigmaSize, prob);
+		cell->delta  = newDelta( SigmaSize, prob,cell);
 	}
 	else {
 		cell->lambda = NULL;
@@ -70,8 +70,7 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 	return cell;
 }//END buildCell()
 
-void cellfree(cellType * cell)
-{
+void freeCellType (cellType * cell) {
 	int numobs = cell->omega->cnt;
 	if (cell->master) {
 		mem_free(cell->master->name);
@@ -85,8 +84,8 @@ void cellfree(cellType * cell)
 	}
 	if (cell->subprob) {
 		mem_free(cell->subprob->name);
-		for (int n = 0; n < cell->master->mac; n++) {
-			mem_free(cell->master->cname[n]);
+		for (int n = 0; n < cell->subprob->mac; n++) {
+			mem_free(cell->subprob->cname[n]);
 		}
 		for (int n = 0; n < cell->subprob->mar; n++) {
 			mem_free(cell->subprob->rname[n]);
@@ -95,9 +94,9 @@ void cellfree(cellType * cell)
 	}
 
 	freeOmegaType(cell->omega,false); /*????*/
-	if (cell->candidX)mem_free(cell->candidX);
-	if (cell->incumbX)mem_free(cell->candidX);
-	if (cell->piM)mem_free(cell->piM);
+	if (cell->candidX) mem_free(cell->candidX);
+	if (cell->incumbX) mem_free(cell->candidX);
+	if (cell->piM) mem_free(cell->piM);
 	freecut(cell->cuts);
 	freecut(cell->fCuts);
 	if (cell->time)mem_free(cell->time);
@@ -105,10 +104,10 @@ void cellfree(cellType * cell)
 	freeLambda(cell->lambda);
 	freeDelta(cell->delta, numobs);
 
-	
+
 	mem_free(cell);
 
-} /**End free Cell**/
+} /** End freeCellType() **/
 
 void freeSigma(sigmaType* sigma) {
 	if (sigma) {
@@ -120,16 +119,16 @@ void freeSigma(sigmaType* sigma) {
 					if (sigma->vals[i]->piCar) {
 						mem_free(sigma->vals[i]->piCar);
 					}
-					
-				
+
+
 				}
 				mem_free(sigma->vals[i]);
 			}
 			mem_free(sigma->vals);
 		}
-	mem_free(sigma);
+		mem_free(sigma);
 	}
-	
+
 }; /**EndFreeSigma**/
 
 void freeLambda(lambdaType* lambda) {
@@ -159,7 +158,7 @@ void freeLambda(lambdaType* lambda) {
 			mem_free(lambda->mu3);
 		}
 		mem_free(lambda);
-		}	
+	}
 }; /*EndfreeLambda*/
 
 void freeDelta(deltaType* delta, int numobs) {
@@ -183,7 +182,7 @@ void freeDelta(deltaType* delta, int numobs) {
 void freeLambdaDelta(lambdadeltaType* lambdadelta){
 
 	if (lambdadelta) {
-	
+
 		freeSparseVector(lambdadelta->dbeta);
 	}
 }
@@ -191,12 +190,12 @@ void freeLambdaDelta(lambdadeltaType* lambdadelta){
 void freecut(cutsType * cut){
 	if (cut) {
 
-	if (cut->vals)	{	
-		for (int i = 0; i < cut->cnt; i++) {
-			freeonecut(cut->vals[i]);
+		if (cut->vals)	{
+			for (int i = 0; i < cut->cnt; i++) {
+				freeonecut(cut->vals[i]);
+			}
+			mem_free(cut->vals);
 		}
-		mem_free(cut->vals);
-	}
 		mem_free(cut);
 	}
 }
@@ -207,11 +206,11 @@ void freeonecut(oneCut* cut) {
 		if (cut->name)mem_free(cut->name);
 		mem_free(cut);
 	}
-		
+
 };
 
 
-int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector obsVals, dVector piS, double *mubBar, double* mu2, double* mu3) {
+int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector obsVals, dVector piS, double *mubBar, double* mu_up, double* mu_low) {
 	dVector rhs = NULL, cost = NULL;
 	iVector	indices;
 
@@ -251,7 +250,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector 
 
 
 	/* (e) Solve the subproblem to obtain the optimal dual solution. */
-    	if ( solveProblem(subproblem->model) ) {
+	if ( solveProblem(subproblem->model) ) {
 		errMsg("algorithm", "solveSubprob", "failed to solve subproblem in solver", 0);
 		return 1;
 	}
@@ -275,7 +274,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector 
 	double* dj;
 	dj = (dVector)arr_alloc(prob->num->cols + 1, double); /*why numcols+1?*/
 
-	if ( computeMU(subproblem->model, prob->num->cols, mubBar,dj , mu2, mu3) ) {
+	if ( computeMU(subproblem->model, prob->num->cols, mubBar,dj , mu_up, mu_low) ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
 		return 1;
 	}
@@ -290,7 +289,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector 
 
 
 int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS,double* muBar, double* mu2, double* mu3) {
-	
+
 	dVector rhs = NULL, cost = NULL;
 	iVector	indices;
 
@@ -362,9 +361,9 @@ int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVec
 		if (dj[i+1] >= 0) {
 			mu2[i+1] = dj[i+1];
 		}
-	
-	else if (dj[i+1] < 0) { mu3[i+1] = dj[i+1]; }
-}
+
+		else if (dj[i+1] < 0) { mu3[i+1] = dj[i+1]; }
+	}
 
 	if (rhs) mem_free(rhs);
 	if (dj) mem_free(dj);
@@ -434,14 +433,13 @@ dVector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, dVe
 
 
 /* This function compute the reduced cost of every second stage variables. They will be used to calculate the \mu x b and then added to the \pi x b. */
-int computeMU(modelPtr *model, int numCols, double *mubBar, double * dj, double* mu2,double* mu3) {
+int computeMU(modelPtr *model, int numCols, double *mubBar, double * dj, double* mu_up, double* mu_low) {
 	dVector u;
 	int		n;
 
 	(*mubBar) = 0.0;
-		
+
 	u = (dVector) arr_alloc(numCols+1, double);
-	
 
 	if ( getPrimal(model, u, 0, numCols) ) {
 		errMsg("solver", "computeMU", "failed to obtain primal solution", 0);
@@ -458,11 +456,13 @@ int computeMU(modelPtr *model, int numCols, double *mubBar, double * dj, double*
 	}
 	for (int i = 1; i < numCols;i++) {
 		if (dj[i] >= 0) {
-			mu3[i] = dj[i];
+			mu_up[i] = dj[i];
+			mu_low[i] = 0.0;
 		}
 		else
 		{
-			mu2[i] = dj[i];
+			mu_up[i] = 0.0;
+			mu_low[i] = dj[i];
 		}
 	}
 	mem_free(u); 
@@ -506,7 +506,7 @@ omegaType* newOmega(stocType* stoc) {
 	omega->weights = (iVector) arr_alloc(config.MAX_OBS, int);
 	omega->vals = (dVector*) arr_alloc(config.MAX_OBS, dVector);
 	omega->cnt = 0; 
-omega->numRV = stoc->numOmega;
+	omega->numRV = stoc->numOmega;
 
 	if (config.SAA == 1 ) {
 		config.SAA = 0;
@@ -626,7 +626,7 @@ deltaType* newDelta(double SigmaSize, probType** prob , cellType* cell) {
 }//END newDelta()
 void freeOmegaType(omegaType* omega, bool partial) {
 	int n;
-		if (omega->vals) {
+	if (omega->vals) {
 		for (n = 0; n < omega->cnt; n++)
 			if (omega->vals[n])
 				mem_free(omega->vals[n]);
@@ -638,14 +638,14 @@ void freeOmegaType(omegaType* omega, bool partial) {
 	}
 	if (omega->probs) mem_free(omega->probs);
 	if (omega->weights) mem_free(omega->weights);
-	    mem_free(omega);
+	mem_free(omega);
 }//END freeOmegaType()
 
 oneProblem* newSubproblem(oneProblem* probSP) {
 
 	oneProblem *stage1;
 	stage1 = (oneProblem*)mem_malloc(sizeof(oneProblem));
-	
+
 	stage1->model = NULL;
 	stage1->name = (cString)arr_alloc(NAMESIZE, char);
 	stage1->objname = (cString)arr_alloc(NAMESIZE, char);
@@ -763,7 +763,7 @@ oneProblem *newMaster(oneProblem *probSP) {
 	stage0->type= probSP->type;			/* type of problem: LP, QP, MIP or MIQP */
 
 	/* Copy the quadratic part of the objective */
-	if (probSP->objQ->cnt > 0) {
+	if (probSP->objQ != NULL )  {
 		stage0->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));   /*why do we write it?*/
 		stage0->objQ->col = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
 		stage0->objQ->row = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
@@ -856,6 +856,7 @@ void sample(int* omegaP, int numsample, int numobs) {
 		omegaP[i] = randInteger(numobs);
 	}
 }
+
 void subtractSample(int * omegaP, int* omegaQ , int numobs, int numsample) {
 	int cnt = 0;
 	int stat = 1;

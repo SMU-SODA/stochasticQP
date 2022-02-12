@@ -26,7 +26,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 	}
 
 	(*numStages) = tim->numStages;  /*why we need the pranthesis? tm->numStages is int???? so why not &?*/
-	
+
 	/* allocate memory to elements of probType */
 	prob = (probType **) arr_alloc(tim->numStages, probType *); 
 
@@ -130,11 +130,15 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			prob[t]->Dbar->cnt = 0;
 		}
 
-		///allocate mamory to q of prob t
-		prob[t]->sp->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix)); /*why do we write it?												 */
-		prob[t]->sp->objQ->col = (iVector)arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, int);
-		prob[t]->sp->objQ->row = (iVector)arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, int);
-		prob[t]->sp->objQ->val = (dVector)arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, double);
+		//allocate mamory to q of prob t
+		if ( orig->objQ->cnt > 0 ) {
+			prob[t]->sp->objQ = (sparseMatrix*) mem_malloc(sizeof(sparseMatrix));
+			prob[t]->sp->objQ->col = (iVector) arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, int);
+			prob[t]->sp->objQ->row = (iVector) arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, int);
+			prob[t]->sp->objQ->val = (dVector) arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, double);
+		}
+		else
+			prob[t]->sp->objQ = NULL;
 	}
 	t = 0;
 	for ( t = 0; t < tim->numStages-1; t++ ) {
@@ -154,8 +158,8 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			prob[t]->sp->objx[k] = orig->objx[m];
 			prob[t]->sp->bdl[k] = orig->bdl[m];
 			prob[t]->sp->bdu[k] = orig->bdu[m];
-	
-		
+
+
 			if ( orig->ctype[m] == 'I')
 				prob[t]->sp->numInt++;
 			else if ( orig->ctype[m] == 'B' )
@@ -194,7 +198,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			}
 		}
 
-		
+
 
 		/* copy row information for non-terminal stage */
 		for ( m = tim->row[t]; m < tim->row[t+1]; m++ ) {
@@ -211,18 +215,15 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			prob[t]->bBar->cnt++;
 		}
 
-		int r2 = 0;
 		for (int r1 = 0; r1 < orig->objQ->cnt; r1++) {
-			if ( (orig->objQ->col[r1] >= tim->col[t] & orig->objQ->col[r1] < tim->col[t + 1]) & (orig->objQ->row[r1] >= tim->col[t]) & (orig->objQ->row[r1] < tim->col[t + 1]) )
-			{
+			if ( (orig->objQ->col[r1] >= tim->col[t] & orig->objQ->col[r1] < tim->col[t + 1]) & (orig->objQ->row[r1] >= tim->col[t]) & (orig->objQ->row[r1] < tim->col[t + 1]) ) {
 
-				prob[t]->sp->objQ->col[r2] = orig->objQ->col[r1] - tim->col[t];
-				prob[t]->sp->objQ->row[r2] = orig->objQ->row[r1] - tim->col[t];
-				prob[t]->sp->objQ->val[r2] = orig->objQ->val[r1];
-				r2++;
+				prob[t]->sp->objQ->col[prob[t]->sp->objQ->cnt] = orig->objQ->col[r1] - tim->col[t];
+				prob[t]->sp->objQ->row[prob[t]->sp->objQ->cnt] = orig->objQ->row[r1] - tim->col[t];
+				prob[t]->sp->objQ->val[prob[t]->sp->objQ->cnt] = orig->objQ->val[r1];
+				prob[t]->sp->objQ->cnt++;
 			}
 		}
-		prob[t]->sp->objQ->cnt = r2;
 	}
 
 	/* Now copy the terminal stage problem */
@@ -256,7 +257,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			return NULL;
 		}
 		else
-		prob[t]->sp->ctype[k] = orig->ctype[m];
+			prob[t]->sp->ctype[k] = orig->ctype[m];
 
 
 
@@ -295,7 +296,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		prob[t]->bBar->col[prob[t]->bBar->cnt+1] = m - tim->row[t]+1;
 		prob[t]->bBar->cnt++;
 	}
-	
+
 	int numvar = orig->mar - tim->col[t];
 	///allocate mamory to q of prob t
 	prob[t]->sp->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix)); /*why do we write it?												 */
@@ -326,7 +327,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		}
 	}
 	else { 
-	
+
 		if (prob[t]->sp->numInt + prob[t]->sp->numBin > 0) {
 			prob[t]->sp->type = PROB_MILP;
 		}
@@ -334,7 +335,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			prob[t]->sp->type = PROB_LP;
 		}
 	}
-	
+
 #if defined(DECOMPOSE_CHECK)
 	/* write stage problems in LP format to verify decomposition */
 	char fname[BLOCKSIZE]; 
@@ -369,6 +370,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		prob[t]->num->numRV = prob[t]->num->rvColCnt = prob[t]->num->rvRowCnt = 0;
 		prob[t]->num->rvAOmCnt = prob[t]->num->rvBOmCnt = prob[t]->num->rvCOmCnt = prob[t]->num->rvDOmCnt = 0;
 		prob[t]->num->rvaOmCnt = prob[t]->num->rvbOmCnt = prob[t]->num->rvcOmCnt = prob[t]->num->rvdOmCnt = 0;
+		prob[t]->num->rvylOmCnt = prob[t]->num->rvyuOmCnt = 0;
 
 		if ( t == 0 ) {
 			prob[t]->mean = NULL;
@@ -438,7 +440,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 				errMsg("allocation", "newProb", "prob->coord->allRVCols", 0);
 			if ( !(prob[t]->coord->allRVRows= (iVector) arr_alloc((*stoc)->numOmega+1, int)) )
 				errMsg("allocation", "newProb", "prob->coord->allRVRows", 0);
-			if ( !(prob[t]->coord->rvOffset = (iVector) arr_alloc(4, int)))
+			if ( !(prob[t]->coord->rvOffset = (iVector) arr_alloc(5, int)))
 				errMsg("allocation", "newProb", "prob->coord->rOffset", 0);
 			if ( !(prob[t]->mean = (dVector) arr_alloc((*stoc)->numOmega+1, double)) )
 				errMsg("allocation", "newProb", "prob->mean", 0);
@@ -448,9 +450,9 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 
 		prob[t]->num->numRV++;
 		prob[t]->mean[prob[t]->num->numRV] = (*stoc)->mean[m];
-		
+
 		/* The order of random variables is: (i) right-hand side, (ii) transfer matrix, and (iii) cost-coefficients (iiii) upperbounds. */
-		
+
 		if ( (*stoc)->col[m] == -1 && (*stoc)->row[m] != -1 ) {
 
 			/* Right-hand side */
@@ -459,7 +461,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 				prob[t]->coord->rvOffset[0] = rvOffset;
 
 			}
-			
+
 			prob[t]->coord->allRVCols[prob[t]->num->numRV] = -1;
 			prob[t]->coord->allRVRows[prob[t]->num->numRV] = (*stoc)->row[m]-tim->row[t]+1;
 			prob[t]->coord->rvbOmRows[++prob[t]->num->rvbOmCnt] = prob[t]->coord->allRVRows[prob[t]->num->numRV];
@@ -473,7 +475,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			}
 			prob[t]->coord->rvyuOmRows[prob[t]->num->rvyuOmCnt] = (*stoc)->col[m];
 			prob[t]->num->rvyuOmCnt++;
-			}
+		}
 		/*lower bound*/
 		else if ((*stoc)->col[m] != -1 && (*stoc)->row[m] == -3) {
 			upper++;
@@ -490,7 +492,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			}*/
 
 			/* Transfer matrix */
-			 if ( prob[t]->num->rvCOmCnt == 0 ) {
+			if ( prob[t]->num->rvCOmCnt == 0 ) {
 				prob[t]->coord->rvCOmCols = (iVector) arr_alloc((*stoc)->numOmega, int);
 				prob[t]->coord->rvCOmRows = (iVector) arr_alloc((*stoc)->numOmega, int);
 				prob[t]->coord->rvOffset[1] = rvOffset;
@@ -501,7 +503,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			prob[t]->num->rvCOmCnt++;
 			prob[t]->coord->rvCOmCols[prob[t]->num->rvCOmCnt] = prob[t]->coord->allRVCols[prob[t]->num->numRV];
 			prob[t]->coord->rvCOmRows[prob[t]->num->rvCOmCnt] = prob[t]->coord->allRVRows[prob[t]->num->numRV];
-			
+
 		}
 		else {
 			/* Cost coefficients */
@@ -520,7 +522,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		prob[t]->coord->rvOffset[2] = rhs+transfer ;
 		prob[t]->coord->rvOffset[3] =rhs+ transfer + cost ;
 		prob[t]->coord->rvOffset[4] = rhs + transfer + cost + upper;
-		
+
 
 	}
 
@@ -598,7 +600,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 
 
 
-	
+
 
 
 	printf("2. Decomposition complete.\n");

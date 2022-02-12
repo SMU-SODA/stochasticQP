@@ -8,8 +8,8 @@
 #undef STOCH_CHECK
 
 typedef enum {
-	DUALLBASED,
 	FULL,
+	DUALLBASED,
 	PARTITIONBASED
 } algoType;
 
@@ -211,7 +211,7 @@ oneCut *newCut(int numX);
 int runAlgo(probType** prob, stocType* stoc, cellType* cell);
 int updateRHSwState(numType* num, coordType* coord, sparseVector* bBar, sparseMatrix* Cbar, dVector X,
 	dVector obs, dVector *rhs);
-void cellfree(cellType* cell);
+void freeCellType(cellType* cell);
 void freecut(cutsType* cut);
 void freeonecut(oneCut* cut);
 void freeOmegaType(omegaType* omega, bool partial);
@@ -226,7 +226,7 @@ int stochasticUpdates(probType** prob, cellType* cell, stocType* stoch, lambdaTy
 sigmaType* newSigma(double SigmaSize, probType** prob);
 lambdaType* newLambda(double SigmaSize, probType** prob);
 deltaType* newDelta(double SigmaSize, probType** prob, cellType* cell);
-void freeDelta(deltaType* delta, cellType* cell);
+void freeDelta(deltaType* delta, int numobs);
 void freeLambda(lambdaType* lambda);
 void freeSigma(sigmaType* sigma);
 void sample(int* omegaP, int numsample, int numobs);

@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
 	freeProbType(prob, 2);
 	mem_free(probname);
 	mem_free(inputDir);
-	cellfree(cell);
+	freeCellType(cell);
 	freeStocType(stoch);
 	TERMINATE: return 0;
 } /*END main()*/ 

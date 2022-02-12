@@ -31,10 +31,12 @@ oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch ,double* x, d
 	double alpha; /*presenting an alpha value we obtained using a dual solution while searching through lambda*/
 	double* beta; /*presenting an beta value we obtained using a dual solution while searching through lambda*/
 	double* dbeta; /**presenting delta beta while searching through lambda*/
+
 	int *omegaP; /*representing the set of opservations we want to solve exactly*/
 	int* omegaQ; /*representing the set of opservations we want to solve approximatly*/
 	omegaP = (int*)arr_alloc(solveset, int); 
 	omegaQ = (int*)arr_alloc(cell->omega->cnt - solveset,int);
+
 	double  bestalpha;
 	double*  bestbetha;
 	double * s;
@@ -135,7 +137,7 @@ oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch ,double* x, d
 	//}
 	//}
 	 mem_free(omegaP);
-	 mem_free(omegaQ);
+//	 mem_free(omegaQ);
     TERMINATE:
 	return NULL;
 }//END dualsolve()

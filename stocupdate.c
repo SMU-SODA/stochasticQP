@@ -44,6 +44,8 @@ int stochasticUpdates(probType** prob, cellType* cell, stocType* stoch, lambdaTy
 	mem_free(mu2);
 	mem_free(mu3);
 	mem_free(pi);
+
+	return 0;
 }
 
 int calcSigma(sigmaType* sigma, cellType* cell  ,probType** prob, dVector pi, dVector mu2, dVector mu3 , sparseVector* bOmega, sparseMatrix* COmega,
