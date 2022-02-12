@@ -93,17 +93,19 @@ void freeCellType (cellType * cell) {
 		freeOneProblem(cell->subprob);
 	}
 
-	freeOmegaType(cell->omega,false); /*????*/
 	if (cell->candidX) mem_free(cell->candidX);
-	if (cell->incumbX) mem_free(cell->candidX);
+	if (cell->incumbX) mem_free(cell->incumbX);
 	if (cell->piM) mem_free(cell->piM);
+
 	freecut(cell->cuts);
 	freecut(cell->fCuts);
-	if (cell->time)mem_free(cell->time);
+
 	freeSigma(cell->sigma);
 	freeLambda(cell->lambda);
 	freeDelta(cell->delta, numobs);
+	freeOmegaType(cell->omega,false);
 
+	if (cell->time)mem_free(cell->time);
 
 	mem_free(cell);
 
@@ -282,6 +284,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector 
 	if (rhs) mem_free(rhs);
 	if (cost) mem_free(cost);
 	if (indices) mem_free(indices);
+	if (dj) mem_free(dj);
 	return 0;
 }// END solveSubprob()
 

@@ -355,10 +355,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 	}
 #endif
 
-	//sparseMatrix* q1 = getQmatrix(prob[0]->sp->model, prob[0]->sp->mac);
-	//sparseMatrix* q2 = getQmatrix(prob[1]->sp->model, prob[1]->sp->mac);
 	/* save size information in numType */
-
 	for ( t = 0; t < tim->numStages; t++ ) {
 		if ( !(prob[t]->num = (numType *) mem_malloc(sizeof(numType))) )
 			errMsg("allocation", "newProb", "prob[t]->num",0);
@@ -381,17 +378,15 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			if ( !(prob[t]->coord = (coordType *) mem_malloc(sizeof(coordType))) )
 				errMsg("allocation", "newProb", "prob[t]->coord",0);
 
-
 			prob[t]->num->prevCols = prob[t-1]->num->cols;
 			prob[t]->num->prevRows = prob[t-1]->num->rows;
-
 
 			prob[t]->coord->CCols = findElems(prob[t]->Cbar->col, prob[t]->Cbar->cnt, &prob[t]->num->cntCcols);
 			prob[t]->coord->CRows = findElems(prob[t]->Cbar->row, prob[t]->Cbar->cnt, &prob[t]->num->cntCrows);
 
-
 			prob[t]->coord->allRVCols = prob[t]->coord->allRVRows = prob[t]->coord->rvCols = prob[t]->coord->rvRows = NULL;
 			prob[t]->coord->rvCOmCols = prob[t]->coord->rvCOmRows = prob[t]->coord->rvbOmRows = prob[t]->coord->rvdOmCols = NULL;
+			prob[t]->coord->rvylOmRows = prob[t]->coord->rvyuOmRows = NULL;
 		}
 	}
 
@@ -404,9 +399,6 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 	int transfer = 0;
 
 	for ( m = 0; m < (*stoc)->numOmega; m++ ) {
-
-
-
 		if ( (*stoc)->col[m] == -1 ) {
 			/* randomness in right-hand side */
 			t = 0;
@@ -471,7 +463,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		else if ((*stoc)->col[m] != -1 && (*stoc)->row[m] == -2) {
 			upper++;
 			if (prob[t]->num->rvyuOmCnt == 0) {
-				prob[t]->coord->rvyuOmRows = (iVector)arr_alloc(prob[t]->num->cols + 1, int);
+				prob[t]->coord->rvyuOmRows = (iVector) arr_alloc(prob[t]->num->cols + 1, int);
 			}
 			prob[t]->coord->rvyuOmRows[prob[t]->num->rvyuOmCnt] = (*stoc)->col[m];
 			prob[t]->num->rvyuOmCnt++;
@@ -480,7 +472,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		else if ((*stoc)->col[m] != -1 && (*stoc)->row[m] == -3) {
 			upper++;
 			if (prob[t]->num->rvylOmCnt == 0) {
-				prob[t]->coord->rvylOmRows = (iVector)arr_alloc(prob[t]->num->cols + 1, int);
+				prob[t]->coord->rvylOmRows = (iVector) arr_alloc(prob[t]->num->cols + 1, int);
 			}
 			prob[t]->coord->rvylOmRows[prob[t]->num->rvylOmCnt] = (*stoc)->col[m];
 			prob[t]->num->rvylOmCnt++;
@@ -598,11 +590,6 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		rvOffset += prob[t]->num->numRV;
 	}
 
-
-
-
-
-
 	printf("2. Decomposition complete.\n");
 
 	/* Solve the mean value problem */
@@ -638,19 +625,6 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 
 	return NULL;
 }//END newProbwSMPS()
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /* setup and solve the original problem _orig_ with expected values for all random variables provided in _stoc_. If the problem is an mixed-integer program,
  *  then a relaxed problem is solved. The function returns a dVector of mean value solutions, if there is an error it returns NULL.*/
@@ -883,6 +857,8 @@ void freeProbType(probType **prob, int T) {
 				if (prob[t]->bBar) freeSparseVector(prob[t]->bBar);
 				if (prob[t]->cBar) freeSparseVector(prob[t]->cBar);
 				if (prob[t]->dBar) freeSparseVector(prob[t]->dBar);
+				if (prob[t]->yubar) freeSparseVector(prob[t]->yubar);
+				if (prob[t]->ylbar) freeSparseVector(prob[t]->ylbar);
 				if (prob[t]->num) mem_free(prob[t]->num);
 				if (prob[t]->coord) freeCoordType(prob[t]->coord);
 				if (prob[t]->mean) mem_free(prob[t]->mean);
@@ -920,6 +896,8 @@ void freeCoordType (coordType *coord) {
 	if (coord->rvdOmCols) mem_free(coord->rvdOmCols);
 	if (coord->rvCOmCols) mem_free(coord->rvCOmCols);
 	if (coord->rvCOmRows) mem_free(coord->rvCOmRows);
+	if (coord->rvylOmRows) mem_free(coord->rvylOmRows);
+	if (coord->rvyuOmRows) mem_free(coord->rvyuOmRows);
 	if (coord->rvOffset) mem_free(coord->rvOffset);
 	mem_free(coord);
 
