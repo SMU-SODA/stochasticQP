@@ -10,7 +10,6 @@ extern configType config;
 
 /* Building the cell for the 2-SQP algorithms */
 cellType* buildCell(probType** prob , stocType* stoc) {
-
 	cellType* cell;
 	cell = (cellType*)mem_malloc(sizeof(cellType));
 	cell->k = 0;
@@ -621,6 +620,7 @@ deltaType* newDelta(double SigmaSize, probType** prob , cellType* cell) {
 			delta->vals[i][j]->dbeta = (sparseVector*)mem_malloc(sizeof(sparseVector));
 			delta->vals[i][j]->dbeta->val = (double*)arr_alloc(prob[0]->num->cols + 1, double); /*TO DO: Change it to a reasonable size*/
 			delta->vals[i][j]->dbeta->col = (int*)arr_alloc(prob[0]->num->cols + 1, int);
+			delta->vals[i][j]->state = 0;
 		}
 	}
 
@@ -875,5 +875,152 @@ void subtractSample(int * omegaP, int* omegaQ , int numobs, int numsample) {
 			cnt++;
 		}
 		stat = 1;
+	}
+}
+void SampleGen(int* omegaP, int* omegaQ , int cnt, int solveset) {
+
+	/*2. Creat a subset of observations you want to solve*/
+	sample(omegaP, solveset, cnt);
+
+	/*Put the remaining observations in another set omegaQ*/
+	subtractSample(omegaP, omegaQ, cnt, solveset);
+
+}
+void buildbcOmega(sparseVector* bOmega, sparseMatrix* COmega, probType* prob, sparseVector* yund, sparseVector* ybar){
+
+	bOmega->cnt = prob->num->rvbOmCnt;
+	bOmega->col = prob->coord->rvbOmRows;
+	COmega->cnt = prob->num->rvCOmCnt;
+	COmega->col = prob->coord->rvCOmCols;
+	COmega->row = prob->coord->rvCOmRows;
+	ybar->cnt = prob->num->rvyuOmCnt; ybar->col = prob->coord->rvyuOmRows;
+	yund->cnt = prob->num->rvylOmCnt; yund->col = prob->coord->rvylOmRows;
+}
+void AddtoSig(cellType* cell, probType* prob  , double muBar){
+	int* index;
+	int obs = cell->lambda->cnt-1;
+	index = (int*)arr_alloc(prob->num->cols + 1,int);
+	for (int i = 1; i <= prob->num->cols; i++) {
+		index[i] = i ;
+	}
+	double* X;
+	X =(double*)arr_alloc(prob->num->cols+1,double);
+	getPrimal(cell->subprob->model , X, 0, prob->num->cols) ;
+	dVector fbeta = vxMSparse(cell->lambda->pi[obs], prob->Cbar, prob->num->prevCols);
+	/*Calculate fixed section of beta = Cbar*pi (pi is the dual vector associated with equality constraints)*/
+    copyVector(fbeta, cell->sigma->vals[obs]->piCar,prob->num->prevCols);
+	for (int i = 0; i < prob->num->prevCols;i++) {
+		cell->sigma->vals[obs]->piCar[i] = -cell->sigma->vals[obs]->piCar[i];
+	}
+	/*Calculate fixred section of alpha -.5 yQy  + bbar* pi + yunder nu - ybar mu)*/
+	cell->sigma->vals[obs]->interceptBar = -0.5 * vXv(vxMSparse(X, prob->sp->objQ, prob->num->cols), X, index, prob->num->cols) + vXvSparse(cell->lambda->pi[obs], prob->bBar) + muBar;
+	cell->sigma->cnt++;
+	free(index);
+	free(X);
+}/* End AddtoSigma*/
+
+void AddtoDel(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs ,int num) {
+
+	/* 2b. Compute the cut coefficients for individual observation. */
+	
+	bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
+	COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
+	ybar->val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
+	yund->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
+	int* dbetaindex;
+	dbetaindex = (int*)arr_alloc(prob->num->prevCols + 1, int);
+	double* dbeta = vxMSparse(cell->lambda->pi[num], COmega, prob->num->prevCols);
+	if (cell->delta->vals[num][obs]->state == 0) {
+		cell->delta->vals[num][obs]->state = 1;
+		/* calculate deltaalpha */
+		cell->delta->vals[num][obs]->dalpha = vXvSparse(cell->lambda->pi[num], bOmega) + vXvSparse(cell->lambda->mu2[num], ybar) + vXvSparse(cell->lambda->mu3[num], yund); /*TO DO: ybar and yund vals start from index 0*/
+
+		/* Calculate deltabeta */
+		
+		for (int i = 0; i <= prob->num->prevCols; i++) {
+			dbeta[i] = -dbeta[i];
+		}
+
+
+
+		/*find out the number of nonzero elements and their location*/
+		for (int j = 0; j <= prob->num->prevCols; j++) {
+			if (dbeta[j] != 0) {
+				cell->delta->vals[num][obs]->dbeta->cnt++;
+			}
+
+		/*Assign memory to the index section of deltab */
+
+			cell->delta->vals[num][obs]->dbeta->col = (int*)mem_malloc(cell->delta->vals[num][obs]->dbeta->cnt + 1, int);
+			cell->delta->vals[num][obs]->dbeta->val = (double*)mem_malloc(cell->delta->vals[num][obs]->dbeta->cnt + 1, double);
+			int cnt = 0;
+			for (int j = 0; j < cell->delta->vals[num][obs]->dbeta->cnt; j++) {
+				if (dbeta[j]) {
+					cnt++;
+					cell->delta->vals[num][obs]->dbeta->val[cnt] = dbeta[j];
+					cell->delta->vals[num][obs]->dbeta->col[cnt] = j;
+				}
+			
+			}
+			
+		}
+		
+	}
+	free(dbetaindex);
+	free(dbeta);
+	
+}
+void AddtoLam(cellType* cell, double* pi, double* umu, double* lmu , int* stat) {	
+	for (int i = 0; i < cell->lambda->cnt; i++) {
+		if (pi[0] == cell->lambda->pi[i][0] && umu[0] == cell->lambda->mu2[i][0] && lmu[0] == cell->lambda->mu3[i][0]) {
+			(*stat) = i+1;
+		}
+	}
+		
+		if ((*stat) == 0) {
+			
+			copyVector(pi, cell->lambda->pi[cell->lambda->cnt], cell->subprob->mar);
+			copyVector(umu, cell->lambda->mu2[cell->lambda->cnt], cell->subprob->mac);
+			copyVector(lmu, cell->lambda->mu3[cell->lambda->cnt], cell->subprob->mac);
+			cell->lambda->cnt++;
+		}
+	}
+
+
+DualType* buildDual( probType * prob) {
+	DualType* dual;
+		dual = (DualType*)mem_malloc(sizeof(DualType));
+		dual->pi = (dVector)arr_alloc(prob->num->rows + 1, double);
+		dual->lmu = (dVector)arr_alloc(prob->num->cols + 1, double);
+		dual->umu = (dVector)arr_alloc(prob->num->cols + 1, double);
+		return dual;
+
+}
+void VVsparse(dVector result, dVector v, sparseVector* vs, int len) {
+
+
+	for (int i = 0; i < vs->cnt ; i++) {
+		result[vs->col[i]] = v[vs->col[i]] + vs->val[i];
+	}
+
+}
+void stocUpdateQP(cellType* cell, probType* prob, DualType* dual, double* alpha , double* fbeta , double mubBar , sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs) {
+
+	int stat = 0;
+	AddtoLam(cell, dual->pi, dual->umu, dual->lmu, &stat);
+	
+
+	/* add to sigma the alpha and beta and to delta the dalpha and dbeta*/
+	if (stat == 0) {
+		AddtoSig(cell, prob, mubBar); /*add the new alpha beta to sigma*/
+		AddtoDel(cell, prob, COmega, bOmega, ybar, yund, obs, cell->lambda->cnt - 1); /* num position in lambda*/
+		VVsparse(fbeta, cell->sigma->vals[cell->sigma->cnt - 1]->piCar, cell->delta->vals[cell->sigma->cnt - 1][obs]->dbeta, prob->num->prevCols + 1);
+		(*alpha) = cell->sigma->vals[cell->sigma->cnt - 1]->interceptBar + cell->delta->vals[cell->sigma->cnt - 1][obs]->dalpha;
+	}
+	else
+	{
+		AddtoDel(cell, prob, COmega, bOmega, ybar, yund,obs, stat - 1); /* num position in lambda*/
+		VVsparse(fbeta, cell->sigma->vals[stat - 1]->piCar, cell->delta->vals[stat - 1][obs]->dbeta, prob->num->prevCols + 1);
+		(*alpha) = cell->sigma->vals[stat - 1]->interceptBar + cell->delta->vals[stat - 1][obs]->dalpha;
 	}
 }

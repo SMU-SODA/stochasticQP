@@ -37,9 +37,16 @@ typedef struct {
 
 
 typedef struct {
+	int state; /*0 if assignd value 1 ow*/
 	double dalpha;
 	sparseVector* dbeta;
 } lambdadeltaType;
+
+typedef struct {
+	double* pi;
+	double* lmu;
+	double* umu;
+} DualType;
 
 
 typedef struct {
@@ -231,3 +238,11 @@ void freeLambda(lambdaType* lambda);
 void freeSigma(sigmaType* sigma);
 void sample(int* omegaP, int numsample, int numobs);
 void  subtractSample(int * omegaP, int* omegaQ , int numobs, int numsample);
+void  SampleGen(int* omegaP, int* omegaQ, int cnt, int solveset);
+void buildbcOmega(sparseVector* bOmega, sparseMatrix* COmega, probType* prob, sparseVector* yund, sparseVector* ybar);
+void AddtoSig(cellType* cell, probType* prob, double muBar);
+void AddtoDel(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs,int num);
+void AddtoLam(cellType* cell, double* pi, double* umu, double* lmu, int* stat);
+DualType* buildDual( probType* prob);
+void VVsparse(dVector result , dVector v, sparseVector* vs , int len);
+void stocUpdateQP(cellType* cell, probType* prob, DualType* dual, double* alpha, double* fbeta, double mubBar, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs);

@@ -583,17 +583,6 @@ int readIndepDiscrete(FILE *fptr, cString *fields, int maxOmegas, int maxVals, c
 			stoc->col[stoc->numOmega-1] = n;  /* finding the stochstic column */
 
 
-
-
-
-
-
-
-
-
-
-
-
 			if ( !(strcmp(fields[1], orig->objname)) )
 				n = -1;
 			else {

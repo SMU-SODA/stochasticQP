@@ -511,11 +511,9 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		/*update rvofset*/
 		prob[t]->coord->rvOffset[0] = 0;
 		prob[t]->coord->rvOffset[1] = rhs ;
-		prob[t]->coord->rvOffset[2] = rhs+transfer ;
-		prob[t]->coord->rvOffset[3] =rhs+ transfer + cost ;
+		prob[t]->coord->rvOffset[2] = rhs + transfer ;
+		prob[t]->coord->rvOffset[3] = rhs + transfer + cost ;
 		prob[t]->coord->rvOffset[4] = rhs + transfer + cost + upper;
-
-
 	}
 
 	for ( t = 1; t < tim->numStages; t++ ) {
