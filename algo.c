@@ -15,9 +15,9 @@ extern configType config;
 
 int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 
-	
+
 	double subset = config.SAMPLE_FRACTION * cell->omega->cnt; /*initialize the number of samples you want to take from Omega in each iteration*/
-	
+
 	oneCut *cut = NULL;
 	while ( cell->k < config.MAX_ITER) {
 		cell->k++;
@@ -79,15 +79,14 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 			return 1;
 		}
 
-		double objvalmaster;
-		objvalmaster = getObjective(cell->master->model);
+#if defined(ALGO_CHECK)
+		printf("\tObjective function value = %lf\n", getObjective(cell->master->model));
+#endif
 
 		if (getPrimal(cell->master->model, cell->candidX, 0, prob[0]->num->cols) ) {
 			errMsg("solver", "fullSolve", "failed to obtain the candidate solution", 0);
 			return 1;
 		}
-
-
 	}
 
 	return 0;

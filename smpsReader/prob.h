@@ -63,8 +63,8 @@ typedef struct{
 	sparseVector	*bBar;			/* right-hand side b_t */
 	sparseVector	*cBar;			/* state cost coefficients c_t */
 	sparseVector	*dBar;			/* objective function coefficients d_t */
-	sparseVector    * yubar;        /* the mean value of upperbound of variables */
-	sparseVector    * ylbar;        /* the mean value of upperbound of variables */
+	sparseVector    *uBar;          /* the mean value of upper bound of variables */
+	sparseVector    *lBar;          /* the mean value of lower bound of variables */
 	sparseMatrix	*Abar;			/* dynamics state matrix A_{t+} */
 	sparseMatrix	*Bbar;			/* dynamics decision matrix B_{t+} */
 	sparseMatrix	*Cbar;			/* transfer matrix C_t */

@@ -7,9 +7,9 @@ configType config;
 int main(int argc, char* argv[]) {
 	cString inputDir, probname;
 	int numStages;
-	stocType* stoch;
-	probType** prob;
-	cellType* cell = NULL;
+	stocType*  stoch= NULL;
+	probType** prob = NULL;
+	cellType*  cell = NULL;
 	char configFile[BLOCKSIZE];
 
 	/* Obtain parameter input from the command line */
@@ -29,7 +29,6 @@ int main(int argc, char* argv[]) {
 
 	/*This function reads the problem and decomposes that into stages.*/
 	prob = newProbwSMPS(inputDir, probname, &stoch, &numStages);
-
 	if ( prob == NULL ) {
 		errMsg("read", "main", "failed to read files or setup the probType", 0);
 		goto TERMINATE;
@@ -47,11 +46,11 @@ int main(int argc, char* argv[]) {
 	printf("Successfully completed executing the algorithm.\n");
 
 	/* Free all the structures */
-	freeProbType(prob, 2);
+	if (prob) freeProbType(prob, 2);
 	mem_free(probname);
 	mem_free(inputDir);
-	freeCellType(cell);
-	freeStocType(stoch);
+	if (cell) freeCellType(cell);
+	if (stoch) freeStocType(stoch);
 	TERMINATE: return 0;
 } /*END main()*/ 
 

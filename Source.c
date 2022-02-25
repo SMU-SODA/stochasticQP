@@ -69,125 +69,6 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 	return cell;
 }//END buildCell()
 
-void freeCellType (cellType * cell) {
-	int numobs = cell->omega->cnt;
-	if (cell->master) {
-		mem_free(cell->master->name);
-		for (int n = 0; n < cell->master->mac; n++) {
-			mem_free(cell->master->cname[n]);
-		}
-		for (int n = 0; n < cell->master->mar; n++) {
-			mem_free(cell->master->rname[n]);
-		}
-		freeOneProblem(cell->master);
-	}
-	if (cell->subprob) {
-		mem_free(cell->subprob->name);
-		for (int n = 0; n < cell->subprob->mac; n++) {
-			mem_free(cell->subprob->cname[n]);
-		}
-		for (int n = 0; n < cell->subprob->mar; n++) {
-			mem_free(cell->subprob->rname[n]);
-		}
-		freeOneProblem(cell->subprob);
-	}
-
-	if (cell->candidX) mem_free(cell->candidX);
-	if (cell->incumbX) mem_free(cell->incumbX);
-	if (cell->piM) mem_free(cell->piM);
-
-	freecut(cell->cuts);
-	freecut(cell->fCuts);
-
-	freeSigma(cell->sigma);
-	freeLambda(cell->lambda);
-	freeDelta(cell->delta, numobs);
-	freeOmegaType(cell->omega,false);
-
-	if (cell->time)mem_free(cell->time);
-
-	mem_free(cell);
-
-} /** End freeCellType() **/
-
-void freeSigma(sigmaType* sigma) {
-	if (sigma) {
-		if (sigma->vals) {
-			for (int i = 0; i < sigma->cnt; i++) {
-
-				if (sigma->vals[i])
-				{
-					if (sigma->vals[i]->piCar) {
-						mem_free(sigma->vals[i]->piCar);
-					}
-
-
-				}
-				mem_free(sigma->vals[i]);
-			}
-			mem_free(sigma->vals);
-		}
-		mem_free(sigma);
-	}
-
-}; /**EndFreeSigma**/
-
-void freeLambda(lambdaType* lambda) {
-
-	if (lambda)
-	{
-		if (lambda->pi)
-		{
-			for (int i = 0; i < lambda->cnt;i++) {
-				mem_free(lambda->pi[i]);
-			}
-			mem_free(lambda->pi);
-		}
-		if (lambda->mu2) 
-		{
-			for (int i = 0; i < lambda->cnt; i++) {
-				mem_free(lambda->mu2[i]);
-			}
-			mem_free(lambda->mu2);
-		}
-		if (lambda->mu3)
-		{
-			for (int i = 0; i < lambda->cnt; i++) 
-			{
-				mem_free(lambda->mu3[i]);
-			}
-			mem_free(lambda->mu3);
-		}
-		mem_free(lambda);
-	}
-}; /*EndfreeLambda*/
-
-void freeDelta(deltaType* delta, int numobs) {
-	if (delta) {
-		if (delta->vals) {
-			for (int i = 0; i < delta->cnt; i++) {
-				if (delta->vals[i]) {
-					for (int j = 0; j < numobs; i++) {
-						freeLambda(delta->vals[i][j]);
-					}
-					mem_free(delta->vals[i]);
-				}
-				mem_free(delta->vals);
-			}
-		}
-		mem_free(delta);
-	}
-};/*End freeDelta*/
-
-
-void freeLambdaDelta(lambdadeltaType* lambdadelta){
-
-	if (lambdadelta) {
-
-		freeSparseVector(lambdadelta->dbeta);
-	}
-}
-
 void freecut(cutsType * cut){
 	if (cut) {
 
@@ -210,8 +91,8 @@ void freeonecut(oneCut* cut) {
 
 };
 
-
-int solveSubprob(cellType* cell, probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS, double* mubBar, double* mu_up, double* mu_low) {
+int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals,
+		sparseVector bOmega, sparseMatrix COmega, sparseVector dOmega, sparseVector lOmega, sparseVector uOmega, solnType *dual) {
 	dVector rhs = NULL, cost = NULL, bds = NULL;
 	iVector	indices;
 
@@ -219,48 +100,63 @@ int solveSubprob(cellType* cell, probType* prob, oneProblem* subproblem, dVector
 	for ( int n = 0; n < maximum(prob->num->rows,prob->num->cols); n++ )
 		indices[n] = n;
 
-	/* (a) compute the right-hand side using current observation and first-stage solution */
-	rhs = computeRHS(prob->num, prob->coord, prob->bBar, prob->Cbar, Xvect, obsVals);
+	/* (a1) compute the right-hand side using current observation and first-stage solution */
+	rhs = computeRHS(prob->bBar, prob->Cbar, bOmega, COmega, Xvect, prob->num->rows);
 	if ( rhs == NULL ) {
 		errMsg("algorithm", "solveSubprob", "failed to compute subproblem right-hand side", 0);
 		return 1;
 	}
 
-	/* (b) change the right-hand side in the solver */
+	/* (a2) change the right-hand side in the solver */
 	if ( changeRHSArray(subproblem->model, prob->num->rows, indices, rhs + 1) ) {
 		errMsg("solver", "solve_subprob", "failed to change the right-hand side in the solver",0);
 		return 1;
 	}
 
 	if (prob->num->rvdOmCnt > 0) {
-		/* (c) compute the cost coefficients using current observation */
-		cost = computeCostCoeff(prob->num, prob->coord, prob->dBar, obsVals);
+		/* (b1) compute the cost coefficients using current observation */
+		cost = computeCostCoeff(prob->dBar, dOmega, prob->num->cols);
 		if (cost == NULL) {
 			errMsg("algorithm", "solveSubprob", "failed to compute subproblem cost coefficients", 0);
 			return 1;
 		}
 
-		/* (d) change cost coefficients in the solver */
-		if (changeObjCoeffArray(subproblem->model, prob->num->cols, indices, cost + 1)) {
+		/* (b2) change cost coefficients in the solver */
+		if (changeObjCoeffArray(subproblem->model, dOmega.cnt, dOmega.col, cost + 1)) {
 			errMsg("solver", "solve_subprob", "failed to change the cost coefficients in the solver", 0);
 			return 1;
 		}
 	}
 
-	/**To do: change the bounds in the solver**/
+	if ( prob->num->rvyuOmCnt > 0 ) {
+		/* (c1) compute the cost coefficients using current observation */
+		bds = computeBDS(prob->uBar, uOmega, prob->num->cols);
+		if (cost == NULL) {
+			errMsg("algorithm", "solveSubprob", "failed to compute subproblem upper bounds", 0);
+			return 1;
+		}
 
-	bds = computeBDS(prob->num ,prob->coord, prob->yubar, prob->ylbar, obsVals);
+		/* (c2) change cost coefficients in the solver */
+		if (changeBDSArray(subproblem->model, "UB", uOmega.cnt, uOmega.col, bds+1)) {
+			errMsg("solver", "solve_subprob", "failed to change the upper bounds in the solver", 0);
+			return 1;
+		}
+	}
 
-	//set the lower bounds 
-	if(prob->num->rvylOmCnt >0)
-		changeBDSArray(subproblem->model , "LB", prob->num->rvylOmCnt, prob->coord->rvylOmRows, bds+1);
+	if ( prob->num->rvylOmCnt > 0 ) {
+		/* (c1) compute the cost coefficients using current observation */
+		bds = computeBDS(prob->uBar, lOmega, prob->num->cols);
+		if (cost == NULL) {
+			errMsg("algorithm", "solveSubprob", "failed to compute subproblem lower bounds", 0);
+			return 1;
+		}
 
-	//set the upper bounds 
-	if(prob->num->rvyuOmCnt>0)
-	   changeBDSArray(subproblem->model ,"UB", prob->num->rvyuOmCnt, prob->coord->rvyuOmRows, bds + 1 + prob->num->rvylOmCnt);
-
-
-	
+		/* (c2) change cost coefficients in the solver */
+		if (changeBDSArray(subproblem->model, "LB", lOmega.cnt, lOmega.col, bds+1)) {
+			errMsg("solver", "solve_subprob", "failed to change the lower bounds in the solver", 0);
+			return 1;
+		}
+	}
 
 #if defined(WRITE_FILES)
 	writeProblem(subproblem->model, "cellSubprob.lp");
@@ -272,24 +168,25 @@ int solveSubprob(cellType* cell, probType* prob, oneProblem* subproblem, dVector
 		return 1;
 	}
 
-
-
 #if defined(STOCH_CHECK)
 	double obj;
 	obj = getObjective(subproblem->model);
 	printf("\t\tObjective value of Subproblem  = %lf;\t", obj);
 #endif
 
+	/* Record the primal value */
+	if ( getPrimal(subproblem->model , dual->y, 0, prob->num->cols) ) {
+		errMsg("algorithm", "stochasticUpdates", "failed to get the primal", 0);
+		return 1;
+	}
+
 	/* Record the dual and reduced cost on bounds. */
-	if ( getDual(subproblem->model, piS, 0, prob->num->rows) ) {
+	if ( getDual(subproblem->model, dual->pi, 0, prob->num->rows) ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to get the dual", 0);
 		return 1;
 	}
 
-	double* dj;
-	dj = (dVector)arr_alloc(prob->num->cols + 1, double); /*why numcols+1?*/
-
-	if ( computeMU(subproblem->model, prob->num->cols, mubBar,dj , mu_up, mu_low) ) {
+	if ( getBoundDual(subproblem->model, prob->num->cols, dual->umu, dual->lmu) ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
 		return 1;
 	}
@@ -297,96 +194,93 @@ int solveSubprob(cellType* cell, probType* prob, oneProblem* subproblem, dVector
 	if (rhs) mem_free(rhs);
 	if (cost) mem_free(cost);
 	if (indices) mem_free(indices);
-	if (dj) mem_free(dj);
 	return 0;
 }// END solveSubprob()
 
+//int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS,double* muBar, double* mu2, double* mu3) {
+//
+//	dVector rhs = NULL, cost = NULL;
+//	iVector	indices;
+//
+//	indices = (iVector)arr_alloc(maximum(prob->num->rows, prob->num->cols), int);
+//	for (int n = 0; n < maximum(prob->num->rows, prob->num->cols); n++)
+//		indices[n] = n;
+//
+//	/* (a) compute the right-hand side using current observation and first-stage solution */
+//	rhs = computeRHS(prob->num, prob->coord, prob->bBar, prob->Cbar, Xvect, obsVals);
+//
+//	if (rhs == NULL) {
+//		errMsg("algorithm", "solveSubprob", "failed to compute subproblem right-hand side", 0);
+//		return 1;
+//	}
+//
+//	/* (b) change the right-hand side in the solver */
+//	if (changeRHSArray(subproblem->model, prob->num->rows, indices, rhs + 1)) {
+//		errMsg("solver", "solve_subprob", "failed to change the right-hand side in the solver", 0);
+//		return 1;
+//	}
+//
+//	if (prob->num->rvdOmCnt > 0) {
+//		/* (c) compute the cost coefficients using current observation */
+//		cost = computeCostCoeff(prob->num, prob->coord, prob->dBar, obsVals);
+//		if (cost == NULL) {
+//			errMsg("algorithm", "solveSubprob", "failed to compute subproblem cost coefficients", 0);
+//			return 1;
+//		}
+//
+//		/* (d) change cost coefficients in the solver */
+//		if (changeObjCoeffArray(subproblem->model, prob->num->cols, indices, cost + 1)) {
+//			errMsg("solver", "solve_subprob", "failed to change the cost coefficients in the solver", 0);
+//			return 1;
+//		}
+//	}
+//
+//	/* (e) Solve the subproblem to obtain the optimal dual solution. */
+//	if (solveProblem(subproblem->model)) {
+//		errMsg("algorithm", "solveSubprob", "failed to solve subproblem in solver", 0);
+//		return 1;
+//	}
+//
+//#if defined(WRITE_FILES)
+//	writeProblem(subproblem->model, "cellSubprob.qp");
+//#endif
+//
+//#if defined(STOCH_CHECK)
+//	double obj;
+//	obj = getObjective(subproblem->model);
+//	printf("\t\tObjective value of Subproblem  = %lf;\t", obj);
+//#endif
+//
+//	/* Record the dual and reduced cost on bounds. */
+//	if (getDual(subproblem->model, piS, 0, prob->num->rows)) {
+//		errMsg("algorithm", "stochasticUpdates", "failed to get the dual", 0);
+//		return 1;
+//	}
+//	double* dj;
+//	dj = (dVector)arr_alloc(prob->num->cols + 1, double);
+//
+//	if (computeMU(subproblem->model, prob->num->cols, muBar , dj, mu2, mu3)) {
+//		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
+//		return 1;
+//	}
+//
+//	/*request for status*/
+//
+//	for (int i = 0; i < prob->num->cols; i++) {
+//		if (dj[i+1] >= 0) {
+//			mu2[i+1] = dj[i+1];
+//		}
+//
+//		else if (dj[i+1] < 0) { mu3[i+1] = dj[i+1]; }
+//	}
+//
+//	if (rhs) mem_free(rhs);
+//	if (dj) mem_free(dj);
+//	if (cost) mem_free(cost);
+//	if (indices) mem_free(indices);
+//	return 0;
+//}// END solveSubprob()
 
-
-
-int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS,double* muBar, double* mu2, double* mu3) {
-
-	dVector rhs = NULL, cost = NULL;
-	iVector	indices;
-
-	indices = (iVector)arr_alloc(maximum(prob->num->rows, prob->num->cols), int);
-	for (int n = 0; n < maximum(prob->num->rows, prob->num->cols); n++)
-		indices[n] = n;
-
-	/* (a) compute the right-hand side using current observation and first-stage solution */
-	rhs = computeRHS(prob->num, prob->coord, prob->bBar, prob->Cbar, Xvect, obsVals);
-
-	if (rhs == NULL) {
-		errMsg("algorithm", "solveSubprob", "failed to compute subproblem right-hand side", 0);
-		return 1;
-	}
-
-	/* (b) change the right-hand side in the solver */
-	if (changeRHSArray(subproblem->model, prob->num->rows, indices, rhs + 1)) {
-		errMsg("solver", "solve_subprob", "failed to change the right-hand side in the solver", 0);
-		return 1;
-	}
-
-	if (prob->num->rvdOmCnt > 0) {
-		/* (c) compute the cost coefficients using current observation */
-		cost = computeCostCoeff(prob->num, prob->coord, prob->dBar, obsVals);
-		if (cost == NULL) {
-			errMsg("algorithm", "solveSubprob", "failed to compute subproblem cost coefficients", 0);
-			return 1;
-		}
-
-		/* (d) change cost coefficients in the solver */
-		if (changeObjCoeffArray(subproblem->model, prob->num->cols, indices, cost + 1)) {
-			errMsg("solver", "solve_subprob", "failed to change the cost coefficients in the solver", 0);
-			return 1;
-		}
-	}
-
-	/* (e) Solve the subproblem to obtain the optimal dual solution. */
-	if (solveProblem(subproblem->model)) {
-		errMsg("algorithm", "solveSubprob", "failed to solve subproblem in solver", 0);
-		return 1;
-	}
-
-#if defined(WRITE_FILES)
-	writeProblem(subproblem->model, "cellSubprob.qp");
-#endif
-
-#if defined(STOCH_CHECK)
-	double obj;
-	obj = getObjective(subproblem->model);
-	printf("\t\tObjective value of Subproblem  = %lf;\t", obj);
-#endif
-
-	/* Record the dual and reduced cost on bounds. */
-	if (getDual(subproblem->model, piS, 0, prob->num->rows)) {
-		errMsg("algorithm", "stochasticUpdates", "failed to get the dual", 0);
-		return 1;
-	}
-	double* dj;
-	dj = (dVector)arr_alloc(prob->num->cols + 1, double);
-
-	if (computeMU(subproblem->model, prob->num->cols, muBar , dj, mu2, mu3)) {
-		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
-		return 1;
-	}
-
-	/*request for status*/
-
-	for (int i = 0; i < prob->num->cols; i++) {
-		if (dj[i+1] >= 0) {
-			mu2[i+1] = dj[i+1];
-		}
-
-		else if (dj[i+1] < 0) { mu3[i+1] = dj[i+1]; }
-	}
-
-	if (rhs) mem_free(rhs);
-	if (dj) mem_free(dj);
-	if (cost) mem_free(cost);
-	if (indices) mem_free(indices);
-	return 0;
-}// END solveSubprob()
 /* This function computes the right hand side of the subproblem, based on a given X dVector and a given observation of omega.
  * It is defined as:
  * 			rhs = R(omega) - T(omega) x X
@@ -397,82 +291,55 @@ int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVec
  * for the dVector, which must be freed by the customer.  Also, the zeroth position of this rhs dVector is reserved, and the actual values begin at rhs[1].
  * R is b, and T is C
  \***********************************************************************/
-dVector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, dVector X, dVector observ) {
-
+dVector computeRHS(sparseVector *bBar, sparseMatrix *Cbar, sparseVector bOmega, sparseMatrix COmega, dVector X, int numRows) {
 	int cnt;
 	dVector rhs;
-	sparseVector bomega;
-	sparseVector yuomega;
-	sparseMatrix Comega;
-
-	bomega.cnt = num->rvbOmCnt;	
-	bomega.col = coord->rvbOmRows; 
-	bomega.val = coord->rvOffset[0] + observ;
-
-
-
-
-	Comega.cnt = num->rvCOmCnt; Comega.col = coord->rvCOmCols; Comega.row = coord->rvCOmRows; Comega.val = coord->rvOffset[1] + observ;
-
 
 	/* Start with the values of b(omega) -- both fixed and varying */
-
-	rhs = expandVector(bBar->val , bBar->col , bBar->cnt , num->rows);
-	for (cnt = 1; cnt <= bomega.cnt; cnt++)
-		rhs[bomega.col[cnt]] += bomega.val[cnt];
-
-
-
-
+	rhs = expandVector(bBar->val , bBar->col, bBar->cnt, numRows);
+	for (cnt = 1; cnt <= bOmega.cnt; cnt++)
+		rhs[bOmega.col[cnt]] += bOmega.val[cnt];
 
 
 	/* (cumulatively) subtract values of C(omega) x X -- both fixed and varying */
-
 	rhs = MSparsexvSub(Cbar, X, rhs);
-	rhs = MSparsexvSub(&Comega, X, rhs);
+	rhs = MSparsexvSub(&COmega, X, rhs);
 
 	return rhs;
 }//END computeRHS()
 
-dVector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, dVector observ) {
-	dVector cost;
-	sparseVector cOmega;
-	int	cnt;
+dVector computeCostCoeff(sparseVector *dBar, sparseVector dOmega, int numCols) {
+	dVector costFull, cost;
 
-	cOmega.cnt = num->rvdOmCnt; cOmega.col = coord->rvdOmCols; cOmega.val = coord->rvOffset[2] + observ;
-	cost = expandVector(dBar->val, dBar->col, dBar->cnt, num->cols);
-	for (cnt = 1; cnt <= cOmega.cnt; cnt++)
-		cost[cOmega.col[cnt]] += cOmega.val[cnt];
+	costFull = expandVector(dBar->val, dBar->col, dBar->cnt, numCols);
+	for (int n = 1; n < dOmega.cnt; n++)
+		costFull[dOmega.col[n]] += dOmega.val[n];
+
+	cost = reduceVector(costFull, dOmega.col, dOmega.cnt);
 
 	return cost;
 }//END computeCostCoeff()
 
+dVector computeBDS(sparseVector* bdsBar, sparseVector bdsOmega, int numCols) {
+	dVector bdsFull, bds;
 
-dVector computeBDS(numType* num, coordType* coord, sparseVector* yBar , sparseVector* yUnd, dVector observ) {
-	dVector bds;
-	int	cnt;
+	bdsFull = expandVector(bdsBar->val, bdsBar->col, bdsBar->cnt, numCols);
+	for ( int n = 1; n < bdsOmega.cnt; n++ ) {
+		bdsFull[bdsOmega.col[n]] += bdsOmega.val[n];
+	}
 
-	bds = (dVector)arr_alloc(yBar->cnt + yUnd->cnt + 1 , double);
-
-	/*To do no guarantee to have ybar and yund same cnt*/
-	for (cnt = 1; cnt <= yBar->cnt; cnt++)
-		 yBar->val[cnt] = yBar->val[cnt]  ;
-
-	for (cnt = 1 ; cnt <= yUnd->cnt; cnt++)
-		bds[yUnd->col[cnt] + yBar->cnt] += yUnd->val[cnt];
+	bds = reduceVector(bdsFull, bdsOmega.col, bdsOmega.cnt);
 
 	return bds;
 }//END computeCostCoeff()
 
-
 /* This function compute the reduced cost of every second stage variables. They will be used to calculate the \mu x b and then added to the \pi x b. */
-int computeMU(modelPtr *model, int numCols, double *mubBar, double * dj, double* mu_up, double* mu_low) {
-	dVector u;
+int getBoundDual(modelPtr *model, int numCols, double* mu_up, double* mu_low) {
+	dVector u, dj;
 	int		n;
 
-	(*mubBar) = 0.0;
-
 	u = (dVector) arr_alloc(numCols+1, double);
+	dj = (dVector) arr_alloc(numCols+1, double);
 
 	if ( getPrimal(model, u, 0, numCols) ) {
 		errMsg("solver", "computeMU", "failed to obtain primal solution", 0);
@@ -484,9 +351,6 @@ int computeMU(modelPtr *model, int numCols, double *mubBar, double * dj, double*
 		return 1;
 	}
 
-	for (n = 1; n <= numCols;  n++) { 
-		(*mubBar) -= dj[n]*u[n]; /*To check - or +??*/
-	}
 	for (int i = 1; i < numCols;i++) {
 		if (dj[i] >= 0) {
 			mu_up[i] = dj[i];
@@ -498,182 +362,11 @@ int computeMU(modelPtr *model, int numCols, double *mubBar, double * dj, double*
 			mu_low[i] = dj[i];
 		}
 	}
-	mem_free(u); 
+
+	mem_free(u);
+	mem_free(dj);
 	return 0;
 }//END compute_mu()
-
-
-
-//his function compute the reduced cost of every second stage variables.They will be used to calculate the \mu x band then added to the \pi x b.* /
-int computeMUdual(modelPtr * model, int numCols, double* dj) {
-	dVector u;
-	int		n;
-
-
-
-	u = (dVector)arr_alloc(numCols + 1, double);
-
-	if (getPrimal(model, u, 0, numCols)) {
-		errMsg("solver", "computeMU", "failed to obtain primal solution", 0);
-		return 1;
-	}
-	if (getDualSlack(model, dj, 0, numCols)) {
-		errMsg("solver", "computeMu", "failed to obtain dual slacks", 0);
-		return 1;
-	}
-
-
-
-	mem_free(u); mem_free(dj);
-	return 0;
-}//END compute_mu()
-
-/* This function allocates memory for an omega structure.  It allocates the memory to structure elements: a dVector to hold an array of
- * observation and the probability associated with it. */
-omegaType* newOmega(stocType* stoc) {
-	omegaType* omega;
-	int cnt, i, base, idx;
-
-	omega = (omegaType*)mem_malloc(sizeof(omegaType));
-	omega->probs = (dVector) arr_alloc(config.MAX_OBS, double);
-	omega->weights = (iVector) arr_alloc(config.MAX_OBS, int);
-	omega->vals = (dVector*) arr_alloc(config.MAX_OBS, dVector);
-	omega->cnt = 0; 
-	omega->numRV = stoc->numOmega;
-
-	if (config.SAA == 1 ) {
-		config.SAA = 0;
-		omega->cnt = config.MAX_OBS;
-		return omega;
-	}
-
-	if (strstr(stoc->type, "BLOCKS") != NULL) {
-		if ((omega->cnt = stoc->numVals[0]) <= config.MAX_OBS) {
-			omega->vals = (dVector*)mem_realloc(omega->vals, omega->cnt * sizeof(dVector));
-			omega->probs = (dVector)mem_realloc(omega->probs, omega->cnt * sizeof(double));
-			for (cnt = 0; cnt < omega->cnt; cnt++) {
-				omega->probs[cnt] = stoc->probs[0][cnt];
-				if (!(omega->vals[cnt] = (dVector)arr_alloc(omega->numRV + 1, double)))
-					errMsg("allocation", "updateOmega", "omega->vals[cnt]", 0);
-				for (i = 0; i < omega->numRV; i++)
-					omega->vals[cnt][i + 1] = stoc->vals[i][cnt] - stoc->mean[i];
-				omega->vals[cnt][0] = oneNorm(omega->vals[cnt] + 1, omega->numRV);
-			}
-		}
-		else {
-			omega->cnt = config.MAX_OBS;
-			config.SAA = 1;
-		}
-	}
-	else if (strstr(stoc->type, "INDEP_DISCRETE") != NULL) {
-		omega->cnt = 1; i = 0;
-		while (i < stoc->numOmega) {
-			omega->cnt *= stoc->numVals[i]; 
-			if (omega->cnt > config.MAX_OBS) {
-				omega->cnt = config.MAX_OBS;
-				config.SAA = 1;
-				break;
-			}
-			i++;
-		}
-
-		if (config.SAA) {
-			omega->vals = (dVector*)mem_realloc(omega->vals, omega->cnt * sizeof(dVector));
-			omega->probs = (dVector)mem_realloc(omega->probs, omega->cnt * sizeof(double));
-			for (cnt = 0; cnt < omega->cnt; cnt++) {
-				if (!(omega->vals[cnt] = (dVector)arr_alloc(omega->numRV + 1, double)))
-					errMsg("allocation", "updateOmega", "omega->vals[cnt]", 0);
-				omega->probs[cnt] = 1; base = omega->cnt;
-				for (i = 0; i < omega->numRV; i++) {
-					base /= stoc->numVals[i];
-					idx = (int)((double)cnt / (double)base) % stoc->numVals[i];
-					omega->vals[cnt][i + 1] = stoc->vals[i][idx] - stoc->mean[i];
-					omega->probs[cnt] *= stoc->probs[i][idx];
-				}}}}
-
-	else {
-		omega->cnt = config.MAX_OBS;
-		config.SAA = 1;
-	}
-
-	return omega;
-
-}//END newOmega()
-
-lambdaType* newLambda(double SigmaSize, probType** prob) {
-	lambdaType* lambda = NULL;
-	/* Assign memory to lambda structure which is the set of dual solutions we obtained so far. pi is related to equality constraints, mu2
-corresponds to upper bounds and mu3 corresponds to lower bounds */
-
-	lambda = (lambdaType*)mem_malloc(sizeof(lambdaType));
-	lambda->pi = (double**)arr_alloc(SigmaSize, double*);
-	lambda->mu2 = (double**)arr_alloc(SigmaSize, double*);
-	lambda->mu3 = (double**)arr_alloc(SigmaSize, double*);
-
-	for (int i = 0; i < SigmaSize; i++) {
-		lambda->pi[i] = (double*)arr_alloc(prob[1]->num->rows + 1, double);
-		lambda->mu2[i] = (double*)arr_alloc(prob[1]->num->cols + 1, double);
-		lambda->mu3[i] = (double*)arr_alloc(prob[1]->num->cols + 1, double);
-	}
-
-	lambda->cnt = 0;
-	return lambda;
-
-}//END newLambda()
-
-sigmaType* newSigma(double SigmaSize, probType** prob ) {
-	sigmaType* sigma = NULL; /* Sigma is a collection of fixed parts of alpha and beta which is independent of the observation */
-	sigma = (sigmaType*)mem_malloc(sizeof(sigmaType));
-	sigma->vals = (pixbCType**)arr_alloc(SigmaSize, pixbCType*);
-	sigma->cnt = 0;
-	for (int i = 0; i < SigmaSize; i++) {
-		sigma->vals[i] = (pixbCType*)mem_malloc(sizeof(pixbCType));
-	}
-	for (int i = 0; i < SigmaSize; i++) {
-		sigma->vals[i]->piCar = (double*)arr_alloc(prob[0]->num->cols + 1, double);
-	}
-	return sigma;
-
-}//END newSigma()
-
-deltaType* newDelta(double SigmaSize, probType** prob , cellType* cell) {
-	deltaType* delta = NULL;
-	/* assign memory to deta structure, this will record the deltaAlpha and deltaBetha associated with each observation*/
-
-	delta = (deltaType*)mem_malloc(sizeof(deltaType));
-	delta->vals = (lambdadeltaType***)arr_alloc(cell->omega->cnt, lambdadeltaType**);
-	for (int i = 0; i < cell->omega->cnt; i++) {
-		delta->vals[i] = (lambdadeltaType**)arr_alloc(SigmaSize, lambdadeltaType*);
-	}
-	for (int i = 0; i < cell->omega->cnt; i++) {
-		for (int j = 0; j < SigmaSize; j++) {
-			delta->vals[i][j] = (lambdadeltaType*)mem_malloc(sizeof(lambdadeltaType));
-			delta->vals[i][j]->dbeta = (sparseVector*)mem_malloc(sizeof(sparseVector));
-			delta->vals[i][j]->dbeta->val = (double*)arr_alloc(prob[0]->num->cols + 1, double); /*TO DO: Change it to a reasonable size*/
-			delta->vals[i][j]->dbeta->col = (int*)arr_alloc(prob[0]->num->cols + 1, int);
-			delta->vals[i][j]->state = 0;
-		}
-	}
-
-	return delta;
-
-}//END newDelta()
-void freeOmegaType(omegaType* omega, bool partial) {
-	int n;
-	if (omega->vals) {
-		for (n = 0; n < omega->cnt; n++)
-			if (omega->vals[n])
-				mem_free(omega->vals[n]);
-		if (partial) {
-			omega->cnt = 0;
-			return;
-		}
-		mem_free(omega->vals);
-	}
-	if (omega->probs) mem_free(omega->probs);
-	if (omega->weights) mem_free(omega->weights);
-	mem_free(omega);
-}//END freeOmegaType()
 
 oneProblem* newSubproblem(oneProblem* probSP) {
 
@@ -884,175 +577,90 @@ oneProblem *newMaster(oneProblem *probSP) {
 	return stage0;
 }//END newMaster()
 
+solnType* buildDual (numType *num) {
+	solnType* dual;
 
-void sample(int* omegaP, int numsample, int numobs) {
-	for (int i = 0; i < numsample; i++) {
-		omegaP[i] = randInteger(numobs);
-	}
-}
+	dual      = (solnType*)mem_malloc(sizeof(solnType));
+	dual->y   = (dVector)arr_alloc(num->cols + 1, double);
+	dual->pi  = (dVector)arr_alloc(num->rows + 1, double);
+	dual->lmu = (dVector)arr_alloc(num->cols + 1, double);
+	dual->umu = (dVector)arr_alloc(num->cols + 1, double);
 
-void subtractSample(int * omegaP, int* omegaQ , int numobs, int numsample) {
-	int cnt = 0;
-	int stat = 1;
-	for (int i = 0; i < numobs; i++) {
-		for (int j = 0; j < numsample; j++) {
-			if (omegaP[j] == i) {
-				stat = 0;
-			}
-		}
-		if (stat)
-		{
-			omegaQ[cnt] = i;
-			cnt++;
-		}
-		stat = 1;
-	}
-}
-void SampleGen(int* omegaP, int* omegaQ , int cnt, int solveset) {
+	return dual;
+}//END buildDual()
 
-	/*2. Creat a subset of observations you want to solve*/
-	sample(omegaP, solveset, cnt);
-
-	/*Put the remaining observations in another set omegaQ*/
-	subtractSample(omegaP, omegaQ, cnt, solveset);
-
-}
-void buildbcOmega(sparseVector* bOmega, sparseMatrix* COmega, probType* prob, sparseVector* yund, sparseVector* ybar){
-
-	bOmega->cnt = prob->num->rvbOmCnt;
-	bOmega->col = prob->coord->rvbOmRows;
-	COmega->cnt = prob->num->rvCOmCnt;
-	COmega->col = prob->coord->rvCOmCols;
-	COmega->row = prob->coord->rvCOmRows;
-	ybar->cnt = prob->num->rvyuOmCnt; ybar->col = prob->coord->rvyuOmRows;
-	yund->cnt = prob->num->rvylOmCnt; yund->col = prob->coord->rvylOmRows;
-}
-void AddtoSig(cellType* cell, probType* prob  , double muBar){
-	int* index;
-	int obs = cell->lambda->cnt-1;
-	index = (int*)arr_alloc(prob->num->cols + 1,int);
-	for (int i = 1; i <= prob->num->cols; i++) {
-		index[i] = i ;
-	}
-	double* X;
-	X =(double*)arr_alloc(prob->num->cols+1,double);
-	getPrimal(cell->subprob->model , X, 0, prob->num->cols) ;
-	dVector fbeta = vxMSparse(cell->lambda->pi[obs], prob->Cbar, prob->num->prevCols);
-	/*Calculate fixed section of beta = Cbar*pi (pi is the dual vector associated with equality constraints)*/
-    copyVector(fbeta, cell->sigma->vals[obs]->piCar,prob->num->prevCols);
-	for (int i = 0; i < prob->num->prevCols;i++) {
-		cell->sigma->vals[obs]->piCar[i] = -cell->sigma->vals[obs]->piCar[i];
-	}
-	/*Calculate fixred section of alpha -.5 yQy  + bbar* pi + yunder nu - ybar mu)*/
-	cell->sigma->vals[obs]->interceptBar = -0.5 * vXv(vxMSparse(X, prob->sp->objQ, prob->num->cols), X, index, prob->num->cols) + vXvSparse(cell->lambda->pi[obs], prob->bBar) + muBar;
-	cell->sigma->cnt++;
-	free(index);
-	free(X);
-}/* End AddtoSigma*/
-
-void AddtoDel(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs ,int num) {
-
-	/* 2b. Compute the cut coefficients for individual observation. */
-	
-	bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
-	COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
-	ybar->val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
-	yund->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
-	int* dbetaindex;
-	dbetaindex = (int*)arr_alloc(prob->num->prevCols + 1, int);
-	double* dbeta = vxMSparse(cell->lambda->pi[num], COmega, prob->num->prevCols);
-	if (cell->delta->vals[num][obs]->state == 0) {
-		cell->delta->vals[num][obs]->state = 1;
-		/* calculate deltaalpha */
-		cell->delta->vals[num][obs]->dalpha = vXvSparse(cell->lambda->pi[num], bOmega) + vXvSparse(cell->lambda->mu2[num], ybar) + vXvSparse(cell->lambda->mu3[num], yund); /*TO DO: ybar and yund vals start from index 0*/
-
-		/* Calculate deltabeta */
-		
-		for (int i = 0; i <= prob->num->prevCols; i++) {
-			dbeta[i] = -dbeta[i];
-		}
-
-
-
-		/*find out the number of nonzero elements and their location*/
-		for (int j = 0; j <= prob->num->prevCols; j++) {
-			if (dbeta[j] != 0) {
-				cell->delta->vals[num][obs]->dbeta->cnt++;
-			}
-
-		/*Assign memory to the index section of deltab */
-
-			cell->delta->vals[num][obs]->dbeta->col = (int*)mem_malloc(cell->delta->vals[num][obs]->dbeta->cnt + 1, int);
-			cell->delta->vals[num][obs]->dbeta->val = (double*)mem_malloc(cell->delta->vals[num][obs]->dbeta->cnt + 1, double);
-			int cnt = 0;
-			for (int j = 0; j < cell->delta->vals[num][obs]->dbeta->cnt; j++) {
-				if (dbeta[j]) {
-					cnt++;
-					cell->delta->vals[num][obs]->dbeta->val[cnt] = dbeta[j];
-					cell->delta->vals[num][obs]->dbeta->col[cnt] = j;
-				}
-			
-			}
-			
-		}
-		
-	}
-	free(dbetaindex);
-	free(dbeta);
-	
-}
-void AddtoLam(cellType* cell, double* pi, double* umu, double* lmu , int* stat) {	
-	for (int i = 0; i < cell->lambda->cnt; i++) {
-		if (pi[0] == cell->lambda->pi[i][0] && umu[0] == cell->lambda->mu2[i][0] && lmu[0] == cell->lambda->mu3[i][0]) {
-			(*stat) = i+1;
-		}
-	}
-		
-		if ((*stat) == 0) {
-			
-			copyVector(pi, cell->lambda->pi[cell->lambda->cnt], cell->subprob->mar);
-			copyVector(umu, cell->lambda->mu2[cell->lambda->cnt], cell->subprob->mac);
-			copyVector(lmu, cell->lambda->mu3[cell->lambda->cnt], cell->subprob->mac);
-			cell->lambda->cnt++;
-		}
-	}
-
-
-DualType* buildDual( probType * prob) {
-	DualType* dual;
-		dual = (DualType*)mem_malloc(sizeof(DualType));
-		dual->pi = (dVector)arr_alloc(prob->num->rows + 1, double);
-		dual->lmu = (dVector)arr_alloc(prob->num->cols + 1, double);
-		dual->umu = (dVector)arr_alloc(prob->num->cols + 1, double);
-		return dual;
-
-}
-void VVsparse(dVector result, dVector v, sparseVector* vs, int len) {
+void VsumVsparse(dVector result, dVector v, sparseVector* vs, int len) {
 
 	copyVector(v, result, len);
 
 	for (int i = 0; i < vs->cnt ; i++) {
 		result[vs->col[i]] =  vs->val[i];
 	}
-
 }
-void stocUpdateQP(cellType* cell, probType* prob, DualType* dual, double* alpha , double* fbeta , double mubBar , sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs) {
 
-	int stat = 0;
-	AddtoLam(cell, dual->pi, dual->umu, dual->lmu, &stat);
-	
+void stocUpdateQP(cellType* cell, probType* prob, solnType* dual, double* alpha , double* fbeta , double mubBar,
+		sparseMatrix COmega, sparseVector bOmega, sparseVector ybar, sparseVector yund, int obs) {
+	int lambdaIdx = 0;
+	bool newLambdaFlag = false;
+
+	/* Update the lambda structure */
+	lambdaIdx = addtoLambda(cell->lambda, dual, prob->num->rows, prob->num->cols, &newLambdaFlag);
 
 	/* add to sigma the alpha and beta and to delta the dalpha and dbeta*/
-	if (stat == 0) {
+	if ( newLambdaFlag ) {
 		AddtoSig(cell, prob, mubBar); /*add the new alpha beta to sigma*/
+
 		AddtoDel(cell, prob, COmega, bOmega, ybar, yund, obs, cell->lambda->cnt - 1); /* num position in lambda*/
-		VVsparse(fbeta, cell->sigma->vals[cell->sigma->cnt - 1]->piCar, cell->delta->vals[cell->sigma->cnt - 1][obs]->dbeta, prob->num->prevCols + 1);
+
+		VsumVsparse(fbeta, cell->sigma->vals[cell->sigma->cnt - 1]->piCar, cell->delta->vals[cell->sigma->cnt - 1][obs]->dbeta, prob->num->prevCols + 1);
 		(*alpha) = cell->sigma->vals[cell->sigma->cnt - 1]->interceptBar + cell->delta->vals[cell->sigma->cnt - 1][obs]->dalpha;
 	}
 	else
 	{
 		AddtoDel(cell, prob, COmega, bOmega, ybar, yund,obs, stat - 1); /* num position in lambda*/
-		VVsparse(fbeta, cell->sigma->vals[stat - 1]->piCar, cell->delta->vals[stat - 1][obs]->dbeta, prob->num->prevCols + 1);
+		VsumVsparse(fbeta, cell->sigma->vals[stat - 1]->piCar, cell->delta->vals[stat - 1][obs]->dbeta, prob->num->prevCols + 1);
 		(*alpha) = cell->sigma->vals[stat - 1]->interceptBar + cell->delta->vals[stat - 1][obs]->dalpha;
 	}
-}
+
+}//END stocUpdateQP()
+
+void freeCellType (cellType *cell) {
+
+	if (cell->master) {
+		mem_free(cell->master->name);
+		for (int n = 0; n < cell->master->mac; n++) {
+			mem_free(cell->master->cname[n]);
+		}
+		for (int n = 0; n < cell->master->mar; n++) {
+			mem_free(cell->master->rname[n]);
+		}
+		freeOneProblem(cell->master);
+	}
+	if (cell->subprob) {
+		mem_free(cell->subprob->name);
+		for (int n = 0; n < cell->subprob->mac; n++) {
+			mem_free(cell->subprob->cname[n]);
+		}
+		for (int n = 0; n < cell->subprob->mar; n++) {
+			mem_free(cell->subprob->rname[n]);
+		}
+		freeOneProblem(cell->subprob);
+	}
+
+	if (cell->candidX) mem_free(cell->candidX);
+	if (cell->incumbX) mem_free(cell->incumbX);
+	if (cell->piM) mem_free(cell->piM);
+
+	freecut(cell->cuts);
+	freecut(cell->fCuts);
+
+	freeSigma(cell->sigma);
+	freeLambda(cell->lambda);
+	freeDelta(cell->delta, cell->omega->cnt);
+	freeOmegaType(cell->omega,false);
+
+	if (cell->time)mem_free(cell->time);
+
+	mem_free(cell);
+
+} /** End freeCellType() **/

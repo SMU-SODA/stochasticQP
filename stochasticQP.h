@@ -25,8 +25,8 @@ typedef struct {
 typedef struct {
 	int		cnt;					/* number of elements in the structure */
 	double** pi;					/* value of duals(associated with equality constraints) with random elements in right-hand side */
-	double** mu2;					/* value of  duals (reduced costs) with random elements in right-hand side(upperbound) */
-	double** mu3;					/* value of  duals (reduced costs) with random elements in right-hand side(lowerbound) */
+	double** umu;					/* value of  duals (reduced costs) with random elements in right-hand side(upperbound) */
+	double** lmu;					/* value of  duals (reduced costs) with random elements in right-hand side(lowerbound) */
 }lambdaType;
 
 typedef struct {
@@ -43,10 +43,12 @@ typedef struct {
 } lambdadeltaType;
 
 typedef struct {
-	double* pi;
-	double* lmu;
-	double* umu;
-} DualType;
+	dVector y;
+	dVector pi;
+	dVector lmu;
+	dVector umu;
+	double  mubBar;
+} solnType;
 
 
 typedef struct {
@@ -131,7 +133,7 @@ typedef struct {
 
 	runTime* time;				/* Run time structure */
 
-  lambdaType* lambda;
+	lambdaType* lambda;
 	sigmaType* sigma;
 	deltaType* delta;
 }cellType;
@@ -196,13 +198,17 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 
 /* Source.c */
 cellType* buildCell(probType** prob, stocType* stoc);
-int solveSubprob(cellType* cell, probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS, double* mubBar, double* mu2, double* mu3);
-dVector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, dVector X, dVector observ);
-dVector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, dVector observ) ;
-dVector computeBDS(numType* num, coordType* coord, sparseVector* yBar, sparseVector* yUnd, dVector observ);
-int computeMU(modelPtr *model, int numCols, double *mubBar, double* dj , double* mu2, double* mu3);
+int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals,
+		sparseVector bOmega, sparseMatrix COmega, sparseVector dOmega, sparseVector lOmega, sparseVector uOmega, DualType *dual);
+
+dVector computeRHS(sparseVector *bBar, sparseMatrix *Cbar, sparseVector bOmega, sparseMatrix COmega, dVector X, int numRows);
+dVector computeCostCoeff(sparseVector *dBar, sparseVector dOmega, int numCols);
+dVector computeBDS(sparseVector* bdsBar, sparseVector bdsOmega, int numCols);
+
+int getBoundDual(modelPtr *model, int numCols, double* mu_up, double* mu_low);
 int computeMUdual(modelPtr* model, int numCols, double* dj);
-omegaType* newOmega(stocType* stoc);
+
+void buildOmegaCoordinates (probType *prob, sparseVector bOmega, sparseMatrix COmega, sparseVector dOmega, sparseVector uOmega, sparseVector lOmega);
 
 int readConfig(cString configFile);
 void freeConfig();
@@ -218,7 +224,7 @@ int addCut2Solver(modelPtr *model, oneCut *cut, int lenX);
 oneCut *newCut(int numX);
 int runAlgo(probType** prob, stocType* stoc, cellType* cell);
 int updateRHSwState(numType* num, coordType* coord, sparseVector* bBar, sparseMatrix* Cbar, dVector X,
-	dVector obs, dVector *rhs);
+		dVector obs, dVector *rhs);
 void freeCellType(cellType* cell);
 void freecut(cutsType* cut);
 void freeonecut(oneCut* cut);
@@ -240,10 +246,15 @@ void freeSigma(sigmaType* sigma);
 void sample(int* omegaP, int numsample, int numobs);
 void  subtractSample(int * omegaP, int* omegaQ , int numobs, int numsample);
 void  SampleGen(int* omegaP, int* omegaQ, int cnt, int solveset);
-void buildbcOmega(sparseVector* bOmega, sparseMatrix* COmega, probType* prob, sparseVector* yund, sparseVector* ybar);
-void AddtoSig(cellType* cell, probType* prob, double muBar);
+bool *subsetGenerator(int numObs);
+
+omegaType* newOmega(stocType* stoc);
+
+int addtoLambda(lambdaType* lambda, DualType *dual, int numRows, int numCols, bool *newLambdaFlag);
+void addtoSigma(cellType* cell, probType* prob, solnType *soln);
 void AddtoDel(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs,int num);
-void AddtoLam(cellType* cell, double* pi, double* umu, double* lmu, int* stat);
-DualType* buildDual( probType* prob);
-void VVsparse(dVector result , dVector v, sparseVector* vs , int len);
-void stocUpdateQP(cellType* cell, probType* prob, DualType* dual, double* alpha, double* fbeta, double mubBar, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs);
+
+DualType* buildDual (numType *num);
+void VsumVsparse(dVector result , dVector v, sparseVector* vs , int len);
+void stocUpdateQP(cellType* cell, probType* prob, DualType* dual, double* alpha, double* fbeta, double mubBar,
+		sparseMatrix COmega, sparseVector bOmega, sparseVector ybar, sparseVector yund, int obs);

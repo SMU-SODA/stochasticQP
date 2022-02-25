@@ -7,23 +7,32 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 	pi = (dVector) arr_alloc(prob->num->rows+1, double);
 	mu_up  = (dVector)arr_alloc(prob->num->cols + 1, double);
 	mu_low = (dVector)arr_alloc(prob->num->cols + 1, double);
-	sparseMatrix* COmega; /* Presenting the C matrix associated with an observation(I mean the difference from Cbar)*/
-	sparseVector* bOmega;  /* Presenting the b vector associated with an observation(I mean the difference from bBar)*/
-	sparseVector* ybaromeg; /* Presenting the upperbound  vector associated with an observation(I mean the difference from yBar)*/
-	sparseVector* yundomeg; /* Presenting the lowerbound  vector associated with an observation(I mean the difference from mean of yunderscore)*/
-	bOmega = (sparseVector*)mem_malloc(sizeof(sparseVector));
-	COmega = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));
-	ybaromeg = (sparseVector*)mem_malloc(sizeof(sparseVector));
-	yundomeg = (sparseVector*)mem_malloc(sizeof(sparseVector));
-	buildbcOmega(bOmega, COmega, prob, yundomeg, ybaromeg);
+
+	/* initialization of the parameters */
+	sparseVector bOmega;  	/* Presenting the b vector associated with an observation(I mean the difference from bBar)*/
+	sparseMatrix COmega; 	/* Presenting the C matrix associated with an observation(I mean the difference from Cbar)*/
+	sparseVector dOmega;	/* Presenting the cost coefficient vector associated with an observation */
+	sparseVector uOmega;	/* Presenting the upperbound  vector associated with an observation(I mean the difference from yBar)*/
+	sparseVector lOmega;	/* Presenting the lowerbound  vector associated with an observation(I mean the difference from mean of yunderscore)*/
+
+	buildOmegaCoordinates (prob, bOmega, COmega, dOmega, uOmega, lOmega);
+
+	/* Structure to hold dual solutions */
+	DualType* dual = buildDual(prob->num);
+
 	/* 1. Create a new cut */
 	oneCut *cut = newCut(prob->num->cols);
 
 	/* 2. loop through observations and solve subproblem for all of them. */
 	for (int obs = 0; obs < cell->omega->cnt; obs++) {
+		bOmega.val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
+		COmega.val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
+		dOmega.val = cell->omega->vals[obs] + prob->coord->rvOffset[2];
+		uOmega.val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
+		lOmega.val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
 
 		/* 2a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
-		if ( solveSubprob(cell, prob, cell->subprob, cell->candidX, cell->omega->vals[obs], pi, &mubBar, mu_up, mu_low) ) {
+		if (solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], bOmega, COmega, dOmega, lOmega, uOmega, dual)) {
 			errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 			goto TERMINATE;
 		}
@@ -34,8 +43,6 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 		COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
 
 		/* Optimality cut calculations */
-
-
 		alpha  =   vXvSparse(pi, prob->bBar) + mubBar + vXvSparse(pi, &bOmega) ;
 		beta   = vxMSparse(pi, prob->Cbar, prob->num->prevCols);
 
@@ -77,7 +84,7 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
  * reserved, and the actual values begin at rhs[1].
  \***********************************************************************/
 int updateRHSwState(numType* num, coordType* coord, sparseVector* bBar, sparseMatrix* Cbar, dVector X,
-	dVector obs, dVector *rhs) {
+		dVector obs, dVector *rhs) {
 	(*rhs) = expandVector(bBar->val, bBar->col, bBar->cnt, num->rows);
 	sparseMatrix Comega;
 	sparseVector bomega;
