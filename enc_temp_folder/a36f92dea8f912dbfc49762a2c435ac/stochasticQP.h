@@ -199,7 +199,6 @@ cellType* buildCell(probType** prob, stocType* stoc);
 int solveSubprob(cellType* cell, probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS, double* mubBar, double* mu2, double* mu3);
 dVector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, dVector X, dVector observ);
 dVector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, dVector observ) ;
-dVector computeBDS(numType* num, coordType* coord, sparseVector* yBar, sparseVector* yUnd, dVector observ);
 int computeMU(modelPtr *model, int numCols, double *mubBar, double* dj , double* mu2, double* mu3);
 int computeMUdual(modelPtr* model, int numCols, double* dj);
 omegaType* newOmega(stocType* stoc);

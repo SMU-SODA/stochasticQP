@@ -45,7 +45,7 @@ oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch, double* x, d
 
 		/* 2a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
 
-		if (solveSubprob(prob[1], cell->subprob, cell->candidX, cell->omega->vals[omegaP[i]], dual->pi, &mubBar, dual->umu
+		if (solveSubprob(cell, prob[1], cell->subprob, cell->candidX, cell->omega->vals[omegaP[i]], dual->pi, &mubBar, dual->umu
 			, dual->lmu)) {
 			errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 			goto TERMINATE;

@@ -9,13 +9,13 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 	mu_low = (dVector)arr_alloc(prob->num->cols + 1, double);
 	sparseMatrix* COmega; /* Presenting the C matrix associated with an observation(I mean the difference from Cbar)*/
 	sparseVector* bOmega;  /* Presenting the b vector associated with an observation(I mean the difference from bBar)*/
-	sparseVector* ybaromeg; /* Presenting the upperbound  vector associated with an observation(I mean the difference from yBar)*/
-	sparseVector* yundomeg; /* Presenting the lowerbound  vector associated with an observation(I mean the difference from mean of yunderscore)*/
+	sparseVector* ybar; /* Presenting the upperbound  vector associated with an observation(I mean the difference from yBar)*/
+	sparseVector* yund; /* Presenting the lowerbound  vector associated with an observation(I mean the difference from mean of yunderscore)*/
 	bOmega = (sparseVector*)mem_malloc(sizeof(sparseVector));
 	COmega = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));
-	ybaromeg = (sparseVector*)mem_malloc(sizeof(sparseVector));
-	yundomeg = (sparseVector*)mem_malloc(sizeof(sparseVector));
-	buildbcOmega(bOmega, COmega, prob, yundomeg, ybaromeg);
+	ybar = (sparseVector*)mem_malloc(sizeof(sparseVector));
+	yund = (sparseVector*)mem_malloc(sizeof(sparseVector));
+
 	/* 1. Create a new cut */
 	oneCut *cut = newCut(prob->num->cols);
 
@@ -42,7 +42,7 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 		piCBar = vxMSparse(pi, &COmega, prob->num->prevCols);
 
 		for (int c = 1; c <= prob->num->prevCols; c++) {
-			beta[c] = beta[c] + piCBar[c];
+			beta[c] = -beta[c] - piCBar[c];
 		}
 		mem_free(piCBar);
 

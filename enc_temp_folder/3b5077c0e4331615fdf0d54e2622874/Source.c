@@ -212,7 +212,7 @@ void freeonecut(oneCut* cut) {
 
 
 int solveSubprob(cellType* cell, probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS, double* mubBar, double* mu_up, double* mu_low) {
-	dVector rhs = NULL, cost = NULL, bds = NULL;
+	dVector rhs = NULL, cost = NULL;
 	iVector	indices;
 
 	indices = (iVector) arr_alloc(maximum(prob->num->rows, prob->num->cols), int);
@@ -232,35 +232,31 @@ int solveSubprob(cellType* cell, probType* prob, oneProblem* subproblem, dVector
 		return 1;
 	}
 
-	if (prob->num->rvdOmCnt > 0) {
+	/**To do: change the bounds in the solver**/
+
+	//set the lower bounds 
+	if(prob->num->rvylOmCnt >0)
+		changeBDSArray(subproblem->model, "LB", prob->num->rvylOmCnt, prob->coord->rvylOmRows, obsVals + prob->coord->rvOffset[4]);
+
+	//set the upper bounds 
+	if(prob->num->rvyuOmCnt>0)
+	changeBDSArray(subproblem->model, "UB", prob->num->rvyuOmCnt, prob->coord->rvyuOmRows, obsVals + prob->coord->rvOffset[3]);
+
+
+	if ( prob->num->rvdOmCnt > 0 ) {
 		/* (c) compute the cost coefficients using current observation */
 		cost = computeCostCoeff(prob->num, prob->coord, prob->dBar, obsVals);
-		if (cost == NULL) {
+		if ( cost == NULL ) {
 			errMsg("algorithm", "solveSubprob", "failed to compute subproblem cost coefficients", 0);
 			return 1;
 		}
 
 		/* (d) change cost coefficients in the solver */
-		if (changeObjCoeffArray(subproblem->model, prob->num->cols, indices, cost + 1)) {
-			errMsg("solver", "solve_subprob", "failed to change the cost coefficients in the solver", 0);
+		if ( changeObjCoeffArray(subproblem->model, prob->num->cols, indices, cost+1) ) {
+			errMsg("solver", "solve_subprob", "failed to change the cost coefficients in the solver",0);
 			return 1;
 		}
 	}
-
-	/**To do: change the bounds in the solver**/
-
-	bds = computeBDS(prob->num ,prob->coord, prob->yubar, prob->ylbar, obsVals);
-
-	//set the lower bounds 
-	if(prob->num->rvylOmCnt >0)
-		changeBDSArray(subproblem->model , "LB", prob->num->rvylOmCnt, prob->coord->rvylOmRows, bds+1);
-
-	//set the upper bounds 
-	if(prob->num->rvyuOmCnt>0)
-	   changeBDSArray(subproblem->model ,"UB", prob->num->rvyuOmCnt, prob->coord->rvyuOmRows, bds + 1 + prob->num->rvylOmCnt);
-
-
-	
 
 #if defined(WRITE_FILES)
 	writeProblem(subproblem->model, "cellSubprob.lp");
@@ -445,23 +441,6 @@ dVector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, dVe
 		cost[cOmega.col[cnt]] += cOmega.val[cnt];
 
 	return cost;
-}//END computeCostCoeff()
-
-
-dVector computeBDS(numType* num, coordType* coord, sparseVector* yBar , sparseVector* yUnd, dVector observ) {
-	dVector bds;
-	int	cnt;
-
-	bds = (dVector)arr_alloc(yBar->cnt + yUnd->cnt + 1 , double);
-
-	/*To do no guarantee to have ybar and yund same cnt*/
-	for (cnt = 1; cnt <= yBar->cnt; cnt++)
-		 yBar->val[cnt] = yBar->val[cnt]  ;
-
-	for (cnt = 1 ; cnt <= yUnd->cnt; cnt++)
-		bds[yUnd->col[cnt] + yBar->cnt] += yUnd->val[cnt];
-
-	return bds;
 }//END computeCostCoeff()
 
 

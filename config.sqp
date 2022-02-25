@@ -5,13 +5,13 @@ TOLERANCE    0.001
 MIN_ITER 1
 
 // Maximum number of iterations
-MAX_ITER   10
+MAX_ITER   100
 
 // Master type: 0 for LP, 1 for MILP, 5 for QP and 7 for MIQP
 MASTER_TYPE 5
 
 // Type of algorithm to employ: full solve (0), dual-based (1), and partition-based (2)
-ALGOTYPE 1
+ALGOTYPE 0
 
 // Set to (1) if sample average approximation is to be constructed
 SAA 0
