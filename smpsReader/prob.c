@@ -546,7 +546,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		for (m = 1; m <= prob[t]->num->rvyuOmCnt; m++) {
 			i = 1;
 			while (i <= prob[t]->uBar->cnt) {
-				if (prob[t]->uBar->col[i] == prob[t]->coord->rvyuOmRows[m])
+				if (prob[t]->uBar->col[i] == prob[t]->coord->rvyuOmRows[m-1])
 					break;
 				i++;
 			}

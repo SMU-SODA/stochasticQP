@@ -199,11 +199,11 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 /* Source.c */
 cellType* buildCell(probType** prob, stocType* stoc);
 int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals,
-		sparseVector bOmega, sparseMatrix COmega, sparseVector dOmega, sparseVector lOmega, sparseVector uOmega, DualType *dual);
+		sparseVector* bOmega, sparseMatrix* COmega, sparseVector* dOmega, sparseVector* lOmega, sparseVector* uOmega, solnType *dual);
 
-dVector computeRHS(sparseVector *bBar, sparseMatrix *Cbar, sparseVector bOmega, sparseMatrix COmega, dVector X, int numRows);
-dVector computeCostCoeff(sparseVector *dBar, sparseVector dOmega, int numCols);
-dVector computeBDS(sparseVector* bdsBar, sparseVector bdsOmega, int numCols);
+dVector computeRHS(sparseVector *bBar, sparseMatrix *Cbar, sparseVector* bOmega, sparseMatrix* COmega, dVector X, int numRows);
+dVector computeCostCoeff(sparseVector *dBar, sparseVector* dOmega, int numCols);
+dVector computeBDS(sparseVector* bdsBar, sparseVector* bdsOmega, int numCols);
 
 int getBoundDual(modelPtr *model, int numCols, double* mu_up, double* mu_low);
 int computeMUdual(modelPtr* model, int numCols, double* dj);
@@ -250,11 +250,11 @@ bool *subsetGenerator(int numObs);
 
 omegaType* newOmega(stocType* stoc);
 
-int addtoLambda(lambdaType* lambda, DualType *dual, int numRows, int numCols, bool *newLambdaFlag);
+int addtoLambda(lambdaType* lambda, solnType*dual, int numRows, int numCols, bool *newLambdaFlag);
 void addtoSigma(cellType* cell, probType* prob, solnType *soln);
 void AddtoDel(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs,int num);
 
-DualType* buildDual (numType *num);
+solnType* buildDual (numType *num);
 void VsumVsparse(dVector result , dVector v, sparseVector* vs , int len);
-void stocUpdateQP(cellType* cell, probType* prob, DualType* dual, double* alpha, double* fbeta, double mubBar,
-		sparseMatrix COmega, sparseVector bOmega, sparseVector ybar, sparseVector yund, int obs);
+void stocUpdateQP(cellType* cell, probType* prob, solnType* dual, double* alpha, double* fbeta, 
+		sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs);

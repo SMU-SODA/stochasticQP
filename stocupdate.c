@@ -12,7 +12,7 @@ bool *subsetGenerator(int numObs) {
 	return omegaP;
 }//END subsetGenerator()
 
-void buildOmegaCoordinates (probType *prob, sparseVector bOmega, sparseMatrix COmega, sparseVector dOmega, sparseVector uOmega, sparseVector lOmega) {
+void  buildOmegaCoordinates (probType *prob, sparseVector bOmega, sparseMatrix COmega, sparseVector dOmega, sparseVector uOmega, sparseVector lOmega) {
 
 	bOmega.cnt = prob->num->rvbOmCnt;
 	bOmega.col = prob->coord->rvbOmRows;
@@ -29,7 +29,6 @@ void buildOmegaCoordinates (probType *prob, sparseVector bOmega, sparseMatrix CO
 
 	lOmega.cnt = prob->num->rvylOmCnt;
 	lOmega.col = prob->coord->rvylOmRows;
-
 }//END buildOmegaCoordinates()
 
 void addtoSigma(cellType* cell, probType* prob, solnType *soln) {
@@ -42,12 +41,12 @@ void addtoSigma(cellType* cell, probType* prob, solnType *soln) {
 	}
 
 	/*Calculate fixed section of beta = Cbar*pi (pi is the dual vector associated with equality constraints)*/
-	dVector fbeta = vxMSparse(soln->pi[obs], prob->Cbar, prob->num->prevCols);
+	dVector fbeta = vxMSparse(soln->pi, prob->Cbar, prob->num->prevCols);
 	copyVector(fbeta, cell->sigma->vals[obs]->piCar, prob->num->prevCols);
 
 	/*Calculate fixred section of alpha -.5 yQy  + bbar* pi + yunder nu - ybar mu)*/
 	cell->sigma->vals[obs]->interceptBar = -0.5 * vXv(vxMSparse(soln->y, prob->sp->objQ, prob->num->cols), soln->y, index, prob->num->cols) +
-			vXvSparse(soln->pi, prob->bBar) + vXvSparse(soln->lmu, prob->lBar) - vXvSparse(soln->umu, prob->uBar);\
+			vXvSparse(soln->pi, prob->bBar) + vXvSparse(soln->lmu, prob->lBar) - vXvSparse(soln->umu, prob->uBar);
 			cell->sigma->cnt++;
 
 			free(index);
@@ -57,52 +56,36 @@ void addtoSigma(cellType* cell, probType* prob, solnType *soln) {
 void AddtoDel(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs ,int num) {
 
 	/* 2b. Compute the cut coefficients for individual observation. */
-
-	bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
-	COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
-	ybar->val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
-	yund->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
 	int* dbetaindex;
 	dbetaindex = (int*)arr_alloc(prob->num->prevCols + 1, int);
 	double* dbeta = vxMSparse(cell->lambda->pi[num], COmega, prob->num->prevCols);
 	if (cell->delta->vals[num][obs]->state == 0) {
 		cell->delta->vals[num][obs]->state = 1;
+
 		/* calculate deltaalpha */
-		cell->delta->vals[num][obs]->dalpha = vXvSparse(cell->lambda->pi[num], bOmega) + vXvSparse(cell->lambda->mu2[num], ybar) + vXvSparse(cell->lambda->mu3[num], yund); /*TO DO: ybar and yund vals start from index 0*/
-
-		/* Calculate deltabeta */
-
-		for (int i = 0; i <= prob->num->prevCols; i++) {
-			dbeta[i] = -dbeta[i];
-		}
-
-
-
+		cell->delta->vals[num][obs]->dalpha = vXvSparse(cell->lambda->pi[num], bOmega) - vXvSparse(cell->lambda->umu[num], ybar) + vXvSparse(cell->lambda->lmu[num], yund); /*TO DO: ybar and yund vals start from index 0*/
+		cell->delta->vals[num][obs]->dbeta->cnt = 0;
 		/*find out the number of nonzero elements and their location*/
 		for (int j = 0; j <= prob->num->prevCols; j++) {
 			if (dbeta[j] != 0) {
 				cell->delta->vals[num][obs]->dbeta->cnt++;
 			}
+		}
 
 			/*Assign memory to the index section of deltab */
 			cell->delta->vals[num][obs]->dbeta->col = (int*) arr_alloc(cell->delta->vals[num][obs]->dbeta->cnt + 1, int);
 			cell->delta->vals[num][obs]->dbeta->val = (double*) arr_alloc(cell->delta->vals[num][obs]->dbeta->cnt + 1, double);
 			int cnt = 0;
-			for (int j = 0; j < cell->delta->vals[num][obs]->dbeta->cnt; j++) {
+			for (int j = 0; j < prob->num->prevCols; j++) {
 				if (dbeta[j]) {
 					cnt++;
 					cell->delta->vals[num][obs]->dbeta->val[cnt] = dbeta[j];
-					cell->delta->vals[num][obs]->dbeta->col[cnt] = j;
+					cell->delta->vals[num][obs]->dbeta->col[cnt-1] = j;
 				}
-
 			}
-
 		}
-
-	}
 	free(dbetaindex);
 	free(dbeta);
-
 }
 
 int addtoLambda(lambdaType* lambda, solnType *dual, int numRows, int numCols, bool *newLambdaFlag) {
@@ -209,13 +192,13 @@ corresponds to upper bounds and mu3 corresponds to lower bounds */
 
 	lambda = (lambdaType*)mem_malloc(sizeof(lambdaType));
 	lambda->pi = (double**)arr_alloc(SigmaSize, double*);
-	lambda->mu2 = (double**)arr_alloc(SigmaSize, double*);
-	lambda->mu3 = (double**)arr_alloc(SigmaSize, double*);
+	lambda->umu = (double**)arr_alloc(SigmaSize, double*);
+	lambda->lmu = (double**)arr_alloc(SigmaSize, double*);
 
 	for (int i = 0; i < SigmaSize; i++) {
 		lambda->pi[i] = (double*)arr_alloc(prob[1]->num->rows + 1, double);
-		lambda->mu2[i] = (double*)arr_alloc(prob[1]->num->cols + 1, double);
-		lambda->mu3[i] = (double*)arr_alloc(prob[1]->num->cols + 1, double);
+		lambda->umu[i] = (double*)arr_alloc(prob[1]->num->cols + 1, double);
+		lambda->lmu[i] = (double*)arr_alloc(prob[1]->num->cols + 1, double);
 	}
 
 	lambda->cnt = 0;
@@ -294,20 +277,20 @@ void freeLambda(lambdaType* lambda) {
 			}
 			mem_free(lambda->pi);
 		}
-		if (lambda->mu2)
+		if (lambda->umu)
 		{
 			for (int i = 0; i < lambda->cnt; i++) {
-				mem_free(lambda->mu2[i]);
+				mem_free(lambda->umu[i]);
 			}
-			mem_free(lambda->mu2);
+			mem_free(lambda->umu);
 		}
-		if (lambda->mu3)
+		if (lambda->lmu)
 		{
 			for (int i = 0; i < lambda->cnt; i++)
 			{
-				mem_free(lambda->mu3[i]);
+				mem_free(lambda->umu[i]);
 			}
-			mem_free(lambda->mu3);
+			mem_free(lambda->umu);
 		}
 		mem_free(lambda);
 	}
@@ -355,53 +338,6 @@ void freeOmegaType(omegaType* omega, bool partial) {
 	mem_free(omega);
 }//END freeOmegaType()
 
-int stochasticUpdates(probType** prob, cellType* cell, stocType* stoch, lambdaType* lambda,sigmaType* sigma  ,double* x ,int rand) {
-
-	double* pi, * mu2, * mu3;
-	double mubBar;
-	sparseVector* bOmega;
-	sparseMatrix* COmega;
-	sparseVector* yuOmega;
-
-	bOmega = (sparseVector*)mem_malloc(sizeof(sparseVector)); /* The random section of rhs */
-	yuOmega = (sparseVector*)mem_malloc(sizeof(sparseVector)); /* The random section of y upperbounds */
-	COmega = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix)); /* The random section of C */
-	mu2 = (double*)arr_alloc(prob[1]->num->cols + 1, double);
-	mu3 = (double*)arr_alloc(prob[1]->num->cols + 1, double);
-	pi = (double*)arr_alloc(prob[1]->num->rows + 1, double);
-
-
-	/* 2a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
-	if (solveSubprobdual(prob[1], cell->subprob, cell->candidX, cell->omega->vals[rand], pi, &mubBar, mu2, mu3))
-	{
-		errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
-		return 1;
-	}
-	/*Update lambda*/
-
-
-
-	/*obtain the random sections associated with obs*/
-	bOmega->cnt = prob[1]->num->rvbOmCnt;
-	bOmega->col = prob[1]->coord->rvbOmRows;
-	bOmega->val = cell->omega->vals[rand] + prob[1]->coord->rvOffset[0];
-
-	COmega->cnt = prob[1]->num->rvCOmCnt; COmega->col = prob[1]->coord->rvCOmCols;
-	COmega->row = prob[1]->coord->rvCOmRows;
-	COmega->val = cell->omega->vals[rand] + prob[1]->coord->rvOffset[1];
-
-	yuOmega->cnt = prob[1]->num->rvyuOmCnt;
-	yuOmega->col = prob[1]->coord->rvyuOmRows;
-	yuOmega->val = cell->omega->vals[rand] + prob[1]->coord->rvOffset[3];
-
-	//	calcSigma(sigma, cell, prob, pi, mu2, mu3, bOmega, COmega, yuOmega, rand);
-
-	mem_free(mu2);
-	mem_free(mu3);
-	mem_free(pi);
-
-	return 0;
-}
 
 int calcSigma(sigmaType* sigma, cellType* cell  ,probType** prob, dVector pi, dVector mu2, dVector mu3 , sparseVector* bOmega, sparseMatrix* COmega,
 		sparseVector* yuOmega , int obs) {

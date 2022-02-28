@@ -92,7 +92,7 @@ void freeonecut(oneCut* cut) {
 };
 
 int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals,
-		sparseVector bOmega, sparseMatrix COmega, sparseVector dOmega, sparseVector lOmega, sparseVector uOmega, solnType *dual) {
+		sparseVector* bOmega, sparseMatrix* COmega, sparseVector* dOmega, sparseVector* lOmega, sparseVector* uOmega, solnType *dual) {
 	dVector rhs = NULL, cost = NULL, bds = NULL;
 	iVector	indices;
 
@@ -122,7 +122,7 @@ int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector 
 		}
 
 		/* (b2) change cost coefficients in the solver */
-		if (changeObjCoeffArray(subproblem->model, dOmega.cnt, dOmega.col, cost + 1)) {
+		if (changeObjCoeffArray(subproblem->model, dOmega->cnt, dOmega->col, cost + 1)) {
 			errMsg("solver", "solve_subprob", "failed to change the cost coefficients in the solver", 0);
 			return 1;
 		}
@@ -131,13 +131,13 @@ int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector 
 	if ( prob->num->rvyuOmCnt > 0 ) {
 		/* (c1) compute the cost coefficients using current observation */
 		bds = computeBDS(prob->uBar, uOmega, prob->num->cols);
-		if (cost == NULL) {
+		if (bds == NULL) {
 			errMsg("algorithm", "solveSubprob", "failed to compute subproblem upper bounds", 0);
 			return 1;
 		}
 
 		/* (c2) change cost coefficients in the solver */
-		if (changeBDSArray(subproblem->model, "UB", uOmega.cnt, uOmega.col, bds+1)) {
+		if (changeBDSArray(subproblem->model, "UB", uOmega->cnt, uOmega->col, bds+1)) {
 			errMsg("solver", "solve_subprob", "failed to change the upper bounds in the solver", 0);
 			return 1;
 		}
@@ -152,7 +152,7 @@ int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector 
 		}
 
 		/* (c2) change cost coefficients in the solver */
-		if (changeBDSArray(subproblem->model, "LB", lOmega.cnt, lOmega.col, bds+1)) {
+		if (changeBDSArray(subproblem->model, "LB", lOmega->cnt, lOmega->col, bds+1)) {
 			errMsg("solver", "solve_subprob", "failed to change the lower bounds in the solver", 0);
 			return 1;
 		}
@@ -291,44 +291,44 @@ int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector 
  * for the dVector, which must be freed by the customer.  Also, the zeroth position of this rhs dVector is reserved, and the actual values begin at rhs[1].
  * R is b, and T is C
  \***********************************************************************/
-dVector computeRHS(sparseVector *bBar, sparseMatrix *Cbar, sparseVector bOmega, sparseMatrix COmega, dVector X, int numRows) {
+dVector computeRHS(sparseVector *bBar, sparseMatrix *Cbar, sparseVector* bOmega, sparseMatrix* COmega, dVector X, int numRows) {
 	int cnt;
 	dVector rhs;
 
 	/* Start with the values of b(omega) -- both fixed and varying */
 	rhs = expandVector(bBar->val , bBar->col, bBar->cnt, numRows);
-	for (cnt = 1; cnt <= bOmega.cnt; cnt++)
-		rhs[bOmega.col[cnt]] += bOmega.val[cnt];
+	for (cnt = 1; cnt <= bOmega->cnt; cnt++)
+		rhs[bOmega->col[cnt]] += bOmega->val[cnt];
 
 
 	/* (cumulatively) subtract values of C(omega) x X -- both fixed and varying */
 	rhs = MSparsexvSub(Cbar, X, rhs);
-	rhs = MSparsexvSub(&COmega, X, rhs);
+	rhs = MSparsexvSub(COmega, X, rhs);
 
 	return rhs;
 }//END computeRHS()
 
-dVector computeCostCoeff(sparseVector *dBar, sparseVector dOmega, int numCols) {
+dVector computeCostCoeff(sparseVector *dBar, sparseVector* dOmega, int numCols) {
 	dVector costFull, cost;
 
 	costFull = expandVector(dBar->val, dBar->col, dBar->cnt, numCols);
-	for (int n = 1; n < dOmega.cnt; n++)
-		costFull[dOmega.col[n]] += dOmega.val[n];
+	for (int n = 1; n < dOmega->cnt; n++)
+		costFull[dOmega->col[n]] += dOmega->val[n];
 
-	cost = reduceVector(costFull, dOmega.col, dOmega.cnt);
+	cost = reduceVector(costFull, dOmega->col, dOmega->cnt);
 
 	return cost;
 }//END computeCostCoeff()
 
-dVector computeBDS(sparseVector* bdsBar, sparseVector bdsOmega, int numCols) {
+dVector computeBDS(sparseVector* bdsBar, sparseVector* bdsOmega, int numCols) {
 	dVector bdsFull, bds;
 
 	bdsFull = expandVector(bdsBar->val, bdsBar->col, bdsBar->cnt, numCols);
-	for ( int n = 1; n < bdsOmega.cnt; n++ ) {
-		bdsFull[bdsOmega.col[n]] += bdsOmega.val[n];
+	for ( int n = 1; n < bdsOmega->cnt; n++ ) {
+		bdsFull[bdsOmega->col[n]] += bdsOmega->val[n];
 	}
 
-	bds = reduceVector(bdsFull, bdsOmega.col, bdsOmega.cnt);
+	bds = reduceVector(bdsFull, bdsOmega->col, bdsOmega->cnt);
 
 	return bds;
 }//END computeCostCoeff()
@@ -598,8 +598,8 @@ void VsumVsparse(dVector result, dVector v, sparseVector* vs, int len) {
 	}
 }
 
-void stocUpdateQP(cellType* cell, probType* prob, solnType* dual, double* alpha , double* fbeta , double mubBar,
-		sparseMatrix COmega, sparseVector bOmega, sparseVector ybar, sparseVector yund, int obs) {
+void stocUpdateQP(cellType* cell, probType* prob, solnType* dual, double* alpha , double* newbeta ,
+		sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs) {
 	int lambdaIdx = 0;
 	bool newLambdaFlag = false;
 
@@ -608,18 +608,22 @@ void stocUpdateQP(cellType* cell, probType* prob, solnType* dual, double* alpha 
 
 	/* add to sigma the alpha and beta and to delta the dalpha and dbeta*/
 	if ( newLambdaFlag ) {
-		AddtoSig(cell, prob, mubBar); /*add the new alpha beta to sigma*/
+
+		addtoSigma(cell, prob, dual);
+
+		//AddtoSig(cell, prob, mubBar); /*add the new alpha beta to sigma*/
 
 		AddtoDel(cell, prob, COmega, bOmega, ybar, yund, obs, cell->lambda->cnt - 1); /* num position in lambda*/
 
-		VsumVsparse(fbeta, cell->sigma->vals[cell->sigma->cnt - 1]->piCar, cell->delta->vals[cell->sigma->cnt - 1][obs]->dbeta, prob->num->prevCols + 1);
+		VsumVsparse(newbeta, cell->sigma->vals[cell->sigma->cnt - 1]->piCar, cell->delta->vals[cell->sigma->cnt - 1][obs]->dbeta, prob->num->prevCols + 1);
+
 		(*alpha) = cell->sigma->vals[cell->sigma->cnt - 1]->interceptBar + cell->delta->vals[cell->sigma->cnt - 1][obs]->dalpha;
 	}
 	else
 	{
-		AddtoDel(cell, prob, COmega, bOmega, ybar, yund,obs, stat - 1); /* num position in lambda*/
-		VsumVsparse(fbeta, cell->sigma->vals[stat - 1]->piCar, cell->delta->vals[stat - 1][obs]->dbeta, prob->num->prevCols + 1);
-		(*alpha) = cell->sigma->vals[stat - 1]->interceptBar + cell->delta->vals[stat - 1][obs]->dalpha;
+		AddtoDel(cell, prob, COmega, bOmega, ybar, yund,obs, lambdaIdx - 1); /* num position in lambda*/
+		VsumVsparse(newbeta, cell->sigma->vals[lambdaIdx - 1]->piCar, cell->delta->vals[lambdaIdx - 1][obs]->dbeta, prob->num->prevCols + 1);
+		(*alpha) = cell->sigma->vals[lambdaIdx - 1]->interceptBar + cell->delta->vals[lambdaIdx - 1][obs]->dalpha;
 	}
 
 }//END stocUpdateQP()

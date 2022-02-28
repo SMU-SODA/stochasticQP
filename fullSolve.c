@@ -9,27 +9,42 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 	mu_low = (dVector)arr_alloc(prob->num->cols + 1, double);
 
 	/* initialization of the parameters */
-	sparseVector bOmega;  	/* Presenting the b vector associated with an observation(I mean the difference from bBar)*/
-	sparseMatrix COmega; 	/* Presenting the C matrix associated with an observation(I mean the difference from Cbar)*/
-	sparseVector dOmega;	/* Presenting the cost coefficient vector associated with an observation */
-	sparseVector uOmega;	/* Presenting the upperbound  vector associated with an observation(I mean the difference from yBar)*/
-	sparseVector lOmega;	/* Presenting the lowerbound  vector associated with an observation(I mean the difference from mean of yunderscore)*/
+	sparseVector *bOmega;  	/* Presenting the b vector associated with an observation(I mean the difference from bBar)*/
+	sparseMatrix *COmega; 	/* Presenting the C matrix associated with an observation(I mean the difference from Cbar)*/
+	sparseVector *dOmega;	/* Presenting the cost coefficient vector associated with an observation */
+	sparseVector *uOmega;	/* Presenting the upperbound  vector associated with an observation(I mean the difference from yBar)*/
+	sparseVector *lOmega;	/* Presenting the lowerbound  vector associated with an observation(I mean the difference from mean of yunderscore)*/
 
-	buildOmegaCoordinates (prob, bOmega, COmega, dOmega, uOmega, lOmega);
+
+	bOmega->cnt = prob->num->rvbOmCnt;
+	bOmega->col = prob->coord->rvbOmRows;
+
+	COmega->cnt = prob->num->rvCOmCnt;
+	COmega->col = prob->coord->rvCOmCols;
+	COmega->row = prob->coord->rvCOmRows;
+
+	dOmega->cnt = prob->num->rvdOmCnt;
+	dOmega->col = prob->coord->rvdOmCols;
+
+	uOmega->cnt = prob->num->rvyuOmCnt;
+	uOmega->col = prob->coord->rvyuOmRows;
+
+	lOmega->cnt = prob->num->rvylOmCnt;
+	lOmega->col = prob->coord->rvylOmRows;
 
 	/* Structure to hold dual solutions */
-	DualType* dual = buildDual(prob->num);
+	solnType* dual = buildDual(prob->num);
 
 	/* 1. Create a new cut */
 	oneCut *cut = newCut(prob->num->cols);
 
 	/* 2. loop through observations and solve subproblem for all of them. */
 	for (int obs = 0; obs < cell->omega->cnt; obs++) {
-		bOmega.val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
-		COmega.val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
-		dOmega.val = cell->omega->vals[obs] + prob->coord->rvOffset[2];
-		uOmega.val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
-		lOmega.val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
+		bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
+		COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
+		dOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[2];
+		uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
+		lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
 
 		/* 2a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
 		if (solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], bOmega, COmega, dOmega, lOmega, uOmega, dual)) {

@@ -32,8 +32,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 				goto TERMINATE;
 			}
 			break;
-		case 1:
-			cut = dualSolve(prob, cell, stoc, cell->candidX, subset);
+		case 1:			cut = dualSolve(prob[1], cell, stoc, cell->candidX, subset);
 			if (cut == NULL) {
 				errMsg("algorithm", "runAlgo", "failed to create the cut using full solve", 0);
 				goto TERMINATE;
