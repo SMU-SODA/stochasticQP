@@ -2,18 +2,7 @@
 
 oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset) {
 	bool *omegaP;
-	/* Elements for argmax calculations */
-	double 	bestalpha;
-	int* 	index = (int*) arr_alloc(prob->num->prevCols + 1, int);
-	double 	maxobj = -100;
-	int 	bestindex = 0;
-	for (int i = 1; i <= prob->num->prevCols; i++) {
-		index[i] = i;
-	}
-	double tempobj=0; /* holds the best dual objective function value when we are searching over lambda for a suboptimal solution*/
-
-	double mubBar; /* sum over dual*bounds */
-	int stat=0; /* if a dual exists in lambda or not*/
+	int  lambdaIdx;
 	double alpha;
 
 	/* initialization of the parameters */
@@ -68,52 +57,65 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 				goto TERMINATE;
 			}
 
-			/*3b. update sigma lambda delta*/
-			double* fbeta = (double*)arr_alloc(prob->num->prevCols + 1, double);
-			stocUpdateQP(cell, prob, dual, &alpha, fbeta, COmega, bOmega, uOmega, lOmega, obs);
+			/*3b. update sigma, lambda, and delta structures */
+			lambdaIdx = stocUpdateQP(cell, prob, dual, COmega, bOmega, uOmega, lOmega);
 
-			/*3c. Aggregate the cut coefficients by weighting by observation probability. */
+			/*3c. Calculate observations specific coefficients. */
+			double* beta = (double*)arr_alloc(prob->num->prevCols + 1, double);
+			alpha = cell->sigma->vals[lambdaIdx]->alpha + cell->delta->vals[lambdaIdx][obs]->alpha;
+			for (int c = 1; c <= prob->num->cntCcols; c++)
+				beta[prob->coord->CCols[c]] += cell->sigma->vals[lambdaIdx]->beta[c];
+			for (int c = 1; c <= prob->num->rvCOmCnt; c++)
+				beta[prob->coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs]->beta[c];
+
+#if defined(STOCH_CHECK)
+			printf("Reconstructed objective function    = %lf\n", alpha + vXv(cell->candidX, beta, NULL, prob->num->prevCols));
+#endif
+
+			/*3d. Aggregate the cut coefficients by weighting by observation probability. */
 			cut->alpha += cell->omega->probs[obs] * alpha;
 			for (int c = 1; c <= prob->num->prevCols; c++) {
-				cut->beta[c] += cell->omega->probs[obs] * fbeta[c];
+				cut->beta[c] += cell->omega->probs[obs] * beta[c];
 			}
-			mem_free(fbeta);
+			mem_free(beta);
 		}
 	}
 
-	///* 4. loop through subset omegaP and use argmax on subproblems */
+	/* 4. loop through subset omegaP and use argmax on subproblems */
 	for (int obs = 0; obs < cell->omega->cnt; obs++) {
 		if ( !omegaP[obs] ) {
-			/* 4a. loop through remaining observations and complete delta */
-			for (int j = 0; j < cell->lambda->cnt; j++) {
-				AddtoDel(cell, prob, COmega, bOmega, uOmega, lOmega, obs, j);
+			/* 4a. Identify the best dual using the argmax operation */
+			lambdaIdx = argmax(prob, cell->sigma, cell->delta, cell->candidX, obs);
+
+			/*4b. Calculate observations specific coefficients. */
+			double* beta = (double*) arr_alloc(prob->num->prevCols + 1, double);
+			alpha = cell->sigma->vals[lambdaIdx]->alpha + cell->delta->vals[lambdaIdx][obs]->alpha;
+			for (int c = 1; c <= prob->num->cntCcols; c++)
+				beta[prob->coord->CCols[c]] += cell->sigma->vals[lambdaIdx]->beta[c];
+			for (int c = 1; c <= prob->num->rvCOmCnt; c++)
+				beta[prob->coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs]->beta[c];
+
+#if defined(STOCH_CHECK)
+			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
+			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
+			dOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[2];
+			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
+			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
+
+			/* 3a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
+			if (solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], bOmega, COmega, dOmega, lOmega, uOmega, dual)) {
+				errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
+				goto TERMINATE;
 			}
+			printf("Reconstructed objective function    = %lf\n", alpha + vXv(cell->candidX, beta, NULL, prob->num->prevCols));
+#endif
 
-			double* bestbeta = (double*)arr_alloc(prob->num->prevCols + 1, double);
-			maxobj = -10000000;
-			bestindex = -1;
-
-			for (int j = 0; j < cell->lambda->cnt; j++) {
-				tempobj = 0;
-				alpha = cell->sigma->vals[j]->interceptBar + cell->delta->vals[j][obs]->dalpha;
-				tempobj = alpha + vXv(cell->sigma->vals[j]->piCar, cell->candidX, index, prob->num->prevCols) +
-				vXvSparse(cell->candidX, cell->delta->vals[j][obs]->dbeta);
-
-	//			/*4b. calculate estimated Obj value beta x+alpha*/
-				if (tempobj > maxobj) {
-					maxobj = tempobj;
-					bestindex = j;
-					bestalpha = alpha;
-				}
-			}
-			VsumVsparse(bestbeta, cell->sigma->vals[bestindex]->piCar, cell->delta->vals[bestindex][obs]->dbeta, prob->num->prevCols + 1);
-
-	//		/* 4c. Aggregate the cut coefficients by weighting by observation probability. */
-			cut->alpha += cell->omega->probs[obs] * bestalpha;
+			/* 4c. Aggregate the cut coefficients by weighting by observation probability. */
+			cut->alpha += cell->omega->probs[obs] * alpha;
 			for (int c = 1; c <= prob->num->prevCols; c++) {
-				cut->beta[c] += cell->omega->probs[obs] * cell->sigma->vals[bestindex]->piCar[c];
+				cut->beta[c] += cell->omega->probs[obs] * beta[c];
 			}
-			mem_free(bestbeta);
+			mem_free(beta);
 		}
 	}
 
@@ -123,6 +125,27 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 	TERMINATE:
 	return NULL;
 }//END dualSolve()
+
+int argmax(probType *prob, sigmaType *sigma, deltaType *delta, dVector Xvect, int obs) {
+	double maxobj = -INFINITY;
+	int lambdaIdx = -1;
+
+	for (int j = 0; j < sigma->cnt; j++) {
+		double tempobj;
+
+		tempobj = sigma->vals[j]->alpha + delta->vals[j][obs]->alpha
+				+ vXv(Xvect, sigma->vals[j]->beta, prob->coord->CCols, prob->num->prevCols)
+				+ vXv(Xvect, delta->vals[j][obs]->beta, prob->coord->rvCOmCols, prob->num->rvCOmCnt);
+
+		/*4b. calculate estimated Obj value beta x+alpha*/
+		if (tempobj > maxobj) {
+			maxobj = tempobj;
+			lambdaIdx = j;
+		}
+	}
+
+	return lambdaIdx;
+}//END argmax()
 
 
 

@@ -42,51 +42,61 @@ void addtoSigma(cellType* cell, probType* prob, solnType *soln) {
 
 	/*Calculate fixed section of beta = Cbar*pi (pi is the dual vector associated with equality constraints)*/
 	dVector fbeta = vxMSparse(soln->pi, prob->Cbar, prob->num->prevCols);
-	copyVector(fbeta, cell->sigma->vals[obs]->piCar, prob->num->prevCols);
+	cell->sigma->vals[obs]->beta = reduceVector(fbeta, prob->coord->CCols, prob->num->cntCcols);
 
 	/*Calculate fixred section of alpha -.5 yQy  + bbar* pi + yunder nu - ybar mu)*/
-	cell->sigma->vals[obs]->interceptBar = -0.5 * vXv(vxMSparse(soln->y, prob->sp->objQ, prob->num->cols), soln->y, index, prob->num->cols) +
+	cell->sigma->vals[obs]->alpha = -0.5 * vXv(vxMSparse(soln->y, prob->sp->objQ, prob->num->cols), soln->y, index, prob->num->cols) +
 			vXvSparse(soln->pi, prob->bBar) + vXvSparse(soln->lmu, prob->lBar) - vXvSparse(soln->umu, prob->uBar);
-			cell->sigma->cnt++;
+	cell->sigma->cnt++;
 
-			free(index);
+	free(index);
 
 }/* End addtoSigma() */
 
-void AddtoDel(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs ,int num) {
+void addtoDelta(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega, int obs ,int numPi) {
 
-	/* 2b. Compute the cut coefficients for individual observation. */
-	int* dbetaindex;
-	dbetaindex = (int*)arr_alloc(prob->num->prevCols + 1, int);
-	double* dbeta = vxMSparse(cell->lambda->pi[num], COmega, prob->num->prevCols);
-	if (cell->delta->vals[num][obs]->state == 0) {
-		cell->delta->vals[num][obs]->state = 1;
+	double* dbeta = vxMSparse(cell->lambda->pi[numPi], COmega, prob->num->prevCols);
 
-		/* calculate deltaalpha */
-		cell->delta->vals[num][obs]->dalpha = vXvSparse(cell->lambda->pi[num], bOmega) - vXvSparse(cell->lambda->umu[num], ybar) + vXvSparse(cell->lambda->lmu[num], yund); /*TO DO: ybar and yund vals start from index 0*/
-		cell->delta->vals[num][obs]->dbeta->cnt = 0;
-		/*find out the number of nonzero elements and their location*/
-		for (int j = 0; j <= prob->num->prevCols; j++) {
-			if (dbeta[j] != 0) {
-				cell->delta->vals[num][obs]->dbeta->cnt++;
-			}
-		}
+	if (cell->delta->vals[numPi][obs]->state == 0) {
+		cell->delta->vals[numPi][obs]->state = 1;
 
-			/*Assign memory to the index section of deltab */
-			cell->delta->vals[num][obs]->dbeta->col = (int*) arr_alloc(cell->delta->vals[num][obs]->dbeta->cnt + 1, int);
-			cell->delta->vals[num][obs]->dbeta->val = (double*) arr_alloc(cell->delta->vals[num][obs]->dbeta->cnt + 1, double);
-			int cnt = 0;
-			for (int j = 0; j < prob->num->prevCols; j++) {
-				if (dbeta[j]) {
-					cnt++;
-					cell->delta->vals[num][obs]->dbeta->val[cnt] = dbeta[j];
-					cell->delta->vals[num][obs]->dbeta->col[cnt-1] = j;
-				}
-			}
-		}
-	free(dbetaindex);
+		/* calculate alpha and beta*/
+		cell->delta->vals[numPi][obs]->alpha = vXvSparse(cell->lambda->pi[numPi], bOmega)
+								- vXvSparse(cell->lambda->umu[numPi], uOmega) + vXvSparse(cell->lambda->lmu[numPi], lOmega); /*TO DO: ybar and yund vals start from index 0*/
+
+		if ( prob->num->rvCOmCnt > 0 )
+			cell->delta->vals[numPi][obs]->beta = reduceVector(dbeta, prob->coord->rvCOmCols, prob->num->rvCOmCnt);
+		else
+			cell->delta->vals[numPi][obs]->beta = NULL;
+	}
 	free(dbeta);
-}
+
+	//	int* dbetaindex;
+	//	dbetaindex = (int*)arr_alloc(prob->num->prevCols + 1, int);
+	//
+	/*find out the number of nonzero elements and their location*/
+	//		cell->delta->vals[num][obs]->beta->cnt = 0;
+	//		for (int j = 0; j <= prob->num->prevCols; j++) {
+	//			if (dbeta[j] != 0) {
+	//				cell->delta->vals[num][obs]->dbeta->cnt++;
+	//			}
+	//		}
+	//
+	//		/*Assign memory to the index section of deltab */
+	//		cell->delta->vals[num][obs]->dbeta->col = (int*) arr_alloc(cell->delta->vals[num][obs]->dbeta->cnt + 1, int);
+	//		cell->delta->vals[num][obs]->dbeta->val = (double*) arr_alloc(cell->delta->vals[num][obs]->dbeta->cnt + 1, double);
+	//		int cnt = 0;
+	//		for (int j = 0; j < prob->num->prevCols; j++) {
+	//			if (dbeta[j]) {
+	//				cnt++;
+	//				cell->delta->vals[num][obs]->dbeta->val[cnt] = dbeta[j];
+	//				cell->delta->vals[num][obs]->dbeta->col[cnt-1] = j;
+	//			}
+	//		}
+	//	free(dbetaindex);	}
+
+
+}//END addtoDelta()
 
 int addtoLambda(lambdaType* lambda, solnType *dual, int numRows, int numCols, bool *newLambdaFlag) {
 
@@ -215,7 +225,7 @@ sigmaType* newSigma(double SigmaSize, probType** prob ) {
 		sigma->vals[i] = (pixbCType*)mem_malloc(sizeof(pixbCType));
 	}
 	for (int i = 0; i < SigmaSize; i++) {
-		sigma->vals[i]->piCar = (double*)arr_alloc(prob[0]->num->cols + 1, double);
+		sigma->vals[i]->beta = (double*)arr_alloc(prob[0]->num->cols + 1, double);
 	}
 	return sigma;
 
@@ -226,16 +236,14 @@ deltaType* newDelta(double SigmaSize, probType** prob , cellType* cell) {
 	/* assign memory to deta structure, this will record the deltaAlpha and deltaBetha associated with each observation*/
 
 	delta = (deltaType*)mem_malloc(sizeof(deltaType));
-	delta->vals = (lambdadeltaType***)arr_alloc(cell->omega->cnt, lambdadeltaType**);
+	delta->vals = (pixbCType ***)arr_alloc(cell->omega->cnt, pixbCType **);
 	for (int i = 0; i < cell->omega->cnt; i++) {
-		delta->vals[i] = (lambdadeltaType**)arr_alloc(SigmaSize, lambdadeltaType*);
+		delta->vals[i] = (pixbCType **)arr_alloc(SigmaSize, pixbCType*);
 	}
 	for (int i = 0; i < cell->omega->cnt; i++) {
 		for (int j = 0; j < SigmaSize; j++) {
-			delta->vals[i][j] = (lambdadeltaType*)mem_malloc(sizeof(lambdadeltaType));
-			delta->vals[i][j]->dbeta = (sparseVector*)mem_malloc(sizeof(sparseVector));
-			delta->vals[i][j]->dbeta->val = (double*)arr_alloc(prob[0]->num->cols + 1, double); /*TO DO: Change it to a reasonable size*/
-			delta->vals[i][j]->dbeta->col = (int*)arr_alloc(prob[0]->num->cols + 1, int);
+			delta->vals[i][j] = (pixbCType*) mem_malloc(sizeof(pixbCType));
+			delta->vals[i][j]->beta = (dVector) arr_alloc(prob[0]->num->rvCOmCnt, double);
 			delta->vals[i][j]->state = 0;
 		}
 	}
@@ -251,8 +259,8 @@ void freeSigma(sigmaType* sigma) {
 
 				if (sigma->vals[i])
 				{
-					if (sigma->vals[i]->piCar) {
-						mem_free(sigma->vals[i]->piCar);
+					if (sigma->vals[i]->beta) {
+						mem_free(sigma->vals[i]->beta);
 					}
 
 
@@ -313,11 +321,9 @@ void freeDelta(deltaType* delta, int numobs) {
 	}
 };/*End freeDelta*/
 
-void freeLambdaDelta(lambdadeltaType* lambdadelta){
-
+void freeLambdaDelta(pixbCType* lambdadelta){
 	if (lambdadelta) {
-
-		freeSparseVector(lambdadelta->dbeta);
+		mem_free(lambdadelta->beta);
 	}
 }
 
@@ -338,35 +344,35 @@ void freeOmegaType(omegaType* omega, bool partial) {
 	mem_free(omega);
 }//END freeOmegaType()
 
-
-int calcSigma(sigmaType* sigma, cellType* cell  ,probType** prob, dVector pi, dVector mu2, dVector mu3 , sparseVector* bOmega, sparseMatrix* COmega,
-		sparseVector* yuOmega , int obs) {
-	double fixedAlpha , alpha1 , lql , alpha, Bx ;
-	/*Check if a the sigma structure should be updated */
-
-	/* put pi.Cbar in sigma (fixed part of beta which does not change when C is deterministic) */
-	sigma->vals[obs]->piCar = vxMSparse(pi, prob[1]->Cbar, prob[1]->num->rows);
-
-
-	/* finding fixed part of alpha equal to -1/2 lambda Q lambda - xiBar .pi - yl.mu3 + yuBar.mu2 */
-
-	/* first  find -1/2 lambda Q lambda = obj -(beta x  - xi(obs) .pi - yl.mu3 + yu(obs).mu2)*/
-	/*- xi(obs) .pi - yl.mu3 + yu(obs).mu2*/
-
-	fixedAlpha = -vXv(prob[1]->bBar, pi + 1, NULL, prob[1]->num->rows)
-										- vXv(prob[1]->lBar, mu3 + 1, NULL, prob[1]->num->cols) + vXv(prob[1]->uBar, mu2 + 1, NULL, prob[1]->num->cols);
-
-
-	alpha1 = fixedAlpha - vXvSparse(pi + 1, bOmega) + vXvSparse(mu2 + 1, yuOmega);
-
-	Bx = vXv(sigma->vals[obs]->piCar, cell->candidX + 1, NULL, prob[0]->num->cols);
-
-	lql = getObjective(cell->subprob->model) - Bx - alpha1;
-
-
-	alpha = fixedAlpha + lql;
-	sigma->vals[obs]->fixed = alpha + Bx;
-	sigma->vals[obs]->interceptBar = alpha;
-	return 0;
-}
+//
+//int calcSigma(sigmaType* sigma, cellType* cell  ,probType** prob, dVector pi, dVector mu2, dVector mu3 , sparseVector* bOmega, sparseMatrix* COmega,
+//		sparseVector* yuOmega , int obs) {
+//	double fixedAlpha , alpha1 , lql , alpha, Bx ;
+//	/*Check if a the sigma structure should be updated */
+//
+//	/* put pi.Cbar in sigma (fixed part of beta which does not change when C is deterministic) */
+//	sigma->vals[obs]->piCar = vxMSparse(pi, prob[1]->Cbar, prob[1]->num->rows);
+//
+//
+//	/* finding fixed part of alpha equal to -1/2 lambda Q lambda - xiBar .pi - yl.mu3 + yuBar.mu2 */
+//
+//	/* first  find -1/2 lambda Q lambda = obj -(beta x  - xi(obs) .pi - yl.mu3 + yu(obs).mu2)*/
+//	/*- xi(obs) .pi - yl.mu3 + yu(obs).mu2*/
+//
+//	fixedAlpha = -vXv(prob[1]->bBar, pi + 1, NULL, prob[1]->num->rows)
+//														- vXv(prob[1]->lBar, mu3 + 1, NULL, prob[1]->num->cols) + vXv(prob[1]->uBar, mu2 + 1, NULL, prob[1]->num->cols);
+//
+//
+//	alpha1 = fixedAlpha - vXvSparse(pi + 1, bOmega) + vXvSparse(mu2 + 1, yuOmega);
+//
+//	Bx = vXv(sigma->vals[obs]->piCar, cell->candidX + 1, NULL, prob[0]->num->cols);
+//
+//	lql = getObjective(cell->subprob->model) - Bx - alpha1;
+//
+//
+//	alpha = fixedAlpha + lql;
+//	sigma->vals[obs]->fixed = alpha + Bx;
+//	sigma->vals[obs]->interceptBar = alpha;
+//	return 0;
+//}
 

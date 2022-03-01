@@ -5,7 +5,7 @@
 
 #define WRITE_FILES
 #define ALGO_CHECK
-#undef STOCH_CHECK
+#define STOCH_CHECK
 
 typedef enum {
 	FULL,
@@ -30,17 +30,16 @@ typedef struct {
 }lambdaType;
 
 typedef struct {
-	double  	interceptBar;				             	/* scalar pi x b */
-	dVector 	piCar;		     		                 	/* dVector pi x C */
-	double      fixed;
+	int         state;
+	double  	alpha;	           	/* scalar pi x b */
+	dVector 	beta;	           	/* dVector pi x C */
 } pixbCType;
 
-
-typedef struct {
-	int state; /*0 if assignd value 1 ow*/
-	double dalpha;
-	sparseVector* dbeta;
-} lambdadeltaType;
+//typedef struct {
+//	int 			state; 			/*0 if assignd value 1 ow*/
+//	double 			alpha;
+//	sparseVector* 	beta;
+//} lambdadeltaType;
 
 typedef struct {
 	dVector y;
@@ -50,10 +49,9 @@ typedef struct {
 	double  mubBar;
 } solnType;
 
-
 typedef struct {
-	lambdadeltaType *** vals;
 	int cnt;
+	pixbCType ***vals;
 } deltaType;
 
 typedef struct {
@@ -74,7 +72,6 @@ typedef struct {
 typedef struct {
 	int 		cnt;				/* Number of elements */
 	pixbCType** vals;				/* product terms */
-
 } sigmaType;
 
 /* structure for the problem type:
@@ -196,6 +193,9 @@ void printHelpMenu();
 /* fullSolve.c */
 oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x);
 
+/* dualSolve.c */
+int argmax(probType *prob, sigmaType *sigma, deltaType *delta, dVector Xvect, int obs);
+
 /* Source.c */
 cellType* buildCell(probType** prob, stocType* stoc);
 int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals,
@@ -232,7 +232,7 @@ void freeOmegaType(omegaType* omega, bool partial);
 void freeSigma(sigmaType* sigma);
 void freeLambda(lambdaType* lambda);
 void freeDelta(deltaType *delta , int numobs);
-oneCut* dualSolve(probType** prob, cellType* cell, stocType* stoch , double* x ,double solveset);
+oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset);
 int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS, double*,double* mu2, double* mu3);
 int calcSigma(sigmaType* sigma, cellType* cell  ,probType** prob, dVector pi, dVector mu2, dVector mu3 , sparseVector* bOmega, sparseMatrix* COmega,
 		sparseVector* yuOmega , int obs);
@@ -252,9 +252,8 @@ omegaType* newOmega(stocType* stoc);
 
 int addtoLambda(lambdaType* lambda, solnType*dual, int numRows, int numCols, bool *newLambdaFlag);
 void addtoSigma(cellType* cell, probType* prob, solnType *soln);
-void AddtoDel(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs,int num);
+void addtoDelta(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs,int num);
 
 solnType* buildDual (numType *num);
 void VsumVsparse(dVector result , dVector v, sparseVector* vs , int len);
-void stocUpdateQP(cellType* cell, probType* prob, solnType* dual, double* alpha, double* fbeta, 
-		sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs);
+int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega);

@@ -336,7 +336,6 @@ dVector computeBDS(sparseVector* bdsBar, sparseVector* bdsOmega, int numCols) {
 /* This function compute the reduced cost of every second stage variables. They will be used to calculate the \mu x b and then added to the \pi x b. */
 int getBoundDual(modelPtr *model, int numCols, double* mu_up, double* mu_low) {
 	dVector u, dj;
-	int		n;
 
 	u = (dVector) arr_alloc(numCols+1, double);
 	dj = (dVector) arr_alloc(numCols+1, double);
@@ -352,7 +351,7 @@ int getBoundDual(modelPtr *model, int numCols, double* mu_up, double* mu_low) {
 	}
 
 	for (int i = 1; i < numCols;i++) {
-		if (dj[i] >= 0) {
+		if (dj[i] <= 0) {
 			mu_up[i] = dj[i];
 			mu_low[i] = 0.0;
 		}
@@ -598,8 +597,7 @@ void VsumVsparse(dVector result, dVector v, sparseVector* vs, int len) {
 	}
 }
 
-void stocUpdateQP(cellType* cell, probType* prob, solnType* dual, double* alpha , double* newbeta ,
-		sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs) {
+int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega) {
 	int lambdaIdx = 0;
 	bool newLambdaFlag = false;
 
@@ -611,21 +609,16 @@ void stocUpdateQP(cellType* cell, probType* prob, solnType* dual, double* alpha 
 
 		addtoSigma(cell, prob, dual);
 
-		//AddtoSig(cell, prob, mubBar); /*add the new alpha beta to sigma*/
+		for ( int obs = 0; obs < cell->omega->cnt; obs++ )
+			/* Add a new row to the delta structure for all observations and the latest lambda (lambdaIdx) */
+			addtoDelta(cell, prob, COmega, bOmega, uOmega, lOmega, obs, lambdaIdx);
 
-		AddtoDel(cell, prob, COmega, bOmega, ybar, yund, obs, cell->lambda->cnt - 1); /* num position in lambda*/
-
-		VsumVsparse(newbeta, cell->sigma->vals[cell->sigma->cnt - 1]->piCar, cell->delta->vals[cell->sigma->cnt - 1][obs]->dbeta, prob->num->prevCols + 1);
-
-		(*alpha) = cell->sigma->vals[cell->sigma->cnt - 1]->interceptBar + cell->delta->vals[cell->sigma->cnt - 1][obs]->dalpha;
 	}
-	else
-	{
-		AddtoDel(cell, prob, COmega, bOmega, ybar, yund,obs, lambdaIdx - 1); /* num position in lambda*/
-		VsumVsparse(newbeta, cell->sigma->vals[lambdaIdx - 1]->piCar, cell->delta->vals[lambdaIdx - 1][obs]->dbeta, prob->num->prevCols + 1);
-		(*alpha) = cell->sigma->vals[lambdaIdx - 1]->interceptBar + cell->delta->vals[lambdaIdx - 1][obs]->dalpha;
-	}
+//	else {
+//		AddtoDel(cell, prob, COmega, bOmega, ybar, yund,obs, lambdaIdx - 1); /* num position in lambda*/
+//	}
 
+	return lambdaIdx;
 }//END stocUpdateQP()
 
 void freeCellType (cellType *cell) {
