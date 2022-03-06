@@ -48,7 +48,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 
 #if defined(ALGO_CHECK)
 		double objEst = vXvSparse(cell->candidX, prob[0]->dBar) + cut->alpha - vXv(cut->beta, cell->candidX, NULL, prob[0]->num->cols);
-		printf("\tCandidate estimate = %lf\n", objEst);
+		//printf("\tCandidate estimate = %lf\n", objEst);
 #endif
 
 		/* 3. Add the affine function to the master problem. */

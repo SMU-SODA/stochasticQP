@@ -266,7 +266,7 @@ dVector vxMSparse(dVector v, sparseMatrix* M, int len) {
 		errMsg("allocation", "vxMSparse", "ans", 1);
 	if (M->cnt > 0) {
 	for (cnt = 1; cnt <= M->cnt; cnt++)
-		ans[M->col[cnt]] += v[M->row[cnt]] * M->val[cnt];
+		ans[M->col[cnt]] += v[M->row[cnt]] * M->val[cnt]; /*from 0 or 1?*/
 }
 	ans[0] = oneNorm(ans+1, len);
 

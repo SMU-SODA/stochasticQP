@@ -171,7 +171,7 @@ int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector 
 #if defined(STOCH_CHECK)
 	double obj;
 	obj = getObjective(subproblem->model);
-	printf("\t\tObjective value of Subproblem  = %lf;\t", obj);
+	//printf("\t\tObjective value of Subproblem  = %lf;\t", obj);
 #endif
 
 	/* Record the primal value */
@@ -324,11 +324,11 @@ dVector computeBDS(sparseVector* bdsBar, sparseVector* bdsOmega, int numCols) {
 	dVector bdsFull, bds;
 
 	bdsFull = expandVector(bdsBar->val, bdsBar->col, bdsBar->cnt, numCols);
-	for ( int n = 1; n < bdsOmega->cnt; n++ ) {
-		bdsFull[bdsOmega->col[n]] += bdsOmega->val[n];
+	for ( int n = 1; n <= bdsOmega->cnt; n++ ) {
+		bdsFull[bdsOmega->col[n-1]] += bdsOmega->val[n];
 	}
 
-	bds = reduceVector(bdsFull, bdsOmega->col, bdsOmega->cnt);
+	bds = reduceVector(bdsFull, bdsOmega->col-1, bdsOmega->cnt);
 
 	return bds;
 }//END computeCostCoeff()
@@ -609,9 +609,16 @@ int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* C
 
 		addtoSigma(cell, prob, dual);
 
-		for ( int obs = 0; obs < cell->omega->cnt; obs++ )
+		for (int obs = 0; obs < cell->omega->cnt; obs++) {
 			/* Add a new row to the delta structure for all observations and the latest lambda (lambdaIdx) */
+			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
+			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
+		
+			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
+			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
+
 			addtoDelta(cell, prob, COmega, bOmega, uOmega, lOmega, obs, lambdaIdx);
+		}
 
 	}
 //	else {

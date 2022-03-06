@@ -66,10 +66,10 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 			for (int c = 1; c <= prob->num->cntCcols; c++)
 				beta[prob->coord->CCols[c]] += cell->sigma->vals[lambdaIdx]->beta[c];
 			for (int c = 1; c <= prob->num->rvCOmCnt; c++)
-				beta[prob->coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs]->beta[c];
+				beta[prob->coord->rvCols[c-1]] += cell->delta->vals[lambdaIdx][obs]->beta[c];
 
 #if defined(STOCH_CHECK)
-			printf("Reconstructed objective function    = %lf\n", alpha + vXv(cell->candidX, beta, NULL, prob->num->prevCols));
+			//printf("Reconstructed objective function    = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
 #endif
 
 			/*3d. Aggregate the cut coefficients by weighting by observation probability. */
@@ -87,13 +87,13 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 			/* 4a. Identify the best dual using the argmax operation */
 			lambdaIdx = argmax(prob, cell->sigma, cell->delta, cell->candidX, obs);
 
-			/*4b. Calculate observations specific coefficients. */
+			/* 4b. Calculate observations specific coefficients. */
 			double* beta = (double*) arr_alloc(prob->num->prevCols + 1, double);
 			alpha = cell->sigma->vals[lambdaIdx]->alpha + cell->delta->vals[lambdaIdx][obs]->alpha;
 			for (int c = 1; c <= prob->num->cntCcols; c++)
 				beta[prob->coord->CCols[c]] += cell->sigma->vals[lambdaIdx]->beta[c];
 			for (int c = 1; c <= prob->num->rvCOmCnt; c++)
-				beta[prob->coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs]->beta[c];
+				beta[prob->coord->rvCols[c - 1]] += cell->delta->vals[lambdaIdx][obs]->beta[c];
 
 #if defined(STOCH_CHECK)
 			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
@@ -107,14 +107,17 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 				errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 				goto TERMINATE;
 			}
-			printf("Reconstructed objective function    = %lf\n", alpha + vXv(cell->candidX, beta, NULL, prob->num->prevCols));
+
+			//printf("Reconstructed objective function apppro    = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
 #endif
 
 			/* 4c. Aggregate the cut coefficients by weighting by observation probability. */
 			cut->alpha += cell->omega->probs[obs] * alpha;
+
 			for (int c = 1; c <= prob->num->prevCols; c++) {
 				cut->beta[c] += cell->omega->probs[obs] * beta[c];
 			}
+
 			mem_free(beta);
 		}
 	}
@@ -134,8 +137,8 @@ int argmax(probType *prob, sigmaType *sigma, deltaType *delta, dVector Xvect, in
 		double tempobj;
 
 		tempobj = sigma->vals[j]->alpha + delta->vals[j][obs]->alpha
-				+ vXv(Xvect, sigma->vals[j]->beta, prob->coord->CCols, prob->num->prevCols)
-				+ vXv(Xvect, delta->vals[j][obs]->beta, prob->coord->rvCOmCols, prob->num->rvCOmCnt);
+				- vXv(Xvect, sigma->vals[j]->beta, prob->coord->CCols, prob->num->cntCcols)
+				- vXv(Xvect, delta->vals[j][obs]->beta, prob->coord->rvCOmCols, prob->num->rvCOmCnt);
 
 		/*4b. calculate estimated Obj value beta x+alpha*/
 		if (tempobj > maxobj) {

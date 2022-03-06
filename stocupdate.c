@@ -46,7 +46,7 @@ void addtoSigma(cellType* cell, probType* prob, solnType *soln) {
 
 	/*Calculate fixred section of alpha -.5 yQy  + bbar* pi + yunder nu - ybar mu)*/
 	cell->sigma->vals[obs]->alpha = -0.5 * vXv(vxMSparse(soln->y, prob->sp->objQ, prob->num->cols), soln->y, index, prob->num->cols) +
-			vXvSparse(soln->pi, prob->bBar) + vXvSparse(soln->lmu, prob->lBar) - vXvSparse(soln->umu, prob->uBar);
+			vXvSparse(soln->pi, prob->bBar) + vXvSparse(soln->lmu, prob->lBar) + vXvSparse(soln->umu, prob->uBar);
 	cell->sigma->cnt++;
 
 	free(index);
@@ -62,7 +62,7 @@ void addtoDelta(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVect
 
 		/* calculate alpha and beta*/
 		cell->delta->vals[numPi][obs]->alpha = vXvSparse(cell->lambda->pi[numPi], bOmega)
-								- vXvSparse(cell->lambda->umu[numPi], uOmega) + vXvSparse(cell->lambda->lmu[numPi], lOmega); /*TO DO: ybar and yund vals start from index 0*/
+								+ vXvSparse(cell->lambda->umu[numPi], uOmega) + vXvSparse(cell->lambda->lmu[numPi], lOmega); /*TO DO: ybar and yund vals start from index 0*/
 
 		if ( prob->num->rvCOmCnt > 0 )
 			cell->delta->vals[numPi][obs]->beta = reduceVector(dbeta, prob->coord->rvCOmCols, prob->num->rvCOmCnt);
