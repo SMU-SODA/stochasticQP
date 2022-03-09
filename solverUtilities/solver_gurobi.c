@@ -80,11 +80,19 @@ modelPtr *setupProblem(const char *Pname, int numvars, int numconstrs, int objse
 	}
 
 	if ( objQ != NULL ) {
-		status =  GRBaddqpterms(model, objQ->cnt, objQ->row, objQ->col, objQ->val);
+		iVector row = (iVector)arr_alloc(objQ->cnt, int);
+		iVector col = (iVector)arr_alloc(objQ->cnt, int);
+		for (int i = 0; i < objQ->cnt; i++) {
+			row[i] = objQ->row[i + 1] - 1;
+			col[i] = objQ->col[i + 1] - 1;
+		}
+		status =  GRBaddqpterms(model, objQ->cnt, row , col, objQ->val+1);
 		if ( status ) {
 			solverErrMsg(status);
 			return NULL;
 		}
+		mem_free(col);
+		mem_free(row);
 	}
 
 	return model;

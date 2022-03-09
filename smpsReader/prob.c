@@ -91,7 +91,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		prob[t]->sp->cname   = (cString *) arr_alloc(prob[t]->sp->macsz, cString);
 		prob[t]->sp->rname   = (cString *) arr_alloc(prob[t]->sp->marsz, cString);
 
-		/*allocate memory to objQ*/
+		
 
 		strcpy(prob[t]->sp->objname, orig->objname);
 		sprintf(prob[t]->sp->name, "%s_%d", orig->name, t);
@@ -139,6 +139,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			prob[t]->sp->objQ->col = (iVector) arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, int);
 			prob[t]->sp->objQ->row = (iVector) arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, int);
 			prob[t]->sp->objQ->val = (dVector) arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, double);
+			prob[t]->sp->objQ->cnt = 0;
 		}
 		else
 			prob[t]->sp->objQ = NULL;
@@ -304,23 +305,22 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 	int numvar = orig->mar - tim->col[t];
 	///allocate mamory to q of prob t
 	prob[t]->sp->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix)); /*why do we write it?												 */
-	prob[t]->sp->objQ->col = (iVector)arr_alloc(numvar * numvar, int);
-	prob[t]->sp->objQ->row = (iVector)arr_alloc(numvar * numvar, int);
-	prob[t]->sp->objQ->val = (dVector)arr_alloc(numvar * numvar, double);
+	prob[t]->sp->objQ->col = (iVector)arr_alloc(numvar * numvar +1, int);
+	prob[t]->sp->objQ->row = (iVector)arr_alloc(numvar * numvar+1, int);
+	prob[t]->sp->objQ->val = (dVector)arr_alloc(numvar * numvar +1, double);
 
 	int r2 = 0;
 	for (int r1 = 0; r1 < orig->objQ->cnt; r1++) {
 		if ((orig->objQ->col[r1] >= tim->col[t]) & (orig->objQ->row[r1] >= tim->col[t]) )
 		{
 			r2++;
-			prob[t]->sp->objQ->col[r2] = orig->objQ->col[r1]- tim->col[t];
-			prob[t]->sp->objQ->row[r2] = orig->objQ->row[r1]- tim->col[t];
+			prob[t]->sp->objQ->col[r2] = orig->objQ->col[r1]- tim->col[t] + 1;
+			prob[t]->sp->objQ->row[r2] = orig->objQ->row[r1]- tim->col[t] + 1;
 			prob[t]->sp->objQ->val[r2] = orig->objQ->val[r1];
-			
 		}
 	}
-
 	prob[t]->sp->objQ->cnt = r2;
+	
 
 	/* if integer or binary variables are encountered, then label the stage problem as a mixed integer LP */
 	if (prob[t]->sp->objQ->cnt != 0) {
@@ -338,6 +338,15 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		}
 		else {
 			prob[t]->sp->type = PROB_LP;
+		}
+	}
+
+	//*Free ObjQ matrix if Empty*//
+	for (t = 0; t < tim->numStages; t++) {
+		if (prob[t]->sp->objQ->cnt == 0)
+		{
+			freeSparseMatrix(prob[t]->sp->objQ);
+			prob[t]->sp->objQ = NULL;
 		}
 	}
 

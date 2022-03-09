@@ -108,7 +108,7 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 				goto TERMINATE;
 			}
 
-			//printf("Reconstructed objective function apppro    = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
+			printf("Reconstructed objective function apppro    = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
 #endif
 
 			/* 4c. Aggregate the cut coefficients by weighting by observation probability. */

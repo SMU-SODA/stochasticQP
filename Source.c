@@ -397,7 +397,7 @@ oneProblem* newSubproblem(oneProblem* probSP) {
 
 		/* Copy the quadratic part of the objective */
 		stage1->objQ->cnt = probSP->objQ->cnt;
-		for (int i = 0; i < probSP->objQ->cnt; i++) {
+		for (int i = 0; i <= probSP->objQ->cnt; i++) {
 			stage1->objQ->val[i] = probSP->objQ->val[i];
 			stage1->objQ->col[i] = probSP->objQ->col[i];
 			stage1->objQ->row[i] = probSP->objQ->row[i];
@@ -452,7 +452,7 @@ oneProblem* newSubproblem(oneProblem* probSP) {
 		return NULL;
 	}
 
-#if 0
+#if defined(WRITE_FILES)
 	int     status;
 	char probName[NAMESIZE];
 	sprintf(probName, "newSubprob.lp");

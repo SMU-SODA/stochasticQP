@@ -3,12 +3,19 @@
 extern configType config;
 
 bool *subsetGenerator(int numObs) {
+	bool* omegaP = (bool*)arr_alloc(numObs, bool);
+	int cnt = 0;
 
-	bool* omegaP = (bool *) arr_alloc(numObs, bool);
+	Repeat:
 	for (int obs = 0; obs < numObs; obs++) {
 		omegaP[obs] = randUniform() <= config.SAMPLE_FRACTION;
+		if(omegaP[obs] == true){
+			cnt++;
+		}
 	}
-
+	if (cnt == 0) {
+		goto Repeat;
+	}
 	return omegaP;
 }//END subsetGenerator()
 
