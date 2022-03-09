@@ -47,16 +47,23 @@ void addtoSigma(cellType* cell, probType* prob, solnType *soln) {
 		index[i] = i ;
 	}
 
+	cell->sigma->vals[obs] = (pixbCType *) mem_malloc(sizeof(pixbCType));
+
 	/*Calculate fixed section of beta = Cbar*pi (pi is the dual vector associated with equality constraints)*/
 	dVector fbeta = vxMSparse(soln->pi, prob->Cbar, prob->num->prevCols);
 	cell->sigma->vals[obs]->beta = reduceVector(fbeta, prob->coord->CCols, prob->num->cntCcols);
 
 	/*Calculate fixred section of alpha -.5 yQy  + bbar* pi + yunder nu - ybar mu)*/
-	cell->sigma->vals[obs]->alpha = -0.5 * vXv(vxMSparse(soln->y, prob->sp->objQ, prob->num->cols), soln->y, index, prob->num->cols) +
-			vXvSparse(soln->pi, prob->bBar) + vXvSparse(soln->lmu, prob->lBar) + vXvSparse(soln->umu, prob->uBar);
+	cell->sigma->vals[obs]->alpha = vXvSparse(soln->pi, prob->bBar) + vXvSparse(soln->lmu, prob->lBar) + vXvSparse(soln->umu, prob->uBar);
+	if ( prob->sp->objQ != NULL) {
+		dVector yTopQbar = vxMSparse(soln->y, prob->sp->objQ, prob->num->cols);
+		cell->sigma->vals[obs]->alpha -= 0.5 * vXv(yTopQbar, soln->y, index, prob->num->cols);
+		mem_free(yTopQbar);
+	}
 	cell->sigma->cnt++;
 
-	free(index);
+	mem_free(fbeta);
+	mem_free(index);
 
 }/* End addtoSigma() */
 
@@ -64,44 +71,24 @@ void addtoDelta(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVect
 
 	double* dbeta = vxMSparse(cell->lambda->pi[numPi], COmega, prob->num->prevCols);
 
-	if (cell->delta->vals[numPi][obs]->state == 0) {
-		cell->delta->vals[numPi][obs]->state = 1;
-
-		/* calculate alpha and beta*/
-		cell->delta->vals[numPi][obs]->alpha = vXvSparse(cell->lambda->pi[numPi], bOmega)
-								+ vXvSparse(cell->lambda->umu[numPi], uOmega) + vXvSparse(cell->lambda->lmu[numPi], lOmega); /*TO DO: ybar and yund vals start from index 0*/
-
-		if ( prob->num->rvCOmCnt > 0 )
-			cell->delta->vals[numPi][obs]->beta = reduceVector(dbeta, prob->coord->rvCOmCols, prob->num->rvCOmCnt);
-		else
-			cell->delta->vals[numPi][obs]->beta = NULL;
+	/* If this is a new lambda, we add a row to the delta structure */
+	if ( obs ==  0 ) {
+		cell->delta->vals[numPi] = (pixbCType **) arr_alloc(cell->omega->cnt, pixbCType *);
+		cell->delta->cnt++;
 	}
+
+	cell->delta->vals[numPi][obs] = (pixbCType *) mem_malloc(sizeof(pixbCType));
+
+	/* calculate alpha and beta*/
+	cell->delta->vals[numPi][obs]->alpha = vXvSparse(cell->lambda->pi[numPi], bOmega)
+														+ vXvSparse(cell->lambda->umu[numPi], uOmega) + vXvSparse(cell->lambda->lmu[numPi], lOmega); /*TO DO: ybar and yund vals start from index 0*/
+
+	if ( prob->num->rvCOmCnt > 0 )
+		cell->delta->vals[numPi][obs]->beta = reduceVector(dbeta, prob->coord->rvCOmCols, prob->num->rvCOmCnt);
+	else
+		cell->delta->vals[numPi][obs]->beta = NULL;
+
 	free(dbeta);
-
-	//	int* dbetaindex;
-	//	dbetaindex = (int*)arr_alloc(prob->num->prevCols + 1, int);
-	//
-	/*find out the number of nonzero elements and their location*/
-	//		cell->delta->vals[num][obs]->beta->cnt = 0;
-	//		for (int j = 0; j <= prob->num->prevCols; j++) {
-	//			if (dbeta[j] != 0) {
-	//				cell->delta->vals[num][obs]->dbeta->cnt++;
-	//			}
-	//		}
-	//
-	//		/*Assign memory to the index section of deltab */
-	//		cell->delta->vals[num][obs]->dbeta->col = (int*) arr_alloc(cell->delta->vals[num][obs]->dbeta->cnt + 1, int);
-	//		cell->delta->vals[num][obs]->dbeta->val = (double*) arr_alloc(cell->delta->vals[num][obs]->dbeta->cnt + 1, double);
-	//		int cnt = 0;
-	//		for (int j = 0; j < prob->num->prevCols; j++) {
-	//			if (dbeta[j]) {
-	//				cnt++;
-	//				cell->delta->vals[num][obs]->dbeta->val[cnt] = dbeta[j];
-	//				cell->delta->vals[num][obs]->dbeta->col[cnt-1] = j;
-	//			}
-	//		}
-	//	free(dbetaindex);	}
-
 
 }//END addtoDelta()
 
@@ -119,9 +106,9 @@ int addtoLambda(lambdaType* lambda, solnType *dual, int numRows, int numCols, bo
 	if ( idx == lambda->cnt ) {
 		/* TODO: New lambda discovered */
 		(*newLambdaFlag) = true;
-		copyVector(dual->pi, lambda->pi[lambda->cnt], numRows);
-		copyVector(dual->umu, lambda->umu[lambda->cnt], numCols);
-		copyVector(dual->lmu, lambda->lmu[lambda->cnt], numCols);
+		lambda->pi[lambda->cnt]  = duplicVector(dual->pi, numRows);
+		lambda->umu[lambda->cnt] = duplicVector(dual->umu, numCols);
+		lambda->lmu[lambda->cnt] = duplicVector(dual->lmu, numCols);
 		lambda->cnt++;
 	}
 
@@ -211,31 +198,19 @@ corresponds to upper bounds and mu3 corresponds to lower bounds */
 	lambda->pi = (double**)arr_alloc(SigmaSize, double*);
 	lambda->umu = (double**)arr_alloc(SigmaSize, double*);
 	lambda->lmu = (double**)arr_alloc(SigmaSize, double*);
-
-	for (int i = 0; i < SigmaSize; i++) {
-		lambda->pi[i] = (double*)arr_alloc(prob[1]->num->rows + 1, double);
-		lambda->umu[i] = (double*)arr_alloc(prob[1]->num->cols + 1, double);
-		lambda->lmu[i] = (double*)arr_alloc(prob[1]->num->cols + 1, double);
-	}
-
 	lambda->cnt = 0;
-	return lambda;
 
+	return lambda;
 }//END newLambda()
 
 sigmaType* newSigma(double SigmaSize, probType** prob ) {
 	sigmaType* sigma = NULL; /* Sigma is a collection of fixed parts of alpha and beta which is independent of the observation */
-	sigma = (sigmaType*)mem_malloc(sizeof(sigmaType));
-	sigma->vals = (pixbCType**)arr_alloc(SigmaSize, pixbCType*);
-	sigma->cnt = 0;
-	for (int i = 0; i < SigmaSize; i++) {
-		sigma->vals[i] = (pixbCType*)mem_malloc(sizeof(pixbCType));
-	}
-	for (int i = 0; i < SigmaSize; i++) {
-		sigma->vals[i]->beta = (double*)arr_alloc(prob[0]->num->cols + 1, double);
-	}
-	return sigma;
 
+	sigma = (sigmaType*)mem_malloc(sizeof(sigmaType));
+	sigma->vals = (pixbCType**) arr_alloc(SigmaSize, pixbCType*);
+	sigma->cnt = 0;
+
+	return sigma;
 }//END newSigma()
 
 deltaType* newDelta(double SigmaSize, probType** prob , cellType* cell) {
@@ -244,16 +219,7 @@ deltaType* newDelta(double SigmaSize, probType** prob , cellType* cell) {
 
 	delta = (deltaType*)mem_malloc(sizeof(deltaType));
 	delta->vals = (pixbCType ***)arr_alloc(SigmaSize, pixbCType **);
-	for (int i = 0; i < SigmaSize; i++) {
-		delta->vals[i] = (pixbCType **)arr_alloc(cell->omega->cnt, pixbCType*);
-	}
-	for (int i = 0; i < SigmaSize ; i++) {
-		for (int j = 0; j < cell->omega->cnt; j++) {
-			delta->vals[i][j] = (pixbCType*) mem_malloc(sizeof(pixbCType));
-			delta->vals[i][j]->beta = (dVector) arr_alloc(prob[0]->num->rvCOmCnt, double);
-			delta->vals[i][j]->state = 0;
-		}
-	}
+	delta->cnt = 0;
 
 	return delta;
 
@@ -299,25 +265,25 @@ void freeLambda(lambdaType* lambda) {
 			}
 			mem_free(lambda->umu);
 		}
-		if (lambda->lmu)
-		{
-			for (int i = 0; i < lambda->cnt; i++)
-			{
-				mem_free(lambda->umu[i]);
+		if (lambda->lmu) {
+			for (int i = 0; i < lambda->cnt; i++) {
+				mem_free(lambda->lmu[i]);
 			}
-			mem_free(lambda->umu);
+			mem_free(lambda->lmu);
 		}
 		mem_free(lambda);
 	}
+
 }; /*EndfreeLambda*/
 
 void freeDelta(deltaType* delta, int numobs) {
+
 	if (delta) {
 		if (delta->vals) {
 			for (int i = 0; i < delta->cnt; i++) {
 				if (delta->vals[i]) {
-					for (int j = 0; j < numobs; i++) {
-						freeLambda(delta->vals[i][j]);
+					for (int j = 0; j < numobs; j++) {
+						freeLambdaDelta(delta->vals[i][j]);
 					}
 					mem_free(delta->vals[i]);
 				}
@@ -326,9 +292,10 @@ void freeDelta(deltaType* delta, int numobs) {
 		}
 		mem_free(delta);
 	}
+
 };/*End freeDelta*/
 
-void freeLambdaDelta(pixbCType* lambdadelta){
+void freeLambdaDelta(pixbCType* lambdadelta) {
 	if (lambdadelta) {
 		mem_free(lambdadelta->beta);
 	}

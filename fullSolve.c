@@ -46,7 +46,7 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 	/* 2. loop through observations and solve subproblem for all of them. */
 	for (int obs = 0; obs < cell->omega->cnt; obs++) {
 		/* Structure to hold dual solutions */
-		solnType* dual = buildDual(prob->num);
+		solnType* dual = buildSolnType(prob->num);
 		bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
 		COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
 		dOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[2];

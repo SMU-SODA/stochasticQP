@@ -30,7 +30,6 @@ typedef struct {
 }lambdaType;
 
 typedef struct {
-	int         state;
 	double  	alpha;	           	/* scalar pi x b */
 	dVector 	beta;	           	/* dVector pi x C */
 } pixbCType;
@@ -228,6 +227,7 @@ int updateRHSwState(numType* num, coordType* coord, sparseVector* bBar, sparseMa
 void freeCellType(cellType* cell);
 void freecut(cutsType* cut);
 void freeonecut(oneCut* cut);
+void freeLambdaDelta(pixbCType* lambdadelta);
 void freeOmegaType(omegaType* omega, bool partial);
 void freeSigma(sigmaType* sigma);
 void freeLambda(lambdaType* lambda);
@@ -254,6 +254,8 @@ int addtoLambda(lambdaType* lambda, solnType*dual, int numRows, int numCols, boo
 void addtoSigma(cellType* cell, probType* prob, solnType *soln);
 void addtoDelta(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs,int num);
 
-solnType* buildDual (numType *num);
+solnType* buildSolnType (numType *num);
+void freeSolnType(solnType *soln);
+
 void VsumVsparse(dVector result , dVector v, sparseVector* vs , int len);
 int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega);

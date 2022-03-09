@@ -91,7 +91,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		prob[t]->sp->cname   = (cString *) arr_alloc(prob[t]->sp->macsz, cString);
 		prob[t]->sp->rname   = (cString *) arr_alloc(prob[t]->sp->marsz, cString);
 
-		
+
 
 		strcpy(prob[t]->sp->objname, orig->objname);
 		sprintf(prob[t]->sp->name, "%s_%d", orig->name, t);
@@ -133,17 +133,9 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			prob[t]->Dbar->cnt = 0;
 		}
 
-		//allocate mamory to q of prob t
-		if ( orig->objQ->cnt > 0 ) {
-			prob[t]->sp->objQ = (sparseMatrix*) mem_malloc(sizeof(sparseMatrix));
-			prob[t]->sp->objQ->col = (iVector) arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, int);
-			prob[t]->sp->objQ->row = (iVector) arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, int);
-			prob[t]->sp->objQ->val = (dVector) arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, double);
-			prob[t]->sp->objQ->cnt = 0;
-		}
-		else
-			prob[t]->sp->objQ = NULL;
+		prob[t]->sp->objQ = NULL;
 	}
+
 	t = 0;
 	for ( t = 0; t < tim->numStages-1; t++ ) {
 		/* lower bound on cost-to-go function */
@@ -202,8 +194,6 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			}
 		}
 
-
-
 		/* copy row information for non-terminal stage */
 		for ( m = tim->row[t]; m < tim->row[t+1]; m++ ) {
 			k = m - tim->row[t];
@@ -221,12 +211,19 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 
 		for (int r1 = 0; r1 < orig->objQ->cnt; r1++) {
 			if ( (orig->objQ->col[r1] >= tim->col[t] & orig->objQ->col[r1] < tim->col[t + 1]) & (orig->objQ->row[r1] >= tim->col[t]) & (orig->objQ->row[r1] < tim->col[t + 1]) ) {
+				/* there is a non-zero element in the quadratic matrix, so allocate memory */
+				if ( prob[t]->sp->objQ == NULL ) {
+					prob[t]->sp->objQ = (sparseMatrix*) mem_malloc(sizeof(sparseMatrix));
+					prob[t]->sp->objQ->col = (iVector) arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, int);
+					prob[t]->sp->objQ->row = (iVector) arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, int);
+					prob[t]->sp->objQ->val = (dVector) arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, double);
+					prob[t]->sp->objQ->cnt = 0;
+				}
+
 				prob[t]->sp->objQ->cnt++;
 				prob[t]->sp->objQ->col[prob[t]->sp->objQ->cnt] = orig->objQ->col[r1] - tim->col[t];
 				prob[t]->sp->objQ->row[prob[t]->sp->objQ->cnt] = orig->objQ->row[r1] - tim->col[t];
 				prob[t]->sp->objQ->val[prob[t]->sp->objQ->cnt] = orig->objQ->val[r1];
-				
-				
 			}
 		}
 	}
@@ -239,19 +236,13 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		prob[t]->dBar->col[prob[t]->dBar->cnt+1] = m-tim->col[t]+1;
 		prob[t]->dBar->cnt++;
 
-
-
-
 		prob[t]->uBar->val[prob[t]->uBar->cnt + 1] = orig->bdu[m];
 		prob[t]->uBar->col[prob[t]->uBar->cnt + 1] = m - tim->col[t] + 1;
 		prob[t]->uBar->cnt++;
 
-
-
 		prob[t]->lBar->val[prob[t]->lBar->cnt + 1] = orig->bdl[m];
 		prob[t]->lBar->col[prob[t]->lBar->cnt + 1] = m - tim->col[t] + 1;
 		prob[t]->lBar->cnt++;
-
 
 		prob[t]->sp->objx[k] = orig->objx[m];
 		prob[t]->sp->bdl[k] = orig->bdl[m];
@@ -263,8 +254,6 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		}
 		else
 			prob[t]->sp->ctype[k] = orig->ctype[m];
-
-
 
 		prob[t]->sp->cname[k] = (cString) arr_alloc(NAMESIZE, char);
 		strcpy(prob[t]->sp->cname[k], orig->cname[m]);
@@ -302,28 +291,25 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		prob[t]->bBar->cnt++;
 	}
 
-	int numvar = orig->mar - tim->col[t];
-	///allocate mamory to q of prob t
-	prob[t]->sp->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix)); /*why do we write it?												 */
-	prob[t]->sp->objQ->col = (iVector)arr_alloc(numvar * numvar +1, int);
-	prob[t]->sp->objQ->row = (iVector)arr_alloc(numvar * numvar+1, int);
-	prob[t]->sp->objQ->val = (dVector)arr_alloc(numvar * numvar +1, double);
-
-	int r2 = 0;
 	for (int r1 = 0; r1 < orig->objQ->cnt; r1++) {
-		if ((orig->objQ->col[r1] >= tim->col[t]) & (orig->objQ->row[r1] >= tim->col[t]) )
-		{
-			r2++;
-			prob[t]->sp->objQ->col[r2] = orig->objQ->col[r1]- tim->col[t] + 1;
-			prob[t]->sp->objQ->row[r2] = orig->objQ->row[r1]- tim->col[t] + 1;
-			prob[t]->sp->objQ->val[r2] = orig->objQ->val[r1];
+		if ((orig->objQ->col[r1] >= tim->col[t]) & (orig->objQ->row[r1] >= tim->col[t]) ) {
+			if ( prob[t]->sp->objQ == NULL ) {
+				prob[t]->sp->objQ = (sparseMatrix*) mem_malloc(sizeof(sparseMatrix));
+				prob[t]->sp->objQ->col = (iVector) arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, int);
+				prob[t]->sp->objQ->row = (iVector) arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, int);
+				prob[t]->sp->objQ->val = (dVector) arr_alloc(prob[t]->sp->mac * prob[t]->sp->mac, double);
+				prob[t]->sp->objQ->cnt = 0;
+			}
+
+			prob[t]->sp->objQ->cnt++;
+			prob[t]->sp->objQ->col[prob[t]->sp->objQ->cnt] = orig->objQ->col[r1]- tim->col[t] + 1;
+			prob[t]->sp->objQ->row[prob[t]->sp->objQ->cnt] = orig->objQ->row[r1]- tim->col[t] + 1;
+			prob[t]->sp->objQ->val[prob[t]->sp->objQ->cnt] = orig->objQ->val[r1];
 		}
 	}
-	prob[t]->sp->objQ->cnt = r2;
-	
 
 	/* if integer or binary variables are encountered, then label the stage problem as a mixed integer LP */
-	if (prob[t]->sp->objQ->cnt != 0) {
+	if ( prob[t]->sp->objQ != NULL ) {
 		if (prob[t]->sp->numInt + prob[t]->sp->numBin > 0) {
 			prob[t]->sp->type = PROB_MIQP;
 		}
@@ -338,15 +324,6 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		}
 		else {
 			prob[t]->sp->type = PROB_LP;
-		}
-	}
-
-	//*Free ObjQ matrix if Empty*//
-	for (t = 0; t < tim->numStages; t++) {
-		if (prob[t]->sp->objQ->cnt == 0)
-		{
-			freeSparseMatrix(prob[t]->sp->objQ);
-			prob[t]->sp->objQ = NULL;
 		}
 	}
 

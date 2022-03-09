@@ -19,7 +19,7 @@ int readFiles(cString inputDir, cString probName, oneProblem **orig, timeType **
 	if ( (*orig) == NULL ) {
 		errMsg("read", "readFiles", "failed to read problem core file", 0);
 		return 1;
-	
+
 	}
 
 	/* read problem time file */
@@ -54,36 +54,35 @@ oneProblem *readCore(cString inputDir, cString probName) {
 	/* Locate the problem core file */
 #if _WIN64 || _WIND32
 	sprintf(srcFile, "%s%s\\%s.cor", inputDir, probName, probName);
+	sprintf(dstFile, "%s%s\\%s.mps", inputDir, probName, probName);
 #else
 	sprintf(srcFile, "%s%s/%s.cor", inputDir, probName, probName);
+	sprintf(dstFile, "%s%s/%s.mps", inputDir, probName, probName);
 #endif
 
 	if ( (fptr = fopen(srcFile, "r")) ) {
 
 		/* Change the name with extension *.cor to *.mps. Gurobi does not recognize *.cor. */
-		sprintf(dstFile, "%s%s\\%s.mps", inputDir, probName, probName);
 		rename(srcFile, dstFile);
 
-		/*why do we expect the readproblem to fail? what might happen?*/
-
-		if ((readProblem(dstFile, &model))) /*why do we need the pointer?*/
+		if ((readProblem(dstFile, &model)))
 		{
 			errMsg("solver", "readCore", "failed to read and copy the problem data", 0);
 			return NULL;
 		}
 
+		fptr = fopen(srcFile, "r");
 		rename(dstFile, srcFile);
 	}
 	else {
-		sprintf(srcFile, "%s%s\\%s.mps", inputDir, probName, probName);
-		if ((readProblem(srcFile, &model))) /*why do we need the pointer?*/
+		strcpy(srcFile, dstFile);
+		if ((readProblem(srcFile, &model)))
 		{
 			errMsg("solver", "readCore", "failed to read and copy the problem data", 0);
 			return NULL;
 		}
+
 		fptr = fopen(srcFile, "r");
-		//errMsg("read", "readCore", "failed to open problem core file", 0);
-	//	return NULL;
 	}
 
 	/* NAME section: read problem name and compare with that read earlier */
@@ -180,7 +179,7 @@ oneProblem *readCore(cString inputDir, cString probName) {
 		orig->matcnt[c] = orig->matbeg[c+1] - orig->matbeg[c];
 	orig->matcnt[c] = nzcnt - orig->matbeg[c];
 
-	
+
 
 
 	/* (5) Constraint and variable names. */
@@ -381,7 +380,7 @@ stocType *readStoc(cString inputDir, cString probName, oneProblem *orig, timeTyp
 
 	/* STOCH section: read problem name and compare with that read earlier */
 	if ( fgets(line, sizeof line, fptr) != NULL )
-	sscanf(line, "%s %s", fields[0], fields[1]);
+		sscanf(line, "%s %s", fields[0], fields[1]);
 	else {
 		errMsg("read", "readStoc", "failed to read the problem name", 0);
 		return NULL;
@@ -396,7 +395,7 @@ stocType *readStoc(cString inputDir, cString probName, oneProblem *orig, timeTyp
 
 	while ( !(getLine(&fptr, fields, &fieldType, &numFields)) ) {
 
-	START_OVER: /* Used to continue parsing the stoch file when there are many stochastic elements. */ /*??????*/
+		START_OVER: /* Used to continue parsing the stoch file when there are many stochastic elements. */ /*??????*/
 
 
 		if ( !(strcmp(fields[0], "INDEP")) ) {
@@ -572,8 +571,8 @@ int readIndepDiscrete(FILE *fptr, cString *fields, int maxOmegas, int maxVals, c
 				}
 			}
 
-			
-			
+
+
 			if ( n == orig->mac ) {
 				errMsg("read", "readIndepDiscrete", "unknown column name in the stoch file", 0);
 				return 1;

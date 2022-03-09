@@ -141,6 +141,7 @@ int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector 
 			errMsg("solver", "solve_subprob", "failed to change the upper bounds in the solver", 0);
 			return 1;
 		}
+		mem_free(bds);
 	}
 
 	if ( prob->num->rvylOmCnt > 0 ) {
@@ -156,6 +157,7 @@ int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector 
 			errMsg("solver", "solve_subprob", "failed to change the lower bounds in the solver", 0);
 			return 1;
 		}
+		mem_free(bds);
 	}
 
 #if defined(WRITE_FILES)
@@ -329,6 +331,7 @@ dVector computeBDS(sparseVector* bdsBar, sparseVector* bdsOmega, int numCols) {
 	}
 
 	bds = reduceVector(bdsFull, bdsOmega->col-1, bdsOmega->cnt);
+	mem_free(bdsFull);
 
 	return bds;
 }//END computeCostCoeff()
@@ -389,7 +392,8 @@ oneProblem* newSubproblem(oneProblem* probSP) {
 	stage1->rname = (cString*)arr_alloc(probSP->marsz, cString);
 	stage1->mac = probSP->mac;
 	stage1->type= probSP->type;			/* type of problem: LP, QP, MIP or MIQP */
-	if (probSP->objQ->cnt > 0) {
+
+	if (probSP->objQ != NULL ) {
 		stage1->objQ = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));   /*why do we write it?*/
 		stage1->objQ->col = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
 		stage1->objQ->row = (iVector)arr_alloc(probSP->mac * probSP->mac, int);
@@ -576,7 +580,8 @@ oneProblem *newMaster(oneProblem *probSP) {
 	return stage0;
 }//END newMaster()
 
-solnType* buildDual (numType *num) {
+
+solnType* buildSolnType (numType *num) {
 	solnType* dual;
 
 	dual      = (solnType*)mem_malloc(sizeof(solnType));
@@ -586,7 +591,21 @@ solnType* buildDual (numType *num) {
 	dual->umu = (dVector)arr_alloc(num->cols + 1, double);
 
 	return dual;
-}//END buildDual()
+}//END buildSolnType()
+
+
+void freeSolnType(solnType *soln) {
+
+	if ( soln ) {
+		if ( soln->y) mem_free(soln->y);
+		if ( soln->pi) mem_free(soln->pi);
+		if ( soln->lmu) mem_free(soln->lmu);
+		if ( soln->umu) mem_free(soln->umu);
+		mem_free(soln);
+	}
+
+}//END freeSolnType()
+
 
 void VsumVsparse(dVector result, dVector v, sparseVector* vs, int len) {
 
@@ -613,7 +632,7 @@ int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* C
 			/* Add a new row to the delta structure for all observations and the latest lambda (lambdaIdx) */
 			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
 			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
-		
+
 			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
 			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
 
@@ -621,9 +640,9 @@ int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* C
 		}
 
 	}
-//	else {
-//		AddtoDel(cell, prob, COmega, bOmega, ybar, yund,obs, lambdaIdx - 1); /* num position in lambda*/
-//	}
+	//	else {
+	//		AddtoDel(cell, prob, COmega, bOmega, ybar, yund,obs, lambdaIdx - 1); /* num position in lambda*/
+	//	}
 
 	return lambdaIdx;
 }//END stocUpdateQP()

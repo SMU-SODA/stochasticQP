@@ -34,7 +34,7 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 	lOmega->col = prob->coord->rvylOmRows;
 
 	/* Structure to hold dual solutions */
-	solnType * dual = buildDual(prob->num);
+	solnType *soln = buildSolnType(prob->num);
 
 	/* 1. define a new cut */
 	oneCut* cut = newCut(prob->num->cols);
@@ -52,13 +52,13 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
 
 			/* 3a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
-			if (solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], bOmega, COmega, dOmega, lOmega, uOmega, dual)) {
+			if (solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], bOmega, COmega, dOmega, lOmega, uOmega, soln)) {
 				errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 				goto TERMINATE;
 			}
 
 			/*3b. update sigma, lambda, and delta structures */
-			lambdaIdx = stocUpdateQP(cell, prob, dual, COmega, bOmega, uOmega, lOmega);
+			lambdaIdx = stocUpdateQP(cell, prob, soln, COmega, bOmega, uOmega, lOmega);
 
 			/*3c. Calculate observations specific coefficients. */
 			double* beta = (double*)arr_alloc(prob->num->prevCols + 1, double);
@@ -69,7 +69,7 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 				beta[prob->coord->rvCols[c-1]] += cell->delta->vals[lambdaIdx][obs]->beta[c];
 
 #if defined(STOCH_CHECK)
-			printf("Reconstructed objective function    = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
+			printf("Reconstructed objective function (exact)  = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
 #endif
 
 			/*3d. Aggregate the cut coefficients by weighting by observation probability. */
@@ -103,12 +103,12 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
 
 			/* 3a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
-			if (solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], bOmega, COmega, dOmega, lOmega, uOmega, dual)) {
+			if (solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], bOmega, COmega, dOmega, lOmega, uOmega, soln)) {
 				errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 				goto TERMINATE;
 			}
 
-			printf("Reconstructed objective function apppro    = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
+			printf("Reconstructed objective function (approx) = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
 #endif
 
 			/* 4c. Aggregate the cut coefficients by weighting by observation probability. */
@@ -123,6 +123,12 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 	}
 
 	mem_free(omegaP);
+	mem_free(bOmega);
+	mem_free(dOmega);
+	mem_free(uOmega);
+	mem_free(lOmega);
+	mem_free(COmega);
+	freeSolnType(soln);
 
 	return cut;
 	TERMINATE:
