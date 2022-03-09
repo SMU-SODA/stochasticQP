@@ -220,11 +220,12 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 
 		for (int r1 = 0; r1 < orig->objQ->cnt; r1++) {
 			if ( (orig->objQ->col[r1] >= tim->col[t] & orig->objQ->col[r1] < tim->col[t + 1]) & (orig->objQ->row[r1] >= tim->col[t]) & (orig->objQ->row[r1] < tim->col[t + 1]) ) {
-
+				prob[t]->sp->objQ->cnt++;
 				prob[t]->sp->objQ->col[prob[t]->sp->objQ->cnt] = orig->objQ->col[r1] - tim->col[t];
 				prob[t]->sp->objQ->row[prob[t]->sp->objQ->cnt] = orig->objQ->row[r1] - tim->col[t];
 				prob[t]->sp->objQ->val[prob[t]->sp->objQ->cnt] = orig->objQ->val[r1];
-				prob[t]->sp->objQ->cnt++;
+				
+				
 			}
 		}
 	}
@@ -310,11 +311,12 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 	int r2 = 0;
 	for (int r1 = 0; r1 < orig->objQ->cnt; r1++) {
 		if ((orig->objQ->col[r1] >= tim->col[t]) & (orig->objQ->row[r1] >= tim->col[t]) )
-		{			
+		{
+			r2++;
 			prob[t]->sp->objQ->col[r2] = orig->objQ->col[r1]- tim->col[t];
 			prob[t]->sp->objQ->row[r2] = orig->objQ->row[r1]- tim->col[t];
 			prob[t]->sp->objQ->val[r2] = orig->objQ->val[r1];
-			r2++;
+			
 		}
 	}
 

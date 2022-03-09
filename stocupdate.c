@@ -236,12 +236,12 @@ deltaType* newDelta(double SigmaSize, probType** prob , cellType* cell) {
 	/* assign memory to deta structure, this will record the deltaAlpha and deltaBetha associated with each observation*/
 
 	delta = (deltaType*)mem_malloc(sizeof(deltaType));
-	delta->vals = (pixbCType ***)arr_alloc(cell->omega->cnt, pixbCType **);
-	for (int i = 0; i < cell->omega->cnt; i++) {
-		delta->vals[i] = (pixbCType **)arr_alloc(SigmaSize, pixbCType*);
+	delta->vals = (pixbCType ***)arr_alloc(SigmaSize, pixbCType **);
+	for (int i = 0; i < SigmaSize; i++) {
+		delta->vals[i] = (pixbCType **)arr_alloc(cell->omega->cnt, pixbCType*);
 	}
-	for (int i = 0; i < cell->omega->cnt; i++) {
-		for (int j = 0; j < SigmaSize; j++) {
+	for (int i = 0; i < SigmaSize ; i++) {
+		for (int j = 0; j < cell->omega->cnt; j++) {
 			delta->vals[i][j] = (pixbCType*) mem_malloc(sizeof(pixbCType));
 			delta->vals[i][j]->beta = (dVector) arr_alloc(prob[0]->num->rvCOmCnt, double);
 			delta->vals[i][j]->state = 0;

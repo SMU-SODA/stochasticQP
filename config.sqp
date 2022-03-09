@@ -11,7 +11,7 @@ MAX_ITER   100
 MASTER_TYPE 5
 
 // Type of algorithm to employ: full solve (0), dual-based (1), and partition-based (2)
-ALGOTYPE 0
+ALGOTYPE 1
 
 // Set to (1) if sample average approximation is to be constructed
 SAA 0

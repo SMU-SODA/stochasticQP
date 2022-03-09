@@ -61,4 +61,34 @@ RHS
     RHS       DNODE1        5.0
     RHS       DNODE2        4.0
     RHS       DNODE3        3.0
+BOUNDS
+  UP BOUND   EQ1ND1       10
+  UP BOUND   EQ1ND2       10
+  UP BOUND   EQ1ND3       10
+  UP BOUND   EQ2ND1       10
+  UP BOUND   EQ2ND2       10
+  UP BOUND   EQ2ND3       10
+  UP BOUND   EQ3ND1       10
+  UP BOUND   EQ3ND2       10
+  UP BOUND   EQ3ND3       10
+  UP BOUND   EQ4ND1       10
+  UP BOUND   EQ4ND2       10
+  UP BOUND   EQ4ND3       10
+  LO BOUND   EQ1ND1       0.1
+  LO BOUND   EQ1ND2       0.1
+  LO BOUND   EQ1ND3       0.1
+  LO BOUND   EQ2ND1       0.1
+  LO BOUND   EQ2ND2       0.1
+  LO BOUND   EQ2ND3       0.1
+  LO BOUND   EQ3ND1       0.1
+  LO BOUND   EQ3ND2       0.1
+  LO BOUND   EQ3ND3       0.1
+  LO BOUND   EQ4ND1       0.1
+  LO BOUND   EQ4ND2       0.1
+  LO BOUND   EQ4ND3       0.1
+QUADOBJ
+    EQ1ND1       EQ1ND1             11.0  
+    EQ2ND2       EQ2ND2             11.0
+    EQ1ND2       EQ1ND2             11.0 
+    EQ1ND3       EQ1ND3             11.0  
 ENDATA

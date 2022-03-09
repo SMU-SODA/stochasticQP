@@ -69,7 +69,7 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 				beta[prob->coord->rvCols[c-1]] += cell->delta->vals[lambdaIdx][obs]->beta[c];
 
 #if defined(STOCH_CHECK)
-			//printf("Reconstructed objective function    = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
+			printf("Reconstructed objective function    = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
 #endif
 
 			/*3d. Aggregate the cut coefficients by weighting by observation probability. */
