@@ -19,7 +19,6 @@ int readFiles(cString inputDir, cString probName, oneProblem **orig, timeType **
 	if ( (*orig) == NULL ) {
 		errMsg("read", "readFiles", "failed to read problem core file", 0);
 		return 1;
-
 	}
 
 	/* read problem time file */

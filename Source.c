@@ -173,7 +173,7 @@ int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector 
 #if defined(STOCH_CHECK)
 	double obj;
 	obj = getObjective(subproblem->model);
-	printf("\t\tObjective value of Subproblem  = %lf;\t", obj);
+	//printf("\t\tObjective value of Subproblem  = %lf;\t", obj);
 #endif
 
 	/* Record the primal value */

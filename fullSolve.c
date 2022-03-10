@@ -61,7 +61,7 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 		cell->LPcnt++;	
 
 		/* Optimality cut calculations */
-		alpha  = -0.5 * vXv(vxMSparse(dual->y, prob->sp->objQ, prob->num->cols), dual->y, index, prob->num->cols) +
+		alpha  = -vXv(vxMSparse(dual->y, prob->sp->objQ, prob->num->cols), dual->y, index, prob->num->cols) +
 			vXvSparse(dual->pi, prob->bBar) + vXvSparse(dual->lmu, prob->lBar) + vXvSparse(dual->umu, prob->uBar)+
 			vXvSparse(dual->pi, bOmega)	+ vXvSparse(dual->umu, uOmega) + vXvSparse(dual->lmu, lOmega); /*TO DO: ybar and yund vals start from index 0*/
 		

@@ -67,9 +67,11 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 				beta[prob->coord->CCols[c]] += cell->sigma->vals[lambdaIdx]->beta[c];
 			for (int c = 1; c <= prob->num->rvCOmCnt; c++)
 				beta[prob->coord->rvCols[c-1]] += cell->delta->vals[lambdaIdx][obs]->beta[c];
-
+			double obj;
+			obj = getObjective(cell->subprob->model);
 #if defined(STOCH_CHECK)
-			printf("Reconstructed objective function (exact)  = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
+			//printf("Reconstructed objective function (exact)  = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
+			//printf("Dif  = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols)-obj );
 #endif
 
 			/*3d. Aggregate the cut coefficients by weighting by observation probability. */
@@ -108,7 +110,7 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 				goto TERMINATE;
 			}
 
-			printf("Reconstructed objective function (approx) = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
+			//printf("Reconstructed objective function (approx) = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
 #endif
 
 			/* 4c. Aggregate the cut coefficients by weighting by observation probability. */

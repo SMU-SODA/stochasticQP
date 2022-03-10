@@ -88,7 +88,15 @@ BOUNDS
   LO BOUND   EQ4ND3       0.1
 QUADOBJ
     EQ1ND1       EQ1ND1             11.0  
+    EQ1ND2       EQ1ND2             11.0
+    EQ1ND3       EQ1ND3             11.0 
+    EQ2ND1       EQ2ND1             11.0  
     EQ2ND2       EQ2ND2             11.0
-    EQ1ND2       EQ1ND2             11.0 
-    EQ1ND3       EQ1ND3             11.0  
+    EQ2ND3       EQ2ND3             11.0
+    EQ3ND1       EQ3ND1             11.0  
+    EQ3ND2       EQ3ND2             11.0
+    EQ3ND3       EQ3ND3             11.0    
+    EQ4ND1       EQ4ND1             11.0  
+    EQ4ND2       EQ4ND2             11.0
+    EQ4ND3       EQ4ND3             11.0                                                    
 ENDATA

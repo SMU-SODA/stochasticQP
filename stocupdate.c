@@ -41,7 +41,7 @@ void  buildOmegaCoordinates (probType *prob, sparseVector bOmega, sparseMatrix C
 void addtoSigma(cellType* cell, probType* prob, solnType *soln) {
 	int* index;
 	int obs = cell->lambda->cnt-1;
-
+	double x;
 	index = (int*)arr_alloc(prob->num->cols + 1,int);
 	for (int i = 1; i <= prob->num->cols; i++) {
 		index[i] = i ;
@@ -57,7 +57,8 @@ void addtoSigma(cellType* cell, probType* prob, solnType *soln) {
 	cell->sigma->vals[obs]->alpha = vXvSparse(soln->pi, prob->bBar) + vXvSparse(soln->lmu, prob->lBar) + vXvSparse(soln->umu, prob->uBar);
 	if ( prob->sp->objQ != NULL) {
 		dVector yTopQbar = vxMSparse(soln->y, prob->sp->objQ, prob->num->cols);
-		cell->sigma->vals[obs]->alpha -= 0.5 * vXv(yTopQbar, soln->y, index, prob->num->cols);
+		x = 0.5 * vXv(yTopQbar, soln->y, index, prob->num->cols);
+		cell->sigma->vals[obs]->alpha -= vXv(yTopQbar, soln->y, index, prob->num->cols);
 		mem_free(yTopQbar);
 	}
 	cell->sigma->cnt++;
