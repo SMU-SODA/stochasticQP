@@ -456,7 +456,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			if (prob[t]->num->rvyuOmCnt == 0) {
 				prob[t]->coord->rvyuOmRows = (iVector) arr_alloc(prob[t]->num->cols + 1, int);
 			}
-			prob[t]->coord->rvyuOmRows[prob[t]->num->rvyuOmCnt] = (*stoc)->col[m] - tim->col[t] ;
+			prob[t]->coord->rvyuOmRows[prob[t]->num->rvyuOmCnt+1] = (*stoc)->col[m] - tim->col[t] ;
 			prob[t]->num->rvyuOmCnt++;
 		}
 		/*lower bound*/
@@ -465,7 +465,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			if (prob[t]->num->rvylOmCnt == 0) {
 				prob[t]->coord->rvylOmRows = (iVector) arr_alloc(prob[t]->num->cols + 1, int);
 			}
-			prob[t]->coord->rvylOmRows[prob[t]->num->rvylOmCnt] = (*stoc)->col[m] - tim->col[t] ;
+			prob[t]->coord->rvylOmRows[prob[t]->num->rvylOmCnt +1] = (*stoc)->col[m] - tim->col[t] ;
 			prob[t]->num->rvylOmCnt++;
 		}
 
@@ -534,11 +534,11 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		for (m = 1; m <= prob[t]->num->rvyuOmCnt; m++) {
 			i = 1;
 			while (i <= prob[t]->uBar->cnt) {
-				if (prob[t]->uBar->col[i] == prob[t]->coord->rvyuOmRows[m-1])
+				if (prob[t]->uBar->col[i] == prob[t]->coord->rvyuOmRows[m])
 					break;
 				i++;
 			}
-			prob[t]->uBar->val[i] = (*stoc)->mean[rvOffset + prob[t]->coord->rvOffset[3] + m - 1];
+			prob[t]->uBar->val[i+1] = (*stoc)->mean[rvOffset + prob[t]->coord->rvOffset[3] + m -1];
 		}
 
 

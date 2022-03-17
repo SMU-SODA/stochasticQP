@@ -16,10 +16,13 @@ extern configType config;
 int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 
 
+	clock_t tStart = clock();
+	double newobj = 0;
+	double oldobj = -INFINITY;
 	double subset = config.SAMPLE_FRACTION * cell->omega->cnt; /*initialize the number of samples you want to take from Omega in each iteration*/
 
 	oneCut *cut = NULL;
-	while ( cell->k < config.MAX_ITER) {
+	while ( cell->k < 10000) {
 		cell->k++;
 		/* 1. Check optimality */
 
@@ -47,8 +50,8 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 		}
 
 #if defined(ALGO_CHECK)
-		double objEst = vXvSparse(cell->candidX, prob[0]->dBar) + cut->alpha - vXv(cut->beta, cell->candidX, NULL, prob[0]->num->cols);
-		//printf("\tCandidate estimate = %lf\n", objEst);
+		double objEst = vXvSparse(cell->candidX, prob[0]->dBar) + cut->alpha - vXv(cut->beta, cell->candidX, NULL, prob[0]->num->cols); // 
+		printf("\tCandidate estimate = %lf\n", objEst);
 #endif
 
 		/* 3. Add the affine function to the master problem. */
@@ -81,6 +84,12 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 #if defined(ALGO_CHECK)
 		printf("\tObjective function value = %lf\n", getObjective(cell->master->model));
 #endif
+	//	newobj = getObjective(cell->master->model);
+		//if (objEst - newobj < 0.0000001) {
+			//printf("Time taken: %.2fs\n", (double)(clock() - tStart) / CLOCKS_PER_SEC);
+		//	break;
+		//}
+		
 
 		if (getPrimal(cell->master->model, cell->candidX, 0, prob[0]->num->cols) ) {
 			errMsg("solver", "fullSolve", "failed to obtain the candidate solution", 0);
@@ -110,10 +119,13 @@ int addCut2Solver(modelPtr *model, oneCut *cut, int lenX) {
 	sprintf(cut->name, "cut_%04d", cummCutNum++);
 
 	/* Add a new linear constraint to a model. */
-	if( addRow(model, lenX, cut->alpha, GE, rmatind, cut->beta, cut->name) ) {
+	if( addRow(model, lenX+1, cut->alpha, GE, rmatind, cut->beta, cut->name) ) {
 		errMsg("solver", "addCut2Solver", "failed to addrow", 0);
 		return 1;
 	}
+
+
+	writeProblem(model, "addcut.lp");
 
 	mem_free(rmatind);
 

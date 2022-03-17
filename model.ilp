@@ -4,5 +4,5 @@ Minimize
   0 EQ4ND2
 Subject To
 Bounds
- EQ4ND2 <= -3.001325
+ 0.1 <= EQ4ND2 <= 0
 End

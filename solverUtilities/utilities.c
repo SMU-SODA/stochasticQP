@@ -235,7 +235,7 @@ double vXvSparse(dVector v, sparseVector *vSparse){
 
 	ans = 0.0;
 	for (cnt = 1; cnt <= vSparse->cnt; cnt++)
-		ans += vSparse->val[cnt] * v[vSparse->col[cnt]];
+		ans += vSparse->val[cnt] * v[vSparse->col[cnt]];  //zeo col?/
 
 	return ans;
 }//END vXvSparse()

@@ -137,7 +137,7 @@ int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector 
 		}
 
 		/* (c2) change cost coefficients in the solver */
-		if (changeBDSArray(subproblem->model, "UB", uOmega->cnt, uOmega->col, bds+1)) {
+		if (changeBDSArray(subproblem->model, "UB", uOmega->cnt, uOmega->col+1, bds+1)) {
 			errMsg("solver", "solve_subprob", "failed to change the upper bounds in the solver", 0);
 			return 1;
 		}
@@ -327,10 +327,10 @@ dVector computeBDS(sparseVector* bdsBar, sparseVector* bdsOmega, int numCols) {
 
 	bdsFull = expandVector(bdsBar->val, bdsBar->col, bdsBar->cnt, numCols);
 	for ( int n = 1; n <= bdsOmega->cnt; n++ ) {
-		bdsFull[bdsOmega->col[n-1]] += bdsOmega->val[n];
+		bdsFull[bdsOmega->col[n]+1] += bdsOmega->val[n];
 	}
 
-	bds = reduceVector(bdsFull, bdsOmega->col-1, bdsOmega->cnt);
+	bds = reduceVector(bdsFull, bdsOmega->col, bdsOmega->cnt);
 	mem_free(bdsFull);
 
 	return bds;
@@ -630,11 +630,11 @@ int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* C
 
 		for (int obs = 0; obs < cell->omega->cnt; obs++) {
 			/* Add a new row to the delta structure for all observations and the latest lambda (lambdaIdx) */
-			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
-			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
+			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0]-1;
+			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1]-1;
 
-			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
-			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
+			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3]-1;
+			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4]-1;
 
 			addtoDelta(cell, prob, COmega, bOmega, uOmega, lOmega, obs, lambdaIdx);
 		}

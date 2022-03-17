@@ -107,9 +107,9 @@ int addtoLambda(lambdaType* lambda, solnType *dual, int numRows, int numCols, bo
 	if ( idx == lambda->cnt ) {
 		/* TODO: New lambda discovered */
 		(*newLambdaFlag) = true;
-		lambda->pi[lambda->cnt]  = duplicVector(dual->pi, numRows);
-		lambda->umu[lambda->cnt] = duplicVector(dual->umu, numCols);
-		lambda->lmu[lambda->cnt] = duplicVector(dual->lmu, numCols);
+		lambda->pi[lambda->cnt]  = duplicVector(dual->pi, numRows+1);
+		lambda->umu[lambda->cnt] = duplicVector(dual->umu, numCols+1);
+		lambda->lmu[lambda->cnt] = duplicVector(dual->lmu, numCols+1);
 		lambda->cnt++;
 	}
 
@@ -125,16 +125,15 @@ omegaType* newOmega(stocType* stoc) {
 	int cnt, i, base, idx;
 
 	omega = (omegaType*)mem_malloc(sizeof(omegaType));
-	omega->probs = (dVector) arr_alloc(config.MAX_OBS, double);
-	omega->weights = (iVector) arr_alloc(config.MAX_OBS, int);
-	omega->vals = (dVector*) arr_alloc(config.MAX_OBS, dVector);
-	omega->cnt = 0;
-	omega->numRV = stoc->numOmega;
+	omega->probs = (dVector)arr_alloc(config.MAX_OBS, double);
+	omega->weights = (iVector)arr_alloc(config.MAX_OBS, int);
+	omega->vals = (dVector*)arr_alloc(config.MAX_OBS, dVector);
+	omega->cnt = 0; omega->numRV = stoc->numOmega;
 
-	if (config.SAA == 1 ) {
-		config.SAA = 0;
+	if (config.SAA == 1 ) { //|| !stoc->isDiscrete
+		config.SAA = 1;
 		omega->cnt = config.MAX_OBS;
-		return omega;
+		// return omega;
 	}
 
 	if (strstr(stoc->type, "BLOCKS") != NULL) {
@@ -155,7 +154,7 @@ omegaType* newOmega(stocType* stoc) {
 			config.SAA = 1;
 		}
 	}
-	else if (strstr(stoc->type, "INDEP_DISCRETE") != NULL) {
+	else if (strstr(stoc->type, "INDEP") != NULL) {
 		omega->cnt = 1; i = 0;
 		while (i < stoc->numOmega) {
 			omega->cnt *= stoc->numVals[i];
@@ -167,7 +166,7 @@ omegaType* newOmega(stocType* stoc) {
 			i++;
 		}
 
-		if (config.SAA) {
+		if (!config.SAA) {
 			omega->vals = (dVector*)mem_realloc(omega->vals, omega->cnt * sizeof(dVector));
 			omega->probs = (dVector)mem_realloc(omega->probs, omega->cnt * sizeof(double));
 			for (cnt = 0; cnt < omega->cnt; cnt++) {
@@ -177,17 +176,18 @@ omegaType* newOmega(stocType* stoc) {
 				for (i = 0; i < omega->numRV; i++) {
 					base /= stoc->numVals[i];
 					idx = (int)((double)cnt / (double)base) % stoc->numVals[i];
-					omega->vals[cnt][i + 1] = stoc->vals[i][idx] - stoc->mean[i];
+					omega->vals[cnt][i ] = stoc->vals[i][idx] - stoc->mean[i];
 					omega->probs[cnt] *= stoc->probs[i][idx];
-				}}}}
-
+				}
+			}
+		}
+	}
 	else {
 		omega->cnt = config.MAX_OBS;
 		config.SAA = 1;
 	}
 
 	return omega;
-
 }//END newOmega()
 
 lambdaType* newLambda(double SigmaSize, probType** prob) {

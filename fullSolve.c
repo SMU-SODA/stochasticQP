@@ -42,16 +42,16 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 
 	/* 1. Create a new cut */
 	oneCut *cut = newCut(prob->num->cols);
-
+	double x1 =0,x2 = 0;
 	/* 2. loop through observations and solve subproblem for all of them. */
 	for (int obs = 0; obs < cell->omega->cnt; obs++) {
 		/* Structure to hold dual solutions */
 		solnType* dual = buildSolnType(prob->num);
-		bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
-		COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
-		dOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[2];
-		uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
-		lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
+		bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0] - 1;
+		COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1] - 1;
+		dOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[2] - 1;
+		uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3] - 1;
+		lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4] - 1;
 
 		/* 2a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
 		if (solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], bOmega, COmega, dOmega, lOmega, uOmega, dual)) {
@@ -77,9 +77,11 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 				beta[c] = beta[c] + dbeta[c];
 			}
 		}
-		
+		double obj;
+		obj = getObjective(cell->subprob->model);
 #if defined(STOCH_CHECK)
 		//printf("Objective estimate computed as cut height = %lf\n", alpha - vXv(beta, x, NULL, prob->num->prevCols));
+		printf("Dif  = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols) - obj);
 #endif
 
 		/* 2c. Aggregate the cut coefficients by weighting by observation probability. */
