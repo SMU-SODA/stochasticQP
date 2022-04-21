@@ -91,8 +91,6 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		prob[t]->sp->cname   = (cString *) arr_alloc(prob[t]->sp->macsz, cString);
 		prob[t]->sp->rname   = (cString *) arr_alloc(prob[t]->sp->marsz, cString);
 
-
-
 		strcpy(prob[t]->sp->objname, orig->objname);
 		sprintf(prob[t]->sp->name, "%s_%d", orig->name, t);
 
@@ -107,6 +105,16 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			prob[t]->Cbar->cnt = 0;
 		}
 
+		/* Allocate memory to all recourse matrices */
+		prob[t]->Dbar = (sparseMatrix *) mem_malloc(sizeof(sparseMatrix));
+		prob[t]->Dbar->row = (iVector) arr_alloc(orig->matsz+1, int);
+		prob[t]->Dbar->col = (iVector) arr_alloc(orig->matsz+1, int);
+		prob[t]->Dbar->val = (dVector) arr_alloc(orig->matsz+1, double);
+		prob[t]->Dbar->cnt = 0;
+
+		/* This allocation is done later after confirming that the stage problem has quadratic objective */
+		prob[t]->sp->objQ = NULL;
+
 		/* TODO (HG): stage dynamics: include dynamics to the model */
 		if ( t == 0) {
 			prob[t]->Abar = NULL;
@@ -120,20 +128,6 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			prob[t]->aBar = NULL;
 			prob[t]->cBar = NULL;
 		}
-
-		/* Stage recourse matrix: Dbar is used to setup the QP in the forward pass. Since the QP is used only for non-terminal
-		 * stages, Dbar for terminal stage is set to NULL */
-		if ( t == tim->numStages-1 )
-			prob[t]->Dbar = NULL;
-		else {
-			prob[t]->Dbar = (sparseMatrix *) mem_malloc(sizeof(sparseMatrix));
-			prob[t]->Dbar->row = (iVector) arr_alloc(orig->matsz+1, int);
-			prob[t]->Dbar->col = (iVector) arr_alloc(orig->matsz+1, int);
-			prob[t]->Dbar->val = (dVector) arr_alloc(orig->matsz+1, double);
-			prob[t]->Dbar->cnt = 0;
-		}
-
-		prob[t]->sp->objQ = NULL;
 	}
 
 	t = 0;
@@ -270,6 +264,10 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 				++prob[t]->sp->matcnt[k];
 				++prob[t]->sp->matsz;
 				++prob[t]->sp->numnz;
+				prob[t]->Dbar->val[prob[t]->Dbar->cnt+1] = orig->matval[i];
+				prob[t]->Dbar->col[prob[t]->Dbar->cnt+1] = m-tim->col[t]+1;
+				prob[t]->Dbar->row[prob[t]->Dbar->cnt+1] = orig->matind[i] - tim->row[t]+1;
+				++prob[t]->Dbar->cnt;
 			}
 		else {
 			if ( k == 0 )

@@ -1,6 +1,6 @@
 #include "./solverUtilities/utilities.h"
 #include "stdlib.h"
-#include "Math.h"
+#include "math.h"
 #include "stochasticQP.h"
 
 
