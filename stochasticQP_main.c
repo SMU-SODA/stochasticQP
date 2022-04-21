@@ -200,3 +200,278 @@ void freeConfig() {
 	if (config.EVAL_SEED)
 		mem_free(config.EVAL_SEED);
 }//END freeConfig()
+
+
+//* Mtrix W caculation  *//
+void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , Mat* W, Mat* T) {
+	Mat* QII = transSparsM(Q, prob->num->cols, prob->num->cols);
+	Mat* QIU = transSparsM(Q, prob->num->cols, prob->num->cols);
+	Mat* QLU = transSparsM(Q, prob->num->cols, prob->num->cols);
+	Mat* QUU = transSparsM(Q, prob->num->cols, prob->num->cols);
+	Mat* QUI = transSparsM(Q, prob->num->cols, prob->num->cols);
+	Mat* QLI = transSparsM(Q, prob->num->cols, prob->num->cols);
+	Mat* DMU = transSparsM(D, prob->num->cols, prob->num->rows);
+	Mat* DML = transSparsM(D, prob->num->cols, prob->num->rows);
+	Mat* DMI = transSparsM(D, prob->num->cols, prob->num->rows);
+	Mat* M1;
+	Mat* M2;
+	int low = 0;
+	
+
+	/*Build QII in a mat strcture*/
+	int inact = 0;
+	int up = 0;
+	int cnt = cell->partition->cnt;
+	for (int i = 0; i < prob->num->cols; i++) {
+		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
+		{
+			removecol(QII, i);
+			removerow(QII, i);
+			inact++;
+		}
+	}
+	/*Build D(MI)*/
+	for (int i = 0; i < prob->num->cols; i++) {
+		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
+		{
+			removecol(DMI, i);
+		}
+	}
+	Mat* DMIT = transpose(DMI);
+	int elm = 0;
+
+	// Build Matrix M1
+	for (int i = 0; i < inact; i++) {
+		for (int j = 0; j < inact; j++) {
+			M1->entries[elm] = QII->entries[i* inact +j];
+			elm++;
+		}
+		for (int j = 0; j < prob->num->rows; j++) {
+			M1->entries[elm] = DMIT->entries[i* prob->num->rows +j];
+			elm++;
+		}
+	}
+	for (int i = 0; i < prob->num->rows; i++) {
+		for (int j = 0; j < inact; j++) {
+			M1->entries[elm] = DMI->entries[(i) * inact + j];
+			elm++;
+		}
+		for (int j = 0; j < prob->num->rows; j++) {
+			M1->entries[elm] = 0;
+			elm++;
+		}
+	}
+
+	// Build Matrix M2
+
+	/*Build QIU in a mat strcture*/
+	for (int i = 0; i < prob->num->cols; i++) {
+		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
+		{
+			removerow(QIU, i);
+		}
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
+		{
+			up++;
+			removecol(QIU, i);
+		}
+	}
+
+
+	/*Build DMU in a mat strcture*/
+	for (int i = 0; i < prob->num->cols; i++) {
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
+		{
+			removecol(DMU, i);
+		}
+	}
+
+
+	 elm = 0;
+    /* first I rows of M2*/
+	for (int i = 0; i < inact; i++) {
+		for (int j = 0; j < up; j++) {
+			M2->entries[elm] = QIU->entries[i * up + j];
+			elm++;
+		}
+		for (int j = 0; j < prob->num->rows; j++) {
+			M2->entries[elm] = 0;
+			elm++;
+		}
+	}
+	/* next M rows of M2*/
+	for (int i = 0; i < prob->num->rows; i++) {
+		for (int j = 0; j < up; j++) {
+			M2->entries[elm] = DMU->entries[(i)*up + j];
+			elm++;
+		}
+		for (int j = 0; j < prob->num->rows; j++) {
+			if (i+ inact == j+up) {
+				M2->entries[elm] = -1;
+				elm++;
+			}
+			else {
+				M2->entries[elm] = 0;
+				elm++;
+			}			
+		}
+	}
+
+	/*Calculate 4 components of the W*/
+	Mat* invM1 = inverse(M1);
+	Mat* minvM1 = scalermultiply(invM1 , -1);
+	 W = multiply(minvM1, M2);
+
+	//* Mtrix T caculation  *//
+	/* QLU */
+	for (int i = 0; i < prob->num->cols; i++) {
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 2)
+		{
+			low++;
+			removerow(QLU, i);
+		}
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
+		{
+			removecol(QLU, i);
+		}
+	}
+
+	/* QUU */
+	for (int i = 0; i < prob->num->cols; i++) {
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
+		{
+			removerow(QUU, i);
+		}
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
+		{
+			removecol(QUU, i);
+		}
+	}
+
+	/* QUI */
+	for (int i = 0; i < prob->num->cols; i++) {
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
+		{
+			removerow(QUI, i);
+		}
+		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
+		{
+			removecol(QUI, i);
+		}
+	}
+
+	/* QLI */
+	for (int i = 0; i < prob->num->cols; i++) {
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 2)
+		{
+			removerow(QLI, i);
+		}
+		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
+		{
+			removecol(QLI, i);
+		}
+	}
+	/* QUI */
+	for (int i = 0; i < prob->num->cols; i++) {
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
+		{
+			removerow(QLI, i);
+		}
+		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
+		{
+			removecol(QLI, i);
+		}
+	}
+	/*DML*/
+	/*Build DMU in a mat strcture*/
+	for (int i = 0; i < prob->num->cols; i++) {
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 2)
+		{
+			removecol(DML, i);
+		}
+	}
+
+	/* Build T=  w1 - w2 * w*/
+	Mat* w1;
+	/*Build w1*/
+	elm = 0;
+	/* first L rows of W1*/
+	for (int i = 0; i < low; i++) {
+		for (int j = 0; j < up; j++) {
+			w1->entries[elm] = -QLU->entries[i * up + j];
+			elm++;
+		}
+		for (int j = 0; j < prob->num->rows; j++) {
+			w1->entries[elm] = 0;
+			elm++;
+		}
+	}
+
+	/* next U rows of W1*/
+	for (int i = 0; i < up; i++) {
+		for (int j = 0; j < up; j++) {
+			w1->entries[elm] = -QUU->entries[(i)*up + j];
+			elm++;
+		}
+		for (int j = 0; j < prob->num->rows; j++) {
+	
+				w1->entries[elm] = 0;
+				elm++;
+			
+		}
+	}
+	/*Build w2*/
+	Mat* w2;
+	elm = 0;
+	Mat * DMLT = transpose(DML);
+	Mat* DMUT  = transpose(DMU);
+	/* first L rows of W2*/
+	for (int i = 0; i < low; i++) {
+		for (int j = 0; j < inact; j++) {
+			w2->entries[elm] = -QLU->entries[i * up + j];
+			elm++;
+		}
+		for (int j = 0; j < prob->num->rows; j++) {
+			w2->entries[elm] = -DMLT->entries[i * prob->num->rows + j];
+			elm++;
+		}
+	}
+
+	/* next U rows of W2*/
+	for (int i = 0; i < up; i++) {
+		for (int j = 0; j < inact; j++) {
+			w2->entries[elm] = -QUI->entries[(i)*up + j];
+			elm++;
+		}
+		for (int j = 0; j < prob->num->rows; j++) {
+			w2->entries[elm] = -DMUT->entries[i * prob->num->rows + j];
+			elm++;
+		}
+	}
+	/*Build T*/
+	/*W2W*/
+	Mat* W2W = multiply(w2 , W);
+	T = sum(w1, W2W);
+	freemat(QII);
+	freemat(DMI);
+	freemat(QIU);
+	freemat(QLU);
+	freemat(QUU);
+	freemat(QUI);
+	freemat(QLI);
+	freemat(DMU);
+	freemat(DML);
+	freemat(M1);
+	freemat(M2);
+	freemat(w2);
+	freemat(w1);
+	freemat(DMLT);
+	freemat(DMUT);
+	freemat(W2W);
+	freemat(invM1);
+	freemat(minvM1);
+	freemat(DMIT);
+}
+
+
+

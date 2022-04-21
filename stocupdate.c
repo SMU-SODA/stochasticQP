@@ -49,6 +49,7 @@ void addtoSigma(cellType* cell, probType* prob, solnType *soln) {
 
 	cell->sigma->vals[obs] = (pixbCType *) mem_malloc(sizeof(pixbCType));
 
+
 	/*Calculate fixed section of beta = Cbar*pi (pi is the dual vector associated with equality constraints)*/
 	dVector fbeta = vxMSparse(soln->pi, prob->Cbar, prob->num->prevCols);
 	cell->sigma->vals[obs]->beta = reduceVector(fbeta, prob->coord->CCols, prob->num->cntCcols);
@@ -112,7 +113,6 @@ int addtoLambda(lambdaType* lambda, solnType *dual, int numRows, int numCols, bo
 		lambda->lmu[lambda->cnt] = duplicVector(dual->lmu, numCols+1);
 		lambda->cnt++;
 	}
-
 	return idx;
 }//END addtoLambda()
 
@@ -199,20 +199,28 @@ corresponds to upper bounds and mu3 corresponds to lower bounds */
 	lambda->pi = (double**)arr_alloc(SigmaSize, double*);
 	lambda->umu = (double**)arr_alloc(SigmaSize, double*);
 	lambda->lmu = (double**)arr_alloc(SigmaSize, double*);
+	lambda->y =   (double**)arr_alloc(SigmaSize, double*);
 	lambda->cnt = 0;
+	lambda->mubar = 0;
 
 	return lambda;
 }//END newLambda()
 
 sigmaType* newSigma(double SigmaSize, probType** prob ) {
 	sigmaType* sigma = NULL; /* Sigma is a collection of fixed parts of alpha and beta which is independent of the observation */
-
 	sigma = (sigmaType*)mem_malloc(sizeof(sigmaType));
 	sigma->vals = (pixbCType**) arr_alloc(SigmaSize, pixbCType*);
 	sigma->cnt = 0;
-
 	return sigma;
 }//END newSigma()
+
+
+
+
+//void addSigPart(cell, soln, prob) {
+
+
+//};
 
 deltaType* newDelta(double SigmaSize, probType** prob , cellType* cell) {
 	deltaType* delta = NULL;
@@ -319,35 +327,4 @@ void freeOmegaType(omegaType* omega, bool partial) {
 	mem_free(omega);
 }//END freeOmegaType()
 
-//
-//int calcSigma(sigmaType* sigma, cellType* cell  ,probType** prob, dVector pi, dVector mu2, dVector mu3 , sparseVector* bOmega, sparseMatrix* COmega,
-//		sparseVector* yuOmega , int obs) {
-//	double fixedAlpha , alpha1 , lql , alpha, Bx ;
-//	/*Check if a the sigma structure should be updated */
-//
-//	/* put pi.Cbar in sigma (fixed part of beta which does not change when C is deterministic) */
-//	sigma->vals[obs]->piCar = vxMSparse(pi, prob[1]->Cbar, prob[1]->num->rows);
-//
-//
-//	/* finding fixed part of alpha equal to -1/2 lambda Q lambda - xiBar .pi - yl.mu3 + yuBar.mu2 */
-//
-//	/* first  find -1/2 lambda Q lambda = obj -(beta x  - xi(obs) .pi - yl.mu3 + yu(obs).mu2)*/
-//	/*- xi(obs) .pi - yl.mu3 + yu(obs).mu2*/
-//
-//	fixedAlpha = -vXv(prob[1]->bBar, pi + 1, NULL, prob[1]->num->rows)
-//														- vXv(prob[1]->lBar, mu3 + 1, NULL, prob[1]->num->cols) + vXv(prob[1]->uBar, mu2 + 1, NULL, prob[1]->num->cols);
-//
-//
-//	alpha1 = fixedAlpha - vXvSparse(pi + 1, bOmega) + vXvSparse(mu2 + 1, yuOmega);
-//
-//	Bx = vXv(sigma->vals[obs]->piCar, cell->candidX + 1, NULL, prob[0]->num->cols);
-//
-//	lql = getObjective(cell->subprob->model) - Bx - alpha1;
-//
-//
-//	alpha = fixedAlpha + lql;
-//	sigma->vals[obs]->fixed = alpha + Bx;
-//	sigma->vals[obs]->interceptBar = alpha;
-//	return 0;
-//}
 

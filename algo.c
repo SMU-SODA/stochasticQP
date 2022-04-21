@@ -42,7 +42,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 			}
 			break;
 		case 2:
-			partSolve();
+			 partSolve(prob[1],  cell,  stoc, cell->candidX, subset);
 			break;
 		default:
 			errMsg("ALGO", "main", "Unknown algorithm type", 0);

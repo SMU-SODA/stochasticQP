@@ -24,6 +24,8 @@ typedef struct {
 
 typedef struct {
 	int		cnt;					/* number of elements in the structure */
+	double* 	mubar;					
+	double**  y;					/* value of duals the section equal to primal */
 	double** pi;					/* value of duals(associated with equality constraints) with random elements in right-hand side */
 	double** umu;					/* value of  duals (reduced costs) with random elements in right-hand side(upperbound) */
 	double** lmu;					/* value of  duals (reduced costs) with random elements in right-hand side(lowerbound) */
@@ -73,6 +75,11 @@ typedef struct {
 	pixbCType** vals;				/* product terms */
 } sigmaType;
 
+typedef struct {
+	int         cnt;        /* Number of elements */
+	int**       part;       /*Storing partitions with 0 inactive 1 lower bound 2 upperbound*/
+}PartitionType;
+
 /* structure for the problem type:
  * c_t^\top x_t + \min  d_t^\top u_t + \expect{h_{t+}(s_{t+})}
  *                 s.t. D_t u_t = b_t - C_tx_t
@@ -99,9 +106,23 @@ typedef struct {
 	oneCut** vals;					/* values which define the set of cuts */
 }cutsType;
 
+
+
+
+typedef struct {
+	int cnt;
+	solnType** sol;
+}deltaSolType;
+
+
+typedef struct {
+	int cnt;
+	solnType** vals;
+}solutionSetType;
+
 typedef struct {
 	int         k;                  /* number of iterations */
-	int 		LPcnt; 				/* the number of LPs solved. */
+	int 		LPcnt; 				/* the number of LPs solved.*/
 
 	oneProblem* master;             /* store master information */
 	oneProblem* subprob;			/* store subproblem information */
@@ -128,11 +149,17 @@ typedef struct {
 	bool		infeasIncumb;		/* indicates if the incumbent solution is infeasbible */
 
 	runTime* time;				/* Run time structure */
-
 	lambdaType* lambda;
 	sigmaType* sigma;
 	deltaType* delta;
+	PartitionType* partition;
+	deltaSolType* deltaSol;
 }cellType;
+
+
+
+
+
 
 typedef struct {
 
@@ -184,6 +211,13 @@ typedef struct {
 	bool** obsFeasible;
 	oneBasis** vals;		/* a structure for each basis */
 }basisType;
+
+typedef struct Mat {
+	double* entries;
+	int row;
+	int col;
+}Mat;
+
 
 /* Subroutine stochasticQP_main.c */
 void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir);
@@ -259,3 +293,33 @@ void freeSolnType(solnType *soln);
 
 void VsumVsparse(dVector result , dVector v, sparseVector* vs , int len);
 int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega);
+void PartCalc(solnType* sol, dVector yund, dVector ybar, int numc, int* part, int* up, int* inact, int* low);
+void newPartition(int Partsize, probType* prob, cellType* cell);
+int partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset);
+int AddtoPart(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln, bool* flag, int* up, int* inact, int* low);
+void newSolSet(int Partsize, probType* prob, cellType* cell);
+void freeSolSet(solutionSetType* SolSet);
+void addtoLambdaP(cellType* cell, solnType* soln, Mat* W, Mat* T, probType* prob, sparseMatrix* uomega, sparseMatrix* domega, int inact, int up);
+
+
+//typedef struct MatList {
+	//Mat* mat;
+	//MatList* next;
+//}MatList;
+
+Mat* transSparsM(sparseMatrix* M, int col, int row);
+Mat* removerow(Mat* A, int r);
+Mat* removecol(Mat* A, int c);
+Mat* transpose(Mat* A);
+Mat* inverse(Mat* A);
+Mat* scalermultiply(Mat* M, double c);
+Mat* multiply(Mat* A, Mat* B);
+Mat* sum(Mat* A, Mat* B);
+void freemat(Mat* A);
+void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D, Mat* W, Mat* T);
+Mat* transSparsM(sparseMatrix* M, int col, int row);
+Mat* removerow(Mat* A, int r);
+Mat* removecol(Mat* A, int c);
+void AddtoSigmaP(cellType* cell, solnType* sol, probType* prob, sparseMatrix* bOmega, sparseMatrix* uOmega, sparseMatrix* lOmega);
+void AddtoDeltaP(cellType* cell, solnType* sol, probType* prob, sparseMatrix* bOmega, sparseMatrix* uOmega, sparseMatrix* lOmega);
+void addtoDeltaSol(cellType* cell, solnType* soln, Mat* W, Mat* T, probType* prob, sparseMatrix* uomega, sparseMatrix* domega, int inact, int up);

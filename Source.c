@@ -53,7 +53,9 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 	cell->candidEst = 0.0;
 
 	double SigmaSize = config.SAMPLE_FRACTION * cell->omega->cnt * config.MAX_ITER;
-
+	if (config.ALGOTYPE == PARTITIONBASED) {
+		SigmaSize = prob[1]->num->cols; /*TO DO: SEE HOW MANY YOU NEED*/
+	}
 	/*6. Allocate memory to SigmaType, LambdaType, DeltaType*/
 	if (config.ALGOTYPE == DUALLBASED) {
 		cell->lambda = newLambda(SigmaSize, prob);
@@ -65,9 +67,35 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 		cell->sigma = NULL;
 		cell->delta = NULL;
 	}
+	if (config.ALGOTYPE == PARTITIONBASED)
+	{
+		int Partsize = 1;
+		for (int i = 1; i < prob[1]->num->cols ; i++) {
+			Partsize = Partsize * 2;
+		}
+		newPartition(Partsize, prob, cell);
+		
+		newSigma(Partsize, prob);
+		newLambda(Partsize, prob);
+		newDelta(Partsize, prob,cell);
+	}
+	else{
+		cell->partition = NULL;
+		
+	}
 
 	return cell;
 }//END buildCell()
+
+
+void newDeltaSol(cellType* cell , int sigmaSize , int obs) {
+	cell->deltaSol = (deltaSolType*)mem_malloc(sizeof(deltaSolType)) ;
+	for (int i = 0; i < sigmaSize ;i++) {
+		cell->deltaSol->sol[i] = (solnType*)mem_malloc(sizeof(solnType));
+	}	
+}; //EndnewDeltaSol
+
+
 
 void freecut(cutsType * cut){
 	if (cut) {
@@ -90,6 +118,8 @@ void freeonecut(oneCut* cut) {
 	}
 
 };
+
+
 
 int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals,
 		sparseVector* bOmega, sparseMatrix* COmega, sparseVector* dOmega, sparseVector* lOmega, sparseVector* uOmega, solnType *dual) {
@@ -199,89 +229,6 @@ int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector 
 	return 0;
 }// END solveSubprob()
 
-//int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS,double* muBar, double* mu2, double* mu3) {
-//
-//	dVector rhs = NULL, cost = NULL;
-//	iVector	indices;
-//
-//	indices = (iVector)arr_alloc(maximum(prob->num->rows, prob->num->cols), int);
-//	for (int n = 0; n < maximum(prob->num->rows, prob->num->cols); n++)
-//		indices[n] = n;
-//
-//	/* (a) compute the right-hand side using current observation and first-stage solution */
-//	rhs = computeRHS(prob->num, prob->coord, prob->bBar, prob->Cbar, Xvect, obsVals);
-//
-//	if (rhs == NULL) {
-//		errMsg("algorithm", "solveSubprob", "failed to compute subproblem right-hand side", 0);
-//		return 1;
-//	}
-//
-//	/* (b) change the right-hand side in the solver */
-//	if (changeRHSArray(subproblem->model, prob->num->rows, indices, rhs + 1)) {
-//		errMsg("solver", "solve_subprob", "failed to change the right-hand side in the solver", 0);
-//		return 1;
-//	}
-//
-//	if (prob->num->rvdOmCnt > 0) {
-//		/* (c) compute the cost coefficients using current observation */
-//		cost = computeCostCoeff(prob->num, prob->coord, prob->dBar, obsVals);
-//		if (cost == NULL) {
-//			errMsg("algorithm", "solveSubprob", "failed to compute subproblem cost coefficients", 0);
-//			return 1;
-//		}
-//
-//		/* (d) change cost coefficients in the solver */
-//		if (changeObjCoeffArray(subproblem->model, prob->num->cols, indices, cost + 1)) {
-//			errMsg("solver", "solve_subprob", "failed to change the cost coefficients in the solver", 0);
-//			return 1;
-//		}
-//	}
-//
-//	/* (e) Solve the subproblem to obtain the optimal dual solution. */
-//	if (solveProblem(subproblem->model)) {
-//		errMsg("algorithm", "solveSubprob", "failed to solve subproblem in solver", 0);
-//		return 1;
-//	}
-//
-//#if defined(WRITE_FILES)
-//	writeProblem(subproblem->model, "cellSubprob.qp");
-//#endif
-//
-//#if defined(STOCH_CHECK)
-//	double obj;
-//	obj = getObjective(subproblem->model);
-//	printf("\t\tObjective value of Subproblem  = %lf;\t", obj);
-//#endif
-//
-//	/* Record the dual and reduced cost on bounds. */
-//	if (getDual(subproblem->model, piS, 0, prob->num->rows)) {
-//		errMsg("algorithm", "stochasticUpdates", "failed to get the dual", 0);
-//		return 1;
-//	}
-//	double* dj;
-//	dj = (dVector)arr_alloc(prob->num->cols + 1, double);
-//
-//	if (computeMU(subproblem->model, prob->num->cols, muBar , dj, mu2, mu3)) {
-//		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
-//		return 1;
-//	}
-//
-//	/*request for status*/
-//
-//	for (int i = 0; i < prob->num->cols; i++) {
-//		if (dj[i+1] >= 0) {
-//			mu2[i+1] = dj[i+1];
-//		}
-//
-//		else if (dj[i+1] < 0) { mu3[i+1] = dj[i+1]; }
-//	}
-//
-//	if (rhs) mem_free(rhs);
-//	if (dj) mem_free(dj);
-//	if (cost) mem_free(cost);
-//	if (indices) mem_free(indices);
-//	return 0;
-//}// END solveSubprob()
 
 /* This function computes the right hand side of the subproblem, based on a given X dVector and a given observation of omega.
  * It is defined as:
@@ -686,4 +633,206 @@ void freeCellType (cellType *cell) {
 
 	mem_free(cell);
 
-} /** End freeCellType() **/
+} /** EndfreeCellType() **/
+
+void newPartition(int Partsize, probType* prob, cellType* cell) {
+
+	cell->partition = (PartitionType*)mem_malloc(sizeof(PartitionType));
+	cell->partition->cnt = 0;
+	cell->partition->part = (int**)arr_alloc(Partsize,int*);
+	for (int i = 1; i<= Partsize; i++) {
+	cell->partition->part[i] = (int*)arr_alloc(prob->num->cols, int);
+	}
+}; /*End newPartition*/
+
+void freePartition(int Partsize, probType* prob, cellType* cell) {
+
+	for (int i = 1; i <= Partsize; i++) {
+		mem_free(cell->partition->part[i]);
+	}
+	mem_free(cell->partition->part);
+	mem_free(cell->partition);
+}; //EndfreePartition
+
+int AddtoPart(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln , bool* flag, int* up , int* inact , int* low  ) {
+	int* part = (iVector)arr_alloc(prob->num->cols + 1, int);
+	int stat = 0;
+	for (int i = 1; i <= prob->num->cols; i++) {
+		GRBgetdblattrelement(prob->sp->model, "VBasis", i, &stat);
+		if (stat == -1) {
+			part[i] = 1;
+			(*low)++;
+		}
+		else if(stat == -2)
+		{			
+			part[i] = 2;
+			(*up)++;
+		}
+		else {
+			part[i] = 0;
+			(*inact)++;
+		}
+	}
+
+	double index = 0, powerto = 1;
+	for (int i = 1; i <= prob->num->cols; i++) {
+		for (int j = 1; j <= i - 1; j++) {
+			powerto = 3 * powerto;
+		}
+		index = powerto + index;
+		powerto = 1;
+	}
+	part[0] = index;
+	
+	int partIndx = -1;
+	for (int i = 1; i < cell->partition->cnt; i++) {
+		if (cell->partition->part[i][0] == part[0]) {
+			partIndx = i;
+			
+			break;
+		}
+	}
+	if (partIndx == -1) {
+		(*flag) = true;
+		cell->partition->cnt++;
+		partIndx = cell->partition->cnt;
+		copyVector(part , cell->partition->part[partIndx] , prob->num->cols );
+	}
+
+	mem_free(part);
+	return partIndx;
+}; /*EndAddtoPart*/
+
+
+void freeSolSet(solutionSetType* SolSet) {
+	for (int i = 0; i < SolSet->cnt; i++) {
+		if (SolSet->vals[i]) {
+			freeSolnType(SolSet->vals[i]);
+		}
+	}
+	if (SolSet->vals) {
+		mem_free(SolSet->vals);
+	}
+	if (SolSet) {
+		mem_free(SolSet);
+	}
+}; /*EndfreeSolset*/
+
+void addtoDeltaSol(cellType* cell, solnType* soln, Mat* W, Mat* T, probType* prob, sparseMatrix* uomega, sparseMatrix* domega, int inact, int up) {
+
+	int idx = cell->deltaSol->cnt;
+	cell->deltaSol->cnt++;
+	cell->deltaSol->sol[idx]->y = (dVector)arr_alloc(prob->num->cols , double);
+	cell->deltaSol->sol[idx]->pi = (dVector)arr_alloc(prob->num->rows, double);
+	cell->deltaSol->sol[idx]->lmu = (dVector)arr_alloc(prob->num->cols, double);
+	cell->deltaSol->sol[idx]->umu = (dVector)arr_alloc(prob->num->cols, double);
+	/* Calculate [[W , T] [delta ybar , delta rhs]*/
+
+	/* complete DeltaY*/
+	for (int i = 0; i < prob->num->cols ; i++) {
+		if (cell->partition->part[i]==0) {
+			for (int j = 0; j < up; j++) {
+				cell->deltaSol->sol[idx]->y[i] = cell->deltaSol->sol[idx]->y[i] + W->entries[i * W->col + j] * uomega->val[j];
+			}
+			for (int j = 0; j < prob->num->rows; j++) {
+				cell->deltaSol->sol[idx]->y[i] = cell->deltaSol->sol[idx]->y[i] + W->entries[i * W->col + prob->num->rows + j] * domega->val[j];
+			}
+		}
+		else { cell->deltaSol->sol[idx]->y[i] = 0; }
+	}
+
+	/* complete DeltaLambda*/
+
+	for (int i = 0; i < prob->num->rows; i++) {
+		for (int j = 0; j < up; j++) {
+			cell->deltaSol->sol[idx]->pi[i] = cell->deltaSol->sol[idx]->pi[i] + W->entries[i * W->col + j] * uomega->val[j];
+		}
+		for (int j = 0; j < prob->num->rows; j++) {
+			cell->deltaSol->sol[idx]->pi[i] = cell->deltaSol->sol[idx]->pi[i] + W->entries[i * W->col + prob->num->rows + j] * domega->val[j];
+		}
+	}
+
+	/* complete DeltaNu*/
+	for (int i = 0; i < prob->num->cols; i++) {
+		if (cell->partition->part[i] == 1) {
+			for (int j = 0; j < up; j++) {
+				cell->deltaSol->sol[idx]->lmu[i] = cell->deltaSol->sol[idx]->lmu[i] + T->entries[i * W->col + j] * uomega->val[j];
+			}
+			for (int j = 0; j < prob->num->rows; j++) {
+				cell->deltaSol->sol[idx]->lmu[i] = cell->deltaSol->sol[idx]->lmu[i] + T->entries[i * W->col + prob->num->rows + j] * domega->val[j];
+			}
+		}
+		else { cell->deltaSol->sol[idx]->lmu[i] = 0; }
+	}
+
+
+	/* complete DeltaMu*/
+	for (int i = 0; i < prob->num->cols; i++) {
+		if (cell->partition->part[i] == 2) {
+			for (int j = 0; j < up; j++) {
+				cell->deltaSol->sol[idx]->umu[i] = cell->deltaSol->sol[idx]->umu[i] + T->entries[i * W->col + j] * uomega->val[j];
+			}
+			for (int j = 0; j < prob->num->rows; j++) {
+				cell->deltaSol->sol[idx]->umu[i] = cell->deltaSol->sol[idx]->umu[i] + T->entries[i * W->col + prob->num->rows + j] * domega->val[j];
+			}
+		}
+		else { cell->deltaSol->sol[idx]->umu[i] = 0; }
+	}
+};//EndaddtoDeltaSol
+
+void AddtoDeltaP(cellType* cell, solnType* sol, probType* prob, sparseMatrix* bOmega, sparseMatrix* uOmega, sparseMatrix* lOmega) {
+
+	int* index;
+	index = (int*)arr_alloc(prob->num->cols + 1, int);
+	for (int i = 1; i <= prob->num->cols; i++) {
+		index[i] = i;
+	}
+	int cnt = cell->delta->cnt;
+	cell->delta->cnt++;
+
+	for (int obs = 0; obs < cell->omega->cnt; obs++) {
+
+		cell->delta->vals[cnt][obs]->alpha = -vXv(vxMSparse(cell->deltaSol->sol[cnt]->y, prob->sp->objQ, prob->num->cols), cell->deltaSol->sol[cnt]->y , index, prob->num->cols)
+			- 2* vXv(vxMSparse(sol->y, prob->sp->objQ, prob->num->cols), cell->deltaSol->sol[cnt]->y, index, prob->num->cols) +
+			vXvSparse(sol->pi,bOmega)+ vXvSparse(cell->deltaSol->sol[cnt]->y, bOmega)+ vXv(cell->deltaSol->sol[cnt]->y , prob->dBar, index, prob->num->cols);
+
+		cell->delta->vals[cnt][obs]->beta = vxMSparse(cell->deltaSol->sol[cnt]->pi, prob->Cbar, prob->num->prevCols);
+	}
+}; //EndAddtoDeltaP
+
+void AddtoSigmaP(cellType* cell ,solnType* sol , probType* prob , sparseMatrix* bOmega , sparseMatrix* uOmega, sparseMatrix* lOmega) {
+
+	int* index;
+	index = (int*)arr_alloc(prob->num->cols + 1, int);
+	for (int i = 1; i <= prob->num->cols; i++) {
+		index[i] = i;
+	}
+	int cnt = cell->sigma->cnt;
+	cell->sigma->cnt++;
+	cell->sigma->vals[cnt]->alpha = -vXv(vxMSparse(sol->y, prob->sp->objQ, prob->num->cols), sol->y, index, prob->num->cols) +
+		vXvSparse(sol->pi, prob->bBar) + vXvSparse(sol->lmu, prob->lBar) + vXvSparse(sol->umu, prob->uBar);
+
+	cell->sigma->vals[cnt]->beta = vxMSparse(sol->pi, prob->Cbar, prob->num->prevCols);
+}; //EndAddtoSigmaP
+
+void addtoLambdaP(cellType* cell, solnType* soln, Mat* W, Mat* T, probType* prob, sparseMatrix* uomega, sparseMatrix* domega, int inact, int up) {
+
+	int idx = cell->lambda->cnt;
+
+	cell->lambda->cnt++;
+	cell->lambda->y[idx]   = (dVector)arr_alloc(prob->num->cols + 1, double);
+	cell->lambda->umu[idx] = (dVector)arr_alloc(prob->num->cols + 1, double);
+	cell->lambda->lmu[idx] = (dVector)arr_alloc(prob->num->cols + 1, double);
+	cell->lambda->pi[idx]  = (dVector)arr_alloc(prob->num->rows + 1, double);
+
+	copyVector(soln->y   , cell->lambda->y[idx], prob->num->cols + 1);
+	copyVector(soln->umu , cell->lambda->umu[idx], prob->num->cols + 1);
+	copyVector(soln->lmu , cell->lambda->lmu[idx], prob->num->cols + 1);
+	copyVector(soln->pi  , cell->lambda->pi[idx], prob->num->rows + 1);
+
+	cell->lambda->mubar[idx] = soln->mubBar;	
+}; //EndaddtoLambdaP
+
+
+
+

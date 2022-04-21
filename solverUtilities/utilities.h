@@ -51,6 +51,8 @@ typedef struct{
 	dVector	val;
 }sparseMatrix;
 
+
+
 /* following sub-routines can be found in utility.c */
 FILE *openFile(cString outputDir, cString fname, char *mode);
 void createOutputDir(cString outputDir, cString algoName, cString probName);
