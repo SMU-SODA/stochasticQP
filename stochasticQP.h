@@ -111,7 +111,7 @@ typedef struct {
 
 typedef struct {
 	int cnt;
-	solnType** sol;
+	solnType*** sol;
 }deltaSolType;
 
 
@@ -299,14 +299,15 @@ int partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double
 int AddtoPart(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln, bool* flag, int* up, int* inact, int* low);
 void newSolSet(int Partsize, probType* prob, cellType* cell);
 void freeSolSet(solutionSetType* SolSet);
-void addtoLambdaP(cellType* cell, solnType* soln, Mat* W, Mat* T, probType* prob, sparseMatrix* uomega, sparseMatrix* domega, int inact, int up);
+void addtoLambdaP(cellType* cell, solnType* soln, probType* prob);
 
 
 //typedef struct MatList {
 	//Mat* mat;
 	//MatList* next;
 //}MatList;
-
+Mat* newmat(int r, int c, double d);
+double det(Mat* M);
 Mat* transSparsM(sparseMatrix* M, int col, int row);
 Mat* removerow(Mat* A, int r);
 Mat* removecol(Mat* A, int c);
@@ -320,6 +321,10 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D, Ma
 Mat* transSparsM(sparseMatrix* M, int col, int row);
 Mat* removerow(Mat* A, int r);
 Mat* removecol(Mat* A, int c);
-void AddtoSigmaP(cellType* cell, solnType* sol, probType* prob, sparseMatrix* bOmega, sparseMatrix* uOmega, sparseMatrix* lOmega);
+void AddtoSigmaP(cellType* cell, solnType* sol, probType* prob);
 void AddtoDeltaP(cellType* cell, solnType* sol, probType* prob, sparseMatrix* bOmega, sparseMatrix* uOmega, sparseMatrix* lOmega);
-void addtoDeltaSol(cellType* cell, solnType* soln, Mat* W, Mat* T, probType* prob, sparseMatrix* uomega, sparseMatrix* domega, int inact, int up);
+void addtoDeltaSol(cellType* cell, solnType* soln, Mat* W, Mat* T, probType* prob, sparseMatrix* uOmega, sparseMatrix* bOmega, int inact, int up);
+void newDeltaSol(cellType* cell, int sigmaSize , int obsnum);
+Mat* adjoint(Mat* A);
+void removecol2(Mat* A, Mat* B, int c);
+void showmat(Mat* A);

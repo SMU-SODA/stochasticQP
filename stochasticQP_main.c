@@ -216,34 +216,40 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 	Mat* M1;
 	Mat* M2;
 	int low = 0;
-	
-
-	/*Build QII in a mat strcture*/
-	int inact = 0;
 	int up = 0;
-	int cnt = cell->partition->cnt;
-	for (int i = 0; i < prob->num->cols; i++) {
+	int act = 0;
+	//showmat(DMI);
+	/*Build QII in a mat strcture*/
+	int cnt = cell->partition->cnt - 1;
+	for (int i = prob->num->cols ; i >= 1; i--) {
 		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
 		{
-			removecol(QII, i);
-			removerow(QII, i);
-			inact++;
+			QII = removecol(QII, i);
+			QII = removerow(QII, i);
+		    act++;
 		}
 	}
-	/*Build D(MI)*/
-	for (int i = 0; i < prob->num->cols; i++) {
-		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
-		{
-			removecol(DMI, i);
-		}
-	}
-	Mat* DMIT = transpose(DMI);
-	int elm = 0;
 
+	/*Build D(MI)*/
+	for (int i = prob->num->cols; i >= 1; i--) {
+		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
+		{
+			DMI = removecol(DMI, i);
+		}
+	}
+	showmat(DMI);
+	/*Build D(MI) transpose*/
+	Mat* DMIT = transpose(DMI);
+	//showmat(DMIT);
+	int elm = 0;
+	int inact = prob->num->cols - act;
+	M1 = newmat(prob->num->rows + inact , prob->num->rows + inact , 0);
+	
 	// Build Matrix M1
+	// 1. place the first I rows
 	for (int i = 0; i < inact; i++) {
-		for (int j = 0; j < inact; j++) {
-			M1->entries[elm] = QII->entries[i* inact +j];
+		for (int j = 0; j < inact ; j++) {
+			M1->entries[elm] = QII->entries[i* inact + j];
 			elm++;
 		}
 		for (int j = 0; j < prob->num->rows; j++) {
@@ -251,21 +257,46 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 			elm++;
 		}
 	}
+
+
+	showmat(QII);
+	showmat(DMIT);
+	showmat(M1); 
+	// 2. place the next M rows
 	for (int i = 0; i < prob->num->rows; i++) {
 		for (int j = 0; j < inact; j++) {
 			M1->entries[elm] = DMI->entries[(i) * inact + j];
 			elm++;
 		}
-		for (int j = 0; j < prob->num->rows; j++) {
+		for (int j = 1; j <= prob->num->rows; j++) {
 			M1->entries[elm] = 0;
 			elm++;
 		}
 	}
+	showmat(DMI);
+	showmat(DMIT);
+	showmat(M1);
+	Mat* invM1 = inverse(M1);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	// Build Matrix M2
 
 	/*Build QIU in a mat strcture*/
-	for (int i = 0; i < prob->num->cols; i++) {
+	for (int i = 1; i <= prob->num->cols; i++) {
 		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
 		{
 			removerow(QIU, i);
@@ -279,14 +310,14 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 
 
 	/*Build DMU in a mat strcture*/
-	for (int i = 0; i < prob->num->cols; i++) {
+	for (int i = 1; i < prob->num->cols; i++) {
 		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
 		{
 			removecol(DMU, i);
 		}
 	}
 
-
+	M2 = newmat(prob->num->rows + inact, prob->num->rows + up, 0);
 	 elm = 0;
     /* first I rows of M2*/
 	for (int i = 0; i < inact; i++) {
@@ -299,13 +330,17 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 			elm++;
 		}
 	}
+
+
+	Mat* minvM1 = scalermultiply(invM1, -1);
+
 	/* next M rows of M2*/
-	for (int i = 0; i < prob->num->rows; i++) {
+	for (int i = 1; i <= prob->num->rows; i++) {
 		for (int j = 0; j < up; j++) {
 			M2->entries[elm] = DMU->entries[(i)*up + j];
 			elm++;
 		}
-		for (int j = 0; j < prob->num->rows; j++) {
+		for (int j = 1; j <= prob->num->rows; j++) {
 			if (i+ inact == j+up) {
 				M2->entries[elm] = -1;
 				elm++;
@@ -318,9 +353,9 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 	}
 
 	/*Calculate 4 components of the W*/
-	Mat* invM1 = inverse(M1);
-	Mat* minvM1 = scalermultiply(invM1 , -1);
-	 W = multiply(minvM1, M2);
+	//Mat* invM1 = inverse(M1);
+	//Mat* minvM1 = scalermultiply(invM1 , -1);
+ 	W = multiply(minvM1, M2);
 
 	//* Mtrix T caculation  *//
 	/* QLU */
@@ -391,8 +426,10 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 		}
 	}
 
+
+
 	/* Build T=  w1 - w2 * w*/
-	Mat* w1;
+	Mat* w1 = newmat(low+up,prob->num->rows + up ,0);
 	/*Build w1*/
 	elm = 0;
 	/* first L rows of W1*/
@@ -421,7 +458,7 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 		}
 	}
 	/*Build w2*/
-	Mat* w2;
+	Mat* w2 = newmat(low + up, prob->num->rows + inact, 0);
 	elm = 0;
 	Mat * DMLT = transpose(DML);
 	Mat* DMUT  = transpose(DMU);

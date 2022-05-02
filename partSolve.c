@@ -74,7 +74,7 @@ int partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double
 			partIndx = AddtoPart(prob, cell, uOmega, lOmega, soln, &newPartFlag, &up, &inact, &low);
 
 			/* 4d. Store the fixed parts of current partition if needed*/
-
+//
 			if (newPartFlag) {
 
 				/* 4d.1 Extract the WT matrices*/
@@ -83,20 +83,23 @@ int partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double
 
 				/* 4d.2 Add the obtained solution to the lambda structure*/
 
-				addtoLambdaP(cell, soln, &W, &T, prob, uOmega, dOmega, inact, up);
+				addtoLambdaP( cell,  soln, prob);
 
 
 				/* 4d.2 Add  to alpha and beta Bar*/
 
-
+				 AddtoSigmaP( cell,  soln ,prob);
 
 				/* 4d.3 add to  delta sol and complete a row*/
 
-				addtoDeltaSol(cell, soln, &W, &T, prob, uOmega, dOmega, inact, up);
+				 addtoDeltaSol(cell, soln, &W, &T, prob, uOmega, bOmega, inact, up);
+					
+
+		
 
 				/* 4d.4 add to alpha and beta delta and complete a row*/
 
-				AddtoDeltaP(cell, soln, prob, bOmega, uOmega, lOmega);
+			    //AddtoDeltaP( cell,  soln,  prob,  bOmega, uOmega, lOmega);
 
 
 				/*3c. Calculate observations specific coefficients. */

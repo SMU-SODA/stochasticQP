@@ -36,7 +36,7 @@ void showmat(Mat* A) {
 Mat* newmat(int r, int c, double d) {
 	Mat* M = (Mat*)malloc(sizeof(Mat));
 	M->row = r; M->col = c;
-	M->entries = (double*)malloc(sizeof(double) * r * c);
+	M->entries = (double*)arr_alloc(r * c+1,double);
 	int k = 0;
 	for (int i = 1; i <= M->row; i++) {
 		for (int j = 1; j <= M->col; j++) {
@@ -192,6 +192,10 @@ Mat* removecol(Mat* A, int c) {
 	}
 	return B;
 }
+
+
+
+
 void removerow2(Mat* A, Mat* B, int r) {
 	int k = 0;
 	for (int i = 1; i <= A->row; i++) {
@@ -217,7 +221,7 @@ Mat* transpose(Mat* A) {
 	int k = 0;
 	for (int i = 1; i <= A->col; i++) {
 		for (int j = 1; j <= A->row; j++) {
-			B->entries[k] = A->entries[(j - 1) * A->row + i - 1];
+			B->entries[k] = A->entries[(j - 1) * A->col + i - 1];
 			k += 1;
 		}
 	}
@@ -236,7 +240,9 @@ double det(Mat* M) {
 	for (int j = 1; j <= M->col; j++) {
 		double c = M->entries[j - 1];
 		removecol2(M1, M2, j);
-		d += si * det(M2) * c;
+		if (c > 0.00000000001 || c < -0.00000000001) {
+			d += si * det(M2) * c;
+		}
 		si *= -1;
 	}
 	freemat(M1);
@@ -269,11 +275,12 @@ Mat* adjoint(Mat* A) {
 	freemat(A2);
 	freemat(B);
 	return C;
-}
+} 
 
 Mat* inverse(Mat* A) {
-	Mat* B = adjoint(A);
 	double de = det(A);
+	Mat* B = adjoint(A);
+	
 	Mat* C = scalermultiply(B, 1 / de);
 	freemat(B);
 	return C;
@@ -371,6 +378,8 @@ Mat* rowechelon(Mat* A) {
 	freemat(Be);
 	return B;
 }
+
+
 Mat* hconcat(Mat* A, Mat* B) {
 	Mat* C = newmat(A->row, A->col + B->col, 0);
 	int k = 0;
@@ -415,6 +424,8 @@ double norm(Mat* A) {
 	d = sqrt(d);
 	return d;
 }
+
+
 Mat* null(Mat* A) {
 	Mat* RM = rowechelon(A);
 	int k = RM->row;
@@ -431,6 +442,7 @@ Mat* null(Mat* A) {
 			break;
 		}
 	}
+
 	Mat* RRM = submat(RM, 1, k, 1, RM->col);
 	freemat(RM);
 	int nn = RRM->col - RRM->row;
@@ -486,10 +498,10 @@ Mat* transSparsM(sparseMatrix* M , int col , int row){
 	int i = 0;
 	Mat* M1 = (Mat*)malloc(sizeof(Mat));
 	M1->row = row;   M1->col = col;
-	M1->entries = (double*)malloc(sizeof(double) * row * col);
-	for (int cnt = 0; cnt < M->cnt; cnt++) {
+	M1->entries = (double*)arr_alloc(row * col +1, double);
+	for (int cnt = 1; cnt <= M->cnt; cnt++) {
 		i = (M->row[cnt] - 1) * col + M->col[cnt];
-		M1->entries[i] = M->val[cnt] ; /*To Do: Check if val begins from zero?*/
+		M1->entries[i-1] = M->val[cnt] ; 
 	}
 	return M1;
 }
