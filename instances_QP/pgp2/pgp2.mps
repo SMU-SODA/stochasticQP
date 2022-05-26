@@ -8,15 +8,15 @@
 NAME          PGP2
 ROWS
  N  FOBJ
- G  MXDEMD
- L  BUDGET
- L  CAPEQ1
- L  CAPEQ2
- L  CAPEQ3
- L  CAPEQ4
- G  DNODE1
- G  DNODE2
- G  DNODE3
+ E  MXDEMD
+ E  BUDGET
+ E  CAPEQ1
+ E  CAPEQ2
+ E  CAPEQ3
+ E  CAPEQ4
+ E  DNODE1
+ E  DNODE2
+ E  DNODE3
 COLUMNS
 *23412345678  12345678  123456789012   12345678  123456789012
     INVEQ1    FOBJ         10.0        MXDEMD       1.0
@@ -27,6 +27,8 @@ COLUMNS
     INVEQ3    BUDGET       16.0        CAPEQ3      -1.0
     INVEQ4    FOBJ          6.0        MXDEMD       1.0
     INVEQ4    BUDGET        6.0        CAPEQ4      -1.0
+    S1        MXDEMD       -1.0
+    S2        BUDGET        1.0
     EQ1ND1    FOBJ         40.0        CAPEQ1       1.0
     EQ1ND1    DNODE1        1.0
     EQ1ND2    FOBJ         24.0        CAPEQ1       1.0
@@ -55,6 +57,13 @@ COLUMNS
     PEN2      FOBJ       1000.0        CAPEQ2      -1.0
     PEN3      FOBJ       1000.0        CAPEQ3      -1.0
     PEN4      FOBJ       1000.0        CAPEQ4      -1.0
+    S3        CAPEQ1     1.0
+    S4        CAPEQ2     1.0
+    S5        CAPEQ3     1.0
+    S6        CAPEQ4     1.0
+    S7        DNODE1     -1.0
+    S8        DNODE2     -1.0
+    S9        DNODE3     -1.0
 RHS
     RHS       MXDEMD       15.0
     RHS       BUDGET      220.0
@@ -111,4 +120,8 @@ QUADOBJ
     EQ4ND2       EQ4ND2             11. 
     EQ4ND2       EQ4ND3             11.  
     EQ4ND3       EQ4ND3             11.
+    PEN1         PEN1               11.
+    PEN2         PEN2               11.
+    PEN3         PEN3               11.
+    PEN4         PEN4               11.
 ENDATA
