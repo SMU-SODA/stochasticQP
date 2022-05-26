@@ -77,13 +77,9 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 		cell->sigma = newSigma(Partsize, prob);
 		cell->lambda =  newLambda(Partsize, prob);
 		cell->delta = newDelta(Partsize, prob,cell);
-	    newDeltaSol( cell, Partsize,cell->omega->cnt);
-		
-	
 	}
 	else{
 		cell->partition = NULL;
-		
 	}
 
 	return cell;
@@ -95,10 +91,6 @@ void newDeltaSol(cellType* cell , int partSize , int obsnum ) {
 	cell->deltaSol = (deltaSolType*)mem_malloc(sizeof(deltaSolType)) ;
 	cell->deltaSol->cnt = 0;
 	cell->deltaSol->sol = (solnType***)arr_alloc(partSize, solnType**);
-
-	for (int i = 0; i < partSize;i++) {
-		cell->deltaSol->sol[i] = (solnType**)arr_alloc(obsnum, solnType*);
-	}	
 }; //EndnewDeltaSol
 
 
@@ -633,6 +625,7 @@ void freeCellType (cellType *cell) {
 	freeSigma(cell->sigma);
 	freeLambda(cell->lambda);
 	freeDelta(cell->delta, cell->omega->cnt);
+	freePartition(cell->partition);
 	freeOmegaType(cell->omega,false);
 
 	if (cell->time)mem_free(cell->time);
@@ -646,65 +639,71 @@ void newPartition(int Partsize, probType* prob, cellType* cell) {
 	cell->partition = (PartitionType*)mem_malloc(sizeof(PartitionType));
 	cell->partition->cnt = 0;
 	cell->partition->part = (int**)arr_alloc(Partsize,int*);
+	cell->partition->basnum = (int*)arr_alloc(Partsize, int);
 	for (int i = 0; i<= Partsize; i++) {
 	cell->partition->part[i] = (int*)arr_alloc(prob->num->cols, int);
 	}
 }; /*End newPartition*/
 
-void freePartition(int Partsize, probType* prob, cellType* cell) {
+void freePartition( PartitionType* partition) {
 
-	for (int i = 1; i <= Partsize; i++) {
-		mem_free(cell->partition->part[i]);
+	for (int i = 1; i <= partition->cnt ; i++) {
+		mem_free(partition->part[i]);
 	}
-	mem_free(cell->partition->part);
-	mem_free(cell->partition);
+	mem_free(partition->part);
+	mem_free(partition);
 }; //EndfreePartition
 
-int AddtoPart(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln , bool* flag, int* up , int* inact , int* low  ) {
+int AddtoPart(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln , bool* flag, int* up , int* inact , int* low , int* base ) {
 	int* part = (iVector)arr_alloc(prob->num->cols + 1, int);
 	double Lstat = 0;
 	double  Ustat = 0;
 	double eps = 0.00001;
-	for (int i = 0; i < prob->num->cols; i++) {
+	long long int index = 0;
+	int partIndx = -1;
+	/* for current solution check and save the status of bound constraints, if set to lower bound 
+	put 1 in vector part, if on upper bound put 2 in vector part, if inactive put 0 in part */
+
+	for (int i = 1; i <= prob->num->cols; i++) {
 		GRBgetdblattrelement(cell->subprob->model, "LB", i, &Lstat);
 		GRBgetdblattrelement(cell->subprob->model, "UB", i, &Ustat);
 		if (Lstat - eps < soln->y[i]  & soln->y[i] < Lstat + eps) {
-			part[i+1] = 1;
+			part[i] = 1;
 			(*low)++;
 		}
 		else if(Ustat - eps < soln->y[i] & soln->y[i] < Ustat + eps)
 		{			
-			part[i+1] = 2;
+			part[i] = 2;
 			(*up)++;
 		}
 		else {
-			part[i+1] = 0;
+			part[i] = 0;
 			(*inact)++;
 		}
 	}
 
-	double index = 0, powerto = 1;
+	/* produce a number using 3  as a basis from the obtained partition*/
+
 	for (int i = 1; i <= prob->num->cols; i++) {
-		for (int j = 1; j <= i - 1; j++) {
-			powerto = 3 * powerto;
-		}
-		index = powerto + index;
-		powerto = 1;
+		index = base[i] * part[i]  + index;
 	}
-	part[0] = index;
 	
-	int partIndx = -1;
-	for (int i = 1; i < cell->partition->cnt; i++) {
-		if (cell->partition->part[i][0] == part[0]) {
+
+	/* Check to see if this partition is obtained before */
+
+	for (int i = 0; i < cell->partition->cnt; i++) {
+		if (cell->partition->basnum[i] == index) {
 			partIndx = i;
-			
 			break;
 		}
 	}
+
+
 	if (partIndx == -1) {
 		(*flag) = true;
 		partIndx = cell->partition->cnt;
-		copyVector(part , cell->partition->part[partIndx] , prob->num->cols );
+		copyVector(part + 1 , cell->partition->part[partIndx] + 1, prob->num->cols - 1);
+		cell->partition->basnum[partIndx] = index;
 		cell->partition->cnt++;
 	}
 
@@ -727,71 +726,357 @@ void freeSolSet(solutionSetType* SolSet) {
 	}
 }; /*EndfreeSolset*/
 
-void addtoDeltaSol(cellType* cell, solnType* soln, Mat* W, Mat* T, probType* prob, sparseMatrix* uOmega, sparseMatrix* bOmega, int inact, int up) {
-	int idx = cell->deltaSol->cnt;
-	for (int j = 0; j < cell->omega->cnt; j++) {
-		cell->deltaSol->sol[idx][j] = (solnType*)mem_malloc(sizeof(solnType));
-	}
-	for (int obs = 0; obs < cell->omega->cnt; obs++) {
-		/* Add a new row to the delta structure for all observations and the latest lambda (lambdaIdx) */
-		bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0] - 1;
-		uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3] - 1;
-		cell->deltaSol->cnt++;
-		cell->deltaSol->sol[idx][obs]->y = (dVector)arr_alloc(prob->num->cols, double);
-		cell->deltaSol->sol[idx][obs]->pi = (dVector)arr_alloc(prob->num->rows, double);
-		cell->deltaSol->sol[idx][obs]->lmu = (dVector)arr_alloc(prob->num->cols, double);
-		cell->deltaSol->sol[idx][obs]->umu = (dVector)arr_alloc(prob->num->cols, double);
+void addtoDeltaP(cellType* cell, solnType* soln, Mat* W, Mat* T, Mat* WT, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega, int obs, int lambdaIdx, int inact, int up , int low) {
 
-	/* Calculate [[W , T] [delta ybar , delta rhs]*/
+	int elm = 0;
+	
+	Mat* rhyu = newmat(prob->num->rows + up, 1, 0);
+	Mat* deltaPD;
+	double* deltaLd;
+	dVector deltay = (dVector)arr_alloc(prob->num->cols + 1, double);
+	deltaLd = (dVector)arr_alloc(prob->num->rows + 1, double);
 
-	/* complete DeltaY*/
-	for (int i = 0; i < prob->num->cols ; i++) {
-		if (cell->partition->part[i]==0) {
-			for (int j = 0; j < up; j++) {
-				cell->deltaSol->sol[idx][obs]->y[i] = cell->deltaSol->sol[idx][obs]->y[i] + W->entries[i * W->col + j] * uOmega->val[j];
+
+
+	/* 1. Calculate  vector [delta ubarU , delta rho] */
+
+	for (int i = 1; i <= prob->num->cols; i++) {
+		if (cell->partition->part[lambdaIdx][i] == 2) {
+			for (int j = 1; j <= uOmega->cnt; j++) {
+
+				{
+					if (uOmega->col[j] == i) {
+						rhyu->entries[elm] = uOmega->val[i];
+					}
+				}
 			}
-			for (int j = 0; j < prob->num->rows; j++) {
-				cell->deltaSol->sol[idx][obs]->y[i] = cell->deltaSol->sol[idx][obs]->y[i] + W->entries[i * W->col + prob->num->rows + j] * bOmega->val[j];
-			}
+			elm++;
 		}
-		else { cell->deltaSol->sol[idx][obs]->y[i] = 0; }
 	}
+
+
+	for (int i = 1; i <= bOmega->cnt; i++) {
+
+		rhyu->entries[up + bOmega->col[i] - 1 ] = bOmega->val[i];
 	}
-    }; //EndAddtoDeltaP
+	
+
+	/* 2. Calculate the delta [yI,lambda,nuL,muU] */
+	
+	 deltaPD =  multiply(WT, rhyu);
+	
+	/* 3. put pibar in lambda */
+
+	 int cnt = 0;
+	copyVector(deltaPD + inact, deltaLd + 1 , prob->num->rows - 1 );
+
+	int* index = (iVector)arr_alloc(prob->num->prevCols + 1,int);
+	int* index2 = (iVector)arr_alloc(prob->num->cols + 1, int);
+	for (int i = 1; i <= prob->num->prevCols; i++) {
+		index[i] = i;
+	}
+
+	dVector dbeta = (dVector)arr_alloc(prob->num->prevCols + 1,double);
+	addVectors(dbeta, vxMSparse(cell->lambda->pi[lambdaIdx], COmega, prob->num->prevCols), index, prob->num->prevCols );
+	addVectors(dbeta, vxMSparse(deltaLd , prob->Cbar, prob->num->rows),index , prob->num->prevCols );
+	addVectors(dbeta, vxMSparse(deltaLd , COmega, prob->num->rows), index, prob->num->prevCols );
+
+	/* If this is a new lambda, and we are in the first obsevation we add a new row first */
+	if (obs == 0) {
+		cell->delta->vals[lambdaIdx] = (pixbCType**)arr_alloc(cell->omega->cnt, pixbCType*);
+		cell->delta->cnt++;
+	}
+	cell->delta->vals[lambdaIdx][obs] = (pixbCType*)mem_malloc(sizeof(pixbCType));
+
+	/* Calculate delta beta in sparce struct */
+	/*To do: should we add any conditions on null beta like dual subrutine? */
+
+	cell->delta->vals[lambdaIdx][obs]->beta = reduceVector(dbeta, prob->coord->rvCOmCols, prob->num->rvCOmCnt);
+
+	/* Calculate deltaY */
+
+	dVector deltaU = (dVector)arr_alloc(prob->num->cols + 1, double);
+	for (int i = 1; i <= uOmega->cnt; i++) {
+		deltaU[uOmega->col[i]] = uOmega->val[i];
+	}
+
+	dVector deltaL = (dVector)arr_alloc(prob->num->cols + 1, double);
+	for (int i = 1; i <= lOmega->cnt; i++) {
+		deltaL[lOmega->col[i]] = lOmega->val[i];
+	}
+
+	for (int i = 1; i <= prob->num->cols; i++) {
+		if (cell->partition->part[lambdaIdx][i] == 1) {
+
+			deltay[i] = deltaL[i];
+		}
+		if (cell->partition->part[lambdaIdx][i] == 2 ) {
+
+			deltay[i] = deltaU[i];
+		}
+		if (cell->partition->part[lambdaIdx][i] == 0) {
+			deltay[i] = deltaPD->entries[cnt];
+			cnt++;
+		}
+	}
+
+	/* Calculate deltanu */
+
+	cnt = 0;
+	dVector dnu = (dVector)arr_alloc(prob->num->cols + 1, double);
+	for (int i = 1; i <= prob->num->cols; i++) {
+		if (cell->partition->part[lambdaIdx][i] == 0 || cell->partition->part[lambdaIdx][i] == 2) {
+
+			dnu[i] = 0;
+
+		}
+
+		if (cell->partition->part[lambdaIdx][i] == 1) {
+			dnu[i] = cell->lambda->pd[lambdaIdx]->entries[inact + prob->num->rows + cnt];
+			cnt++;
+		}
+	}
+
+	/* 10. Calculate delta mu */
+
+	cnt = 0;
+	dVector dmu = (dVector)arr_alloc(prob->num->cols + 1, double);
+
+	for (int i = 1; i <= prob->num->cols; i++) {
+		if (cell->partition->part[lambdaIdx][i] == 0 || cell->partition->part[lambdaIdx][i] == 1) {
+
+			dmu[i] = 0;
+		}
+
+		if (cell->partition->part[lambdaIdx][i] == 2) {
+			dmu[i] = cell->lambda->pd[lambdaIdx]->entries[inact + low + prob->num->rows + cnt];
+			cnt++;
+		}
+	}
+
+	for (int i = 1; i <= prob->num->cols ; i++) {
+		index2[i] = i;
+	}
+
+
+	/* calculate alpha */
+	cell->delta->vals[lambdaIdx][obs]->alpha = -vXv(vxMSparse(deltay, prob->sp->objQ, prob->num->cols), deltay, index2, prob->num->cols)
+		- 2 * vXv(vxMSparse(cell->lambda->y[lambdaIdx], prob->sp->objQ, prob->num->cols), deltay, index2, prob->num->cols) + vXvSparse(deltaLd , prob->bBar)
+		+ vXvSparse(cell->lambda->pi[lambdaIdx], bOmega) + vXvSparse(deltaLd, bOmega) + vXvSparse(dnu, prob->lBar)
+		+ vXvSparse(cell->lambda->lmu[lambdaIdx], lOmega) + vXvSparse(dnu, lOmega) + vXvSparse(dmu, prob->uBar)
+		+ vXvSparse(dmu, uOmega) + vXvSparse(cell->lambda->umu[lambdaIdx], uOmega);
+
+	mem_free(dbeta);
+
+	mem_free(index);
+	mem_free(index2);
+	freemat(rhyu);
+	freemat(deltaPD);
+	mem_free(deltaLd);
+	mem_free(deltay);
+	mem_free(deltaL);
+	mem_free(deltaU);
+	mem_free(dmu);
+	mem_free(dnu);
+}; //EndAddtoDeltaP
 
 void AddtoSigmaP(cellType* cell ,solnType* sol , probType* prob ) {
 
 	int* index;
+	int cnt = cell->partition->cnt - 1;
 	index = (int*)arr_alloc(prob->num->cols + 1, int);
 	for (int i = 1; i <= prob->num->cols; i++) {
 		index[i] = i;
 	}
-	int cnt = cell->sigma->cnt;
+	cnt = cell->sigma->cnt;
 	cell->sigma->cnt++;
 	cell->sigma->vals[cnt] = (pixbCType*)mem_malloc(sizeof(pixbCType));
-	cell->sigma->vals[cnt]->alpha = -vXv(vxMSparse(sol->y, prob->sp->objQ, prob->num->cols), sol->y, index, prob->num->cols) +
-		vXvSparse(sol->pi, prob->bBar) + vXvSparse(sol->lmu, prob->lBar) + vXvSparse(sol->umu, prob->uBar);
 
-	cell->sigma->vals[cnt]->beta = vxMSparse(sol->pi, prob->Cbar, prob->num->prevCols);
+	cell->sigma->vals[cnt]->alpha = -vXv(vxMSparse(cell->lambda->y[cnt], prob->sp->objQ, prob->num->cols), cell->lambda->y[cnt], index, prob->num->cols) +
+		vXvSparse(cell->lambda->pi[cnt], prob->bBar) + vXvSparse(cell->lambda->lmu[cnt], prob->lBar) + vXvSparse(cell->lambda->umu[cnt], prob->uBar);
+
+	cell->sigma->vals[cnt]->beta = vxMSparse(cell->lambda->pi[cnt], prob->Cbar, prob->num->prevCols);
+    
+	mem_free(index);
 }; //EndAddtoSigmaP
 
-void addtoLambdaP(cellType* cell, solnType* soln, probType* prob) {
+
+
+void addtoLambdaP(cellType* cell, solnType* soln, Mat* WT ,  probType* prob, sparseVector*  bOmega, sparseVector* uOmega, sparseVector* lOmega, int low, int up, int inact) {
 
 	int idx = cell->lambda->cnt;
-
 	cell->lambda->cnt++;
 	cell->lambda->y[idx]   = (dVector)arr_alloc(prob->num->cols + 1, double);
 	cell->lambda->umu[idx] = (dVector)arr_alloc(prob->num->cols + 1, double);
 	cell->lambda->lmu[idx] = (dVector)arr_alloc(prob->num->cols + 1, double);
 	cell->lambda->pi[idx]  = (dVector)arr_alloc(prob->num->rows + 1, double);
+	cell->lambda->pd[idx] = mem_malloc(sizeof(Mat));
+	cell->lambda->pd[idx]->entries = (dVector)arr_alloc(prob->num->cols + prob->num->rows, double);  /* stores the vector [yI,PI,nuL,muU] bar */
 
-	copyVector(soln->y   , cell->lambda->y[idx], prob->num->cols + 1);
-	copyVector(soln->umu , cell->lambda->umu[idx], prob->num->cols + 1);
-	copyVector(soln->lmu , cell->lambda->lmu[idx], prob->num->cols + 1);
-	copyVector(soln->pi  , cell->lambda->pi[idx], prob->num->rows + 1);
 
-	cell->lambda->mubar[idx] = soln->mubBar;	
+	Mat* rhyu = newmat(prob->num->rows + up, 1, 0);
+
+	//*** Calculate yBar = y - [w,T]delta ***//
+
+	//** Build a vector [yi,lambda,nul,muu]
+	Mat* pdsol = newmat(prob->num->cols + prob->num->rows, 1 , 0); /* The current primal-dual vector [yI,PI,nuL,muU] in this partition */
+
+    /* 1. Copy the inactive variables in yI segment of pdsol*/
+
+	    for (int i = 1; i  <= prob->num->cols; i++) {		    
+			int num = 0;
+		    if (cell->partition->part[idx][i] == 0)
+		    {
+			pdsol->entries[num] = soln->y[i];
+			//cell->lambda->y[idx][i]= soln->y[i];
+			num++;
+		    }
+	    }
+
+    /* 2. Put the duals of equality constraints after yI in pdsol */
+
+	    copyVector(soln->pi + 1 , pdsol->entries + inact, prob->num->rows);
+
+	/* 3. copy the nonzero nu and mu values*/
+
+	    int num1 = 0;
+	    int num2 = 0;
+
+	    for (int i = prob->num->cols; i >= 1; i--) {
+		
+	    	if (cell->partition->part[idx][i] == 1 )
+	    	{
+			pdsol->entries[inact + prob->num->rows + num1] = soln->lmu[i];
+			num1++;
+	    	}
+	     	if ( cell->partition->part[idx][i] == 2)
+	    	{
+			pdsol->entries[inact + prob->num->rows + low + num2] = soln->umu[i];
+			num2++;
+	     	}
+	    }
+
+        /* 5.Build a vector of [delta yubar , delta rho ] */
+
+		int elm = 0;
+
+		for (int i = 1; i <= prob->num->cols; i++) {
+			if (cell->partition->part[idx][i] == 2){
+				for (int j = 1; j <= uOmega->cnt; j++) {
+
+					{/*check i-1*/
+						if (uOmega->col[j] == i) {  /* col is from 0 or 1?*/
+							rhyu->entries[elm] = uOmega->val[i];
+						}
+					}
+				}
+				elm++;
+			}
+		}
+
+
+		for (int i = 1; i <= bOmega->cnt; i++) {
+			 
+			/*check i-1*/
+		    rhyu->entries[up + bOmega->col[i]] = bOmega->val[i];
+		}
+    
+
+	    /* 6.Calculate ybar = y - [WT]delta */
+
+		cell->lambda->pd[idx] = sum(pdsol , multiply(scalermultiply(WT,-1), rhyu)); /* to do : add minus */
+
+       /* 7. Complete ybar in lambda */
+		dVector Ubar = (dVector)arr_alloc(prob->num->cols + 1 ,double);
+		for (int i = 1; i <= prob->uBar->cnt ; i++) {
+			Ubar[prob->uBar->col[i]] = prob->uBar->val[i];
+		}
+		dVector Lbar = (dVector)arr_alloc(prob->num->cols + 1, double);
+		for (int i = 1; i <= prob->lBar->cnt; i++) {
+			Lbar[prob->lBar->col[i]] = prob->lBar->val[i];
+		}
+		int cnt = 0;
+		for (int i = 1; i <= prob->num->cols; i++) {
+
+			if (cell->partition->part[idx][i] == 2 ) {
+
+				cell->lambda->y[idx][i] = Ubar[i];
+			}
+
+			if ( cell->partition->part[idx][i] == 1) {
+
+				cell->lambda->y[idx][i] = Lbar[i];
+			}
+			
+			if (cell->partition->part[idx][i] == 0) {
+
+				cell->lambda->y[idx][i] = cell->lambda->pd[idx]->entries[cnt];
+				cnt++;
+			}
+		}
+
+	   /* 8. Complete pibar in lambda*/
+
+		copyVector(cell->lambda->pd[idx]->entries + inact, cell->lambda->pi[idx] + 1, prob->num->rows);
+
+		/* 9. Complete nu in lambda*/
+
+		cnt = 0;
+		for (int i = 1; i <= prob->num->cols; i++) {
+			if (cell->partition->part[idx][i] == 0 || cell->partition->part[idx][i] == 2) {
+
+				cell->lambda->lmu[idx][i] = 0;
+
+			}
+			if (cell->partition->part[idx][i] == 1) {
+				cell->lambda->lmu[idx][i] = cell->lambda->pd[idx]->entries[ inact + prob->num->rows +cnt];
+				cnt++;
+			}
+		}
+
+		/* 10. Complete mu in lambda*/
+
+		cnt = 0;
+		for (int i = 1; i <= prob->num->cols; i++) {
+			if (cell->partition->part[idx][i] == 0 || cell->partition->part[idx][i] == 1) {
+
+				cell->lambda->umu[idx][i] = 0;
+
+			}
+
+			if (cell->partition->part[idx][i] == 2) {
+				cell->lambda->umu[idx][i] = cell->lambda->pd[idx]->entries[inact + low + prob->num->rows + cnt];
+				cnt++;
+			}
+		}
+
+		freemat(pdsol);
+		freemat(rhyu);
+		mem_free(Ubar);
+		mem_free(Lbar);
+
 }; //EndaddtoLambdaP
 
 
+void Buildbase(long long int* basis, int cols, int bas) {
 
+	long long int pow = 1;
+
+	for (int i = 1; i <= cols; i++) {
+
+		basis[i] = pow;
+		pow = pow * 3;
+
+	}
+};//EndBuildbase
+
+Mat* CombineWT(probType* prob,Mat* W, Mat* T , int low , int up  , int inact) {
+	Mat* WT = newmat(prob->num->cols + prob->num->rows, up + prob->num->rows, 0);
+
+	WT->col = up + prob->num->rows;
+	WT->row = prob->num->cols + prob->num->rows;
+	copyVector(W->entries, WT->entries, (inact + prob->num->rows) * (up + prob->num->rows));
+	copyVector(T->entries, WT->entries + (inact + prob->num->rows) * (up + prob->num->rows), (low + up) * (up + prob->num->rows));
+
+	return WT;
+};

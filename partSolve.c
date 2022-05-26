@@ -5,10 +5,6 @@ int partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double
 	int lambdaIdx;
 
 	/* initialization of the parameters */
-	int up = 0, inact = 0, low = 0; /*Number of variables on their bounds*/
-	bool newPartFlag = false;
-	Mat W;
-	Mat T;
 	sparseVector* bOmega;  	/* Presenting the b vector associated with an observation(I mean the difference from bBar)*/
 	sparseMatrix* COmega; 	/* Presenting the C matrix associated with an observation(I mean the difference from Cbar)*/
 	sparseVector* dOmega;	/* Presenting the cost coefficient vector associated with an observation */
@@ -39,9 +35,7 @@ int partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double
 
 	/* Structure to hold dual solutions */
 	solnType* soln = buildSolnType(prob->num);
-
 	bool* omegaP;
-
 
 	/* 1. define a new cut */
 	oneCut* cut = newCut(prob->num->cols);
@@ -50,10 +44,15 @@ int partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double
 	omegaP = subsetGenerator(cell->omega->cnt);
 
 	/*3. Initialize the partition vector*/
-
 	int partIndx = 0;
+
+	/* Build a basis */
+	long long int* basis = (iVector)arr_alloc(prob->num->cols + 1,int);
+	Buildbase(basis, prob->num->cols,3);
+
 	/* 4. loop through subset omegaP and solve the subproblems */
 	for (int obs = 0; obs < cell->omega->cnt; obs++) {
+
 		if (omegaP[obs]) {
 			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0] - 1;
 			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1] - 1;
@@ -62,44 +61,12 @@ int partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double
 			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4] - 1;
 
 			/* 4a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
-
 			if (solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], bOmega, COmega, dOmega, lOmega, uOmega, soln)) {
 				errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 				goto TERMINATE;
 			}
 
-			/* 4b. Calculate the partition */
-
-			newPartFlag = false;
-			partIndx = AddtoPart(prob, cell, uOmega, lOmega, soln, &newPartFlag, &up, &inact, &low);
-
-			/* 4d. Store the fixed parts of current partition if needed*/
-//
-			if (newPartFlag) {
-
-				/* 4d.1 Extract the WT matrices*/
-
-				CalcWT(cell, prob, prob->sp->objQ, prob->Dbar, &W, &T);
-
-				/* 4d.2 Add the obtained solution to the lambda structure*/
-
-				addtoLambdaP( cell,  soln, prob);
-
-
-				/* 4d.2 Add  to alpha and beta Bar*/
-
-				 AddtoSigmaP( cell,  soln ,prob);
-
-				/* 4d.3 add to  delta sol and complete a row*/
-
-				 addtoDeltaSol(cell, soln, &W, &T, prob, uOmega, bOmega, inact, up);
-					
-
-		
-
-				/* 4d.4 add to alpha and beta delta and complete a row*/
-
-			    //AddtoDeltaP( cell,  soln,  prob,  bOmega, uOmega, lOmega);
+			StocUpdatePart( cell,  prob,  bOmega,  COmega, lOmega,  uOmega,  soln, basis , &partIndx);
 
 
 				/*3c. Calculate observations specific coefficients. */
@@ -120,15 +87,62 @@ int partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double
 			printf("Dif  = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols)-obj );
 #endif
 
-			/*3d. Aggregate the cut coefficients by weighting by observation probability. */
+			/* 3d. Aggregate the cut coefficients by weighting by observation probability. */
 				cut->alpha += cell->omega->probs[obs] * alpha;
 				for (int c = 1; c <= prob->num->prevCols; c++) {
 					cut->beta[c] += cell->omega->probs[obs] * beta[c];
 				}
 				mem_free(beta);
-			}
 		}
 	}
+
+	/* loop through the rest of the observations */
+	/* 4. loop through subset omegaP and use argmax on subproblems */
+	for (int obs = 0; obs < cell->omega->cnt; obs++) {
+		if (!omegaP[obs]) {
+			/* 4a. Identify the best dual using the argmax operation */
+			lambdaIdx = argmax(prob, cell->sigma, cell->delta, cell->candidX, obs);
+
+			/* 4b. Calculate observations specific coefficients. */
+			double* beta = (double*)arr_alloc(prob->num->prevCols + 1, double);
+			alpha = cell->sigma->vals[lambdaIdx]->alpha + cell->delta->vals[lambdaIdx][obs]->alpha;
+			for (int c = 1; c <= prob->num->cntCcols; c++)
+				beta[prob->coord->CCols[c]] += cell->sigma->vals[lambdaIdx]->beta[c];
+			for (int c = 1; c <= prob->num->rvCOmCnt; c++)
+				beta[prob->coord->rvCOmCols[c]] += cell->delta->vals[lambdaIdx][obs]->beta[c];
+
+#if defined(STOCH_CHECK)
+			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0] - 1;
+			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1] - 1;
+			dOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[2] - 1;
+			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3] - 1;
+			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4] - 1;
+
+			/* 3a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
+			if (solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], bOmega, COmega, dOmega, lOmega, uOmega, soln)) {
+				errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
+				goto TERMINATE;
+			}
+
+			printf("Reconstructed objective function (approx) = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
+#endif
+
+			/* 4c. Aggregate the cut coefficients by weighting by observation probability. */
+			cut->alpha += cell->omega->probs[obs] * alpha;
+			for (int c = 1; c <= prob->num->prevCols; c++) {
+				cut->beta[c] += cell->omega->probs[obs] * beta[c];
+			}
+			mem_free(beta);
+		}
+	}
+
+	mem_free(omegaP);
+	mem_free(bOmega);
+	mem_free(dOmega);
+	mem_free(uOmega);
+	mem_free(lOmega);
+	mem_free(COmega);
+	freeSolnType(soln);
 	return cut;
 
 TERMINATE:

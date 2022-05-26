@@ -3,6 +3,7 @@
 #include "./smpsReader/smps.h"
 #include "./smpsReader/prob.h"
 
+
 #define WRITE_FILES
 #define ALGO_CHECK
 #define STOCH_CHECK
@@ -22,6 +23,14 @@ typedef struct {
 	dVector* vals;					/* Observation values */
 } omegaType;
 
+
+typedef struct Mat {
+	double* entries;
+	int row;
+	int col;
+}Mat;
+
+
 typedef struct {
 	int		cnt;					/* number of elements in the structure */
 	double* 	mubar;					
@@ -29,6 +38,7 @@ typedef struct {
 	double** pi;					/* value of duals(associated with equality constraints) with random elements in right-hand side */
 	double** umu;					/* value of  duals (reduced costs) with random elements in right-hand side(upperbound) */
 	double** lmu;					/* value of  duals (reduced costs) with random elements in right-hand side(lowerbound) */
+	Mat** pd;
 }lambdaType;
 
 typedef struct {
@@ -78,6 +88,7 @@ typedef struct {
 typedef struct {
 	int         cnt;        /* Number of elements */
 	int**       part;       /*Storing partitions with 0 inactive 1 lower bound 2 upperbound*/
+	long long int* basnum;
 }PartitionType;
 
 /* structure for the problem type:
@@ -212,11 +223,7 @@ typedef struct {
 	oneBasis** vals;		/* a structure for each basis */
 }basisType;
 
-typedef struct Mat {
-	double* entries;
-	int row;
-	int col;
-}Mat;
+
 
 
 /* Subroutine stochasticQP_main.c */
@@ -266,6 +273,7 @@ void freeOmegaType(omegaType* omega, bool partial);
 void freeSigma(sigmaType* sigma);
 void freeLambda(lambdaType* lambda);
 void freeDelta(deltaType *delta , int numobs);
+void freePartition(PartitionType* partition);
 oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset);
 int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS, double*,double* mu2, double* mu3);
 int calcSigma(sigmaType* sigma, cellType* cell  ,probType** prob, dVector pi, dVector mu2, dVector mu3 , sparseVector* bOmega, sparseMatrix* COmega,
@@ -284,7 +292,8 @@ bool *subsetGenerator(int numObs);
 
 omegaType* newOmega(stocType* stoc);
 
-int addtoLambda(lambdaType* lambda, solnType*dual, int numRows, int numCols, bool *newLambdaFlag);
+ void addtoLambdaP(cellType* cell, solnType* soln,  Mat* WT, probType* prob, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega, int low, int up, int inact);
+ int addtoLambda(lambdaType* lambda, solnType* dual, int numRows, int numCols, bool* newLambdaFlag);
 void addtoSigma(cellType* cell, probType* prob, solnType *soln);
 void addtoDelta(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs,int num);
 
@@ -296,11 +305,12 @@ int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* C
 void PartCalc(solnType* sol, dVector yund, dVector ybar, int numc, int* part, int* up, int* inact, int* low);
 void newPartition(int Partsize, probType* prob, cellType* cell);
 int partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset);
-int AddtoPart(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln, bool* flag, int* up, int* inact, int* low);
+int AddtoPart(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln, bool* flag, int* up, int* inact, int* low , int* base);
 void newSolSet(int Partsize, probType* prob, cellType* cell);
 void freeSolSet(solutionSetType* SolSet);
-void addtoLambdaP(cellType* cell, solnType* soln, probType* prob);
+void Buildbase(long long int* basis, int cols, int bas);
 
+Mat* CombineWT(probType* prob, Mat* W, Mat* T, int low, int up, int inact);
 
 //typedef struct MatList {
 	//Mat* mat;
@@ -317,14 +327,14 @@ Mat* scalermultiply(Mat* M, double c);
 Mat* multiply(Mat* A, Mat* B);
 Mat* sum(Mat* A, Mat* B);
 void freemat(Mat* A);
-void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D, Mat* W, Mat* T);
+void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D, Mat** W, Mat** T, int low, int up, int inact);
 Mat* transSparsM(sparseMatrix* M, int col, int row);
 Mat* removerow(Mat* A, int r);
 Mat* removecol(Mat* A, int c);
 void AddtoSigmaP(cellType* cell, solnType* sol, probType* prob);
-void AddtoDeltaP(cellType* cell, solnType* sol, probType* prob, sparseMatrix* bOmega, sparseMatrix* uOmega, sparseMatrix* lOmega);
-void addtoDeltaSol(cellType* cell, solnType* soln, Mat* W, Mat* T, probType* prob, sparseMatrix* uOmega, sparseMatrix* bOmega, int inact, int up);
+void addtoDeltaP(cellType* cell, solnType* soln, Mat* W, Mat* T, Mat* WT, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega, int obs, int lambdaIdx, int inact, int up, int low);
 void newDeltaSol(cellType* cell, int sigmaSize , int obsnum);
 Mat* adjoint(Mat* A);
 void removecol2(Mat* A, Mat* B, int c);
 void showmat(Mat* A);
+int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseMatrix* COmega, sparseVector* lOmega, sparseVector* uOmega, solnType* soln, int* basis , int* partIndx);

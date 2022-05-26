@@ -203,7 +203,9 @@ void freeConfig() {
 
 
 //* Mtrix W caculation  *//
-void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , Mat* W, Mat* T) {
+void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , Mat** W, Mat** T, int low, int up, int inact) {
+
+	int elm = 0;
 	Mat* QII = transSparsM(Q, prob->num->cols, prob->num->cols);
 	Mat* QIU = transSparsM(Q, prob->num->cols, prob->num->cols);
 	Mat* QLU = transSparsM(Q, prob->num->cols, prob->num->cols);
@@ -215,18 +217,22 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 	Mat* DMI = transSparsM(D, prob->num->cols, prob->num->rows);
 	Mat* M1;
 	Mat* M2;
-	int low = 0;
-	int up = 0;
-	int act = 0;
-	//showmat(DMI);
-	/*Build QII in a mat strcture*/
+	Mat* minvM1;
+	Mat* DMLT;
+	Mat* DMUT;
+	Mat* w2;
+	Mat* W2W;
+	Mat* DMIT;
+	Mat* invM1;
+	Mat* w1;
+
+	/*Build Q(II) in a mat strcture*/
 	int cnt = cell->partition->cnt - 1;
 	for (int i = prob->num->cols ; i >= 1; i--) {
 		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
 		{
 			QII = removecol(QII, i);
 			QII = removerow(QII, i);
-		    act++;
 		}
 	}
 
@@ -237,16 +243,17 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 			DMI = removecol(DMI, i);
 		}
 	}
-	showmat(DMI);
+	
 	/*Build D(MI) transpose*/
-	Mat* DMIT = transpose(DMI);
-	//showmat(DMIT);
-	int elm = 0;
-	int inact = prob->num->cols - act;
+
+	DMIT = transpose(DMI);
+
 	M1 = newmat(prob->num->rows + inact , prob->num->rows + inact , 0);
 	
-	// Build Matrix M1
+	//* Build Matrix M1 which is equal to [ QII , DMIT ; DMI , 0 ] *//
+
 	// 1. place the first I rows
+
 	for (int i = 0; i < inact; i++) {
 		for (int j = 0; j < inact ; j++) {
 			M1->entries[elm] = QII->entries[i* inact + j];
@@ -258,10 +265,6 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 		}
 	}
 
-
-	showmat(QII);
-	showmat(DMIT);
-	showmat(M1); 
 	// 2. place the next M rows
 	for (int i = 0; i < prob->num->rows; i++) {
 		for (int j = 0; j < inact; j++) {
@@ -273,41 +276,24 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 			elm++;
 		}
 	}
-	showmat(DMI);
-	showmat(DMIT);
-	showmat(M1);
-	Mat* invM1 = inverse(M1);
+	invM1 = inverse(M1);
+	
+	/* Build Matrix M2 Which is equal to [QIU , 0 ; DMU , -I] */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	// Build Matrix M2
+	M2 = newmat(prob->num->rows + inact, prob->num->rows + up, 0);
 
 	/*Build QIU in a mat strcture*/
-	for (int i = 1; i <= prob->num->cols; i++) {
+	for (int i = prob->num->cols; i >= 1; i--) {
 		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
 		{
 			removerow(QIU, i);
 		}
 		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
 		{
-			up++;
+		
 			removecol(QIU, i);
 		}
 	}
-
 
 	/*Build DMU in a mat strcture*/
 	for (int i = 1; i < prob->num->cols; i++) {
@@ -317,31 +303,31 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 		}
 	}
 
-	M2 = newmat(prob->num->rows + inact, prob->num->rows + up, 0);
-	 elm = 0;
     /* first I rows of M2*/
+
+	elm = 0;
 	for (int i = 0; i < inact; i++) {
+
 		for (int j = 0; j < up; j++) {
 			M2->entries[elm] = QIU->entries[i * up + j];
 			elm++;
 		}
+
 		for (int j = 0; j < prob->num->rows; j++) {
 			M2->entries[elm] = 0;
 			elm++;
 		}
+
 	}
 
-
-	Mat* minvM1 = scalermultiply(invM1, -1);
-
 	/* next M rows of M2*/
-	for (int i = 1; i <= prob->num->rows; i++) {
+	for (int i = 0; i < prob->num->rows; i++) {
 		for (int j = 0; j < up; j++) {
-			M2->entries[elm] = DMU->entries[(i)*up + j];
+			M2->entries[elm] = DMU->entries[i*up + j];
 			elm++;
 		}
-		for (int j = 1; j <= prob->num->rows; j++) {
-			if (i+ inact == j+up) {
+		for (int j = 0; j < prob->num->rows; j++) {
+			if (i  == j ) {
 				M2->entries[elm] = -1;
 				elm++;
 			}
@@ -353,16 +339,17 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 	}
 
 	/*Calculate 4 components of the W*/
-	//Mat* invM1 = inverse(M1);
-	//Mat* minvM1 = scalermultiply(invM1 , -1);
- 	W = multiply(minvM1, M2);
+	
+	 minvM1 = scalermultiply(invM1 , -1);
+   	(*W) = multiply(minvM1, M2);
 
 	//* Mtrix T caculation  *//
+
 	/* QLU */
-	for (int i = 0; i < prob->num->cols; i++) {
+
+	for (int i = prob->num->cols ; i >= 1  ; i--) {
 		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 2)
 		{
-			low++;
 			removerow(QLU, i);
 		}
 		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
@@ -372,19 +359,18 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 	}
 
 	/* QUU */
-	for (int i = 0; i < prob->num->cols; i++) {
+
+	for (int i = prob->num->cols; i >=  1; i--) {
 		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
 		{
 			removerow(QUU, i);
-		}
-		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
-		{
 			removecol(QUU, i);
 		}
 	}
 
 	/* QUI */
-	for (int i = 0; i < prob->num->cols; i++) {
+
+	for (int i = prob->num->cols; i >= 1; i--) {
 		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
 		{
 			removerow(QUI, i);
@@ -396,7 +382,8 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 	}
 
 	/* QLI */
-	for (int i = 0; i < prob->num->cols; i++) {
+
+	for (int i = prob->num->cols; i >= 1; i--) {
 		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 2)
 		{
 			removerow(QLI, i);
@@ -406,8 +393,10 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 			removecol(QLI, i);
 		}
 	}
+
 	/* QUI */
-	for (int i = 0; i < prob->num->cols; i++) {
+
+	for (int i = prob->num->cols; i >= 1; i--) {
 		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
 		{
 			removerow(QLI, i);
@@ -417,22 +406,24 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 			removecol(QLI, i);
 		}
 	}
+
 	/*DML*/
-	/*Build DMU in a mat strcture*/
-	for (int i = 0; i < prob->num->cols; i++) {
+
+	for (int i = prob->num->cols; i >= 1; i--) {
 		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 2)
 		{
 			removecol(DML, i);
 		}
 	}
 
-
-
 	/* Build T=  w1 - w2 * w*/
-	Mat* w1 = newmat(low+up,prob->num->rows + up ,0);
+
+	w1 = newmat(low+up,prob->num->rows + up ,0);
+
 	/*Build w1*/
-	elm = 0;
 	/* first L rows of W1*/
+
+	elm = 0;
 	for (int i = 0; i < low; i++) {
 		for (int j = 0; j < up; j++) {
 			w1->entries[elm] = -QLU->entries[i * up + j];
@@ -445,9 +436,10 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 	}
 
 	/* next U rows of W1*/
+
 	for (int i = 0; i < up; i++) {
 		for (int j = 0; j < up; j++) {
-			w1->entries[elm] = -QUU->entries[(i)*up + j];
+			w1->entries[elm] = -QUU->entries[i*up + j];
 			elm++;
 		}
 		for (int j = 0; j < prob->num->rows; j++) {
@@ -457,11 +449,14 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 			
 		}
 	}
+
 	/*Build w2*/
-	Mat* w2 = newmat(low + up, prob->num->rows + inact, 0);
+
+	w2 = newmat(low + up, prob->num->rows + inact, 0);
 	elm = 0;
-	Mat * DMLT = transpose(DML);
-	Mat* DMUT  = transpose(DMU);
+	DMLT = transpose(DML);
+	DMUT  = transpose(DMU);
+
 	/* first L rows of W2*/
 	for (int i = 0; i < low; i++) {
 		for (int j = 0; j < inact; j++) {
@@ -475,9 +470,10 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 	}
 
 	/* next U rows of W2*/
+
 	for (int i = 0; i < up; i++) {
 		for (int j = 0; j < inact; j++) {
-			w2->entries[elm] = -QUI->entries[(i)*up + j];
+			w2->entries[elm] = -QUI->entries[i * up + j];
 			elm++;
 		}
 		for (int j = 0; j < prob->num->rows; j++) {
@@ -485,12 +481,13 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 			elm++;
 		}
 	}
+
 	/*Build T*/
-	/*W2W*/
-	Mat* W2W = multiply(w2 , W);
-	T = sum(w1, W2W);
+
+	W2W = multiply(w2 , (*W));
+	(*T) = sum(w1, W2W);
+
 	freemat(QII);
-	freemat(DMI);
 	freemat(QIU);
 	freemat(QLU);
 	freemat(QUU);
@@ -498,17 +495,64 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 	freemat(QLI);
 	freemat(DMU);
 	freemat(DML);
+	freemat(DMI);
 	freemat(M1);
 	freemat(M2);
-	freemat(w2);
-	freemat(w1);
+	freemat(invM1);
 	freemat(DMLT);
 	freemat(DMUT);
+	freemat(w2);
+	freemat(w1);
 	freemat(W2W);
-	freemat(invM1);
 	freemat(minvM1);
 	freemat(DMIT);
 }
 
 
 
+int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseMatrix* COmega , sparseVector* lOmega, sparseVector* uOmega, solnType* soln , int* basis , int* partIndx) {
+	int up = 0, inact = 0, low = 0; /*Number of variables on their bounds*/
+	bool newPartFlag = false;
+	Mat* W ;
+	Mat* T ;
+	/* 4b. Calculate the partition */
+	 (*partIndx) = AddtoPart(prob, cell, uOmega, lOmega, soln, &newPartFlag, &up, &inact, &low, basis);
+
+	/* 4d. Store the fixed parts of current partition if needed*/
+
+	if (newPartFlag) {
+
+		/* 4d.1 Extract the WT matrices*/
+
+		CalcWT(cell, prob, prob->sp->objQ, prob->Dbar, &W, &T, low, up, inact);
+
+		/* 4d.2 Add the obtained solution to the lambda structure*/
+
+		/* 4.Build [W;T] */
+
+		Mat* WT = CombineWT(prob, W, T, low, up, inact);
+
+		addtoLambdaP(cell, soln, WT, prob, bOmega, uOmega, lOmega, low, up, inact);
+
+		/* 4d.2 Add to alpha and beta Bar*/
+
+		AddtoSigmaP(cell, soln, prob);
+
+		/* 4d.3 add to  delta sol and complete a row*/
+
+		for (int obs = 0; obs < cell->omega->cnt; obs++) {
+			/* Add a new row to the delta structure for all observations and the latest lambda (lambdaIdx) */
+			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0] - 1;
+			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1] - 1;
+
+			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3] - 1;
+			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4] - 1;
+
+			addtoDeltaP(cell, soln, W, T, WT, prob, COmega, bOmega, uOmega, lOmega, obs, (*partIndx), inact, up, low);
+		}
+		freemat(WT);
+		freemat(W);
+		freemat(T);
+	}
+	return partIndx;
+}; //EndStocUpdatePart

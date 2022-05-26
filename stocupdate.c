@@ -200,6 +200,7 @@ corresponds to upper bounds and mu3 corresponds to lower bounds */
 	lambda->umu = (double**)arr_alloc(SigmaSize, double*);
 	lambda->lmu = (double**)arr_alloc(SigmaSize, double*);
 	lambda->y =   (double**)arr_alloc(SigmaSize, double*);
+	lambda->pd = (Mat**)arr_alloc(SigmaSize, Mat*);
 	lambda->cnt = 0;
 	lambda->mubar = (double*)arr_alloc(SigmaSize, double*);
 
