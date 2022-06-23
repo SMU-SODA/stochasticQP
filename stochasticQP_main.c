@@ -201,7 +201,6 @@ void freeConfig() {
 		mem_free(config.EVAL_SEED);
 }//END freeConfig()
 
-
 //* Mtrix W caculation  *//
 void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , Mat** W, Mat** T, int low, int up, int inact) {
 
@@ -243,13 +242,13 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 			DMI = removecol(DMI, i);
 		}
 	}
-	
+
 	/*Build D(MI) transpose*/
 
 	DMIT = transpose(DMI);
 
 	M1 = newmat(prob->num->rows + inact , prob->num->rows + inact , 0);
-	
+
 	//* Build Matrix M1 which is equal to [ QII , DMIT ; DMI , 0 ] *//
 
 	// 1. place the first I rows
@@ -277,7 +276,7 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 		}
 	}
 	invM1 = inverse(M1);
-	
+
 	/* Build Matrix M2 Which is equal to [QIU , 0 ; DMU , -I] */
 
 	M2 = newmat(prob->num->rows + inact, prob->num->rows + up, 0);
@@ -290,7 +289,7 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 		}
 		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
 		{
-		
+
 			removecol(QIU, i);
 		}
 	}
@@ -303,7 +302,7 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 		}
 	}
 
-    /* first I rows of M2*/
+	/* first I rows of M2*/
 
 	elm = 0;
 	for (int i = 0; i < inact; i++) {
@@ -339,9 +338,9 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 	}
 
 	/*Calculate 4 components of the W*/
-	
-	 minvM1 = scalermultiply(invM1 , -1);
-   	(*W) = multiply(minvM1, M2);
+
+	minvM1 = scalermultiply(invM1 , -1);
+	(*W) = multiply(minvM1, M2);
 
 	//* Mtrix T caculation  *//
 
@@ -443,10 +442,10 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 			elm++;
 		}
 		for (int j = 0; j < prob->num->rows; j++) {
-	
-				w1->entries[elm] = 0;
-				elm++;
-			
+
+			w1->entries[elm] = 0;
+			elm++;
+
 		}
 	}
 
@@ -507,52 +506,3 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 	freemat(minvM1);
 	freemat(DMIT);
 }
-
-
-
-int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseMatrix* COmega , sparseVector* lOmega, sparseVector* uOmega, solnType* soln , int* basis , int* partIndx) {
-	int up = 0, inact = 0, low = 0; /*Number of variables on their bounds*/
-	bool newPartFlag = false;
-	Mat* W ;
-	Mat* T ;
-	/* 4b. Calculate the partition */
-	 (*partIndx) = AddtoPart(prob, cell, uOmega, lOmega, soln, &newPartFlag, &up, &inact, &low, basis);
-
-	/* 4d. Store the fixed parts of current partition if needed*/
-
-	if (newPartFlag) {
-
-		/* 4d.1 Extract the WT matrices*/
-
-		CalcWT(cell, prob, prob->sp->objQ, prob->Dbar, &W, &T, low, up, inact);
-
-		/* 4d.2 Add the obtained solution to the lambda structure*/
-
-		/* 4.Build [W;T] */
-
-		Mat* WT = CombineWT(prob, W, T, low, up, inact);
-
-		addtoLambdaP(cell, soln, WT, prob, bOmega, uOmega, lOmega, low, up, inact);
-
-		/* 4d.2 Add to alpha and beta Bar*/
-
-		AddtoSigmaP(cell, soln, prob);
-
-		/* 4d.3 add to  delta sol and complete a row*/
-
-		for (int obs = 0; obs < cell->omega->cnt; obs++) {
-			/* Add a new row to the delta structure for all observations and the latest lambda (lambdaIdx) */
-			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0] - 1;
-			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1] - 1;
-
-			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3] - 1;
-			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4] - 1;
-
-			addtoDeltaP(cell, soln, W, T, WT, prob, COmega, bOmega, uOmega, lOmega, obs, (*partIndx), inact, up, low);
-		}
-		freemat(WT);
-		freemat(W);
-		freemat(T);
-	}
-	return partIndx;
-}; //EndStocUpdatePart

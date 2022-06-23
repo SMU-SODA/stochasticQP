@@ -286,7 +286,6 @@ int solveProblem ( modelPtr *model ) {
 	int status, optimstatus;
 
 	status =  GRBoptimize(model);
-
 	if ( status ) {
 		solverErrMsg(status);
 		return 1;

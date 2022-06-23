@@ -444,7 +444,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			}
 
 			prob[t]->coord->allRVCols[prob[t]->num->numRV] = -1;
-			prob[t]->coord->allRVRows[prob[t]->num->numRV] = (*stoc)->row[m]-tim->row[t]+1;
+			prob[t]->coord->allRVRows[prob[t]->num->numRV] = (*stoc)->row[m] - tim->row[t] + 1;
 			prob[t]->coord->rvbOmRows[++prob[t]->num->rvbOmCnt] = prob[t]->coord->allRVRows[prob[t]->num->numRV];
 			rhs++;
 		}
@@ -454,7 +454,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			if (prob[t]->num->rvyuOmCnt == 0) {
 				prob[t]->coord->rvyuOmRows = (iVector) arr_alloc(prob[t]->num->cols + 1, int);
 			}
-			prob[t]->coord->rvyuOmRows[prob[t]->num->rvyuOmCnt+1] = (*stoc)->col[m] - tim->col[t] ;
+			prob[t]->coord->rvyuOmRows[prob[t]->num->rvyuOmCnt+1] = (*stoc)->col[m] - tim->col[t] + 1;
 			prob[t]->num->rvyuOmCnt++;
 		}
 		/*lower bound*/
@@ -463,15 +463,11 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			if (prob[t]->num->rvylOmCnt == 0) {
 				prob[t]->coord->rvylOmRows = (iVector) arr_alloc(prob[t]->num->cols + 1, int);
 			}
-			prob[t]->coord->rvylOmRows[prob[t]->num->rvylOmCnt +1] = (*stoc)->col[m] - tim->col[t] ;
+			prob[t]->coord->rvylOmRows[prob[t]->num->rvylOmCnt +1] = (*stoc)->col[m] - tim->col[t] + 1;
 			prob[t]->num->rvylOmCnt++;
 		}
 
 		else if ( (*stoc)->col[m] != -1 && (*stoc)->row[m] != -1 ) {
-			/*if ((*stoc)->row[m] == -2) {
-				upper++;
-			}*/
-
 			/* Transfer matrix */
 			if ( prob[t]->num->rvCOmCnt == 0 ) {
 				prob[t]->coord->rvCOmCols = (iVector) arr_alloc((*stoc)->numOmega, int);
@@ -479,8 +475,8 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 				prob[t]->coord->rvOffset[1] = rvOffset;
 				transfer++;
 			}
-			prob[t]->coord->allRVCols[prob[t]->num->numRV] = (*stoc)->col[m]-tim->col[t]+1;
-			prob[t]->coord->allRVRows[prob[t]->num->numRV] = (*stoc)->row[m]-tim->row[t]+1;
+			prob[t]->coord->allRVCols[prob[t]->num->numRV] = (*stoc)->col[m] - tim->col[t] + 1;
+			prob[t]->coord->allRVRows[prob[t]->num->numRV] = (*stoc)->row[m] - tim->row[t] + 1;
 			prob[t]->num->rvCOmCnt++;
 			prob[t]->coord->rvCOmCols[prob[t]->num->rvCOmCnt] = prob[t]->coord->allRVCols[prob[t]->num->numRV];
 			prob[t]->coord->rvCOmRows[prob[t]->num->rvCOmCnt] = prob[t]->coord->allRVRows[prob[t]->num->numRV];
@@ -492,7 +488,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 				prob[t]->coord->rvdOmCols = (iVector) arr_alloc((*stoc)->numOmega+1,int);
 				prob[t]->coord->rvOffset[2] = rvOffset;
 			}
-			prob[t]->coord->allRVCols[prob[t]->num->numRV] = (*stoc)->col[m]-tim->col[t]+1;
+			prob[t]->coord->allRVCols[prob[t]->num->numRV] = (*stoc)->col[m] - tim->col[t] + 1;
 			prob[t]->coord->allRVRows[prob[t]->num->numRV] = -1;
 			prob[t]->coord->rvdOmCols[++prob[t]->num->rvdOmCnt] = prob[t]->coord->allRVCols[prob[t]->num->numRV];
 			cost++;
@@ -536,12 +532,11 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 					break;
 				i++;
 			}
-			prob[t]->uBar->val[i+1] = (*stoc)->mean[rvOffset + prob[t]->coord->rvOffset[3] + m -1];
+			prob[t]->uBar->val[i] = (*stoc)->mean[rvOffset + prob[t]->coord->rvOffset[3] + m -1];
 		}
 
 
 		/* Lower bound */
-
 		for (m = 1; m <= prob[t]->num->rvylOmCnt; m++) {
 			i = 1;
 			while (i <= prob[t]->lBar->cnt) {
@@ -549,11 +544,10 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 					break;
 				i++;
 			}
-			prob[t]->uBar->val[i] = (*stoc)->mean[rvOffset + prob[t]->coord->rvOffset[4] + m - 1];
+			prob[t]->lBar->val[i] = (*stoc)->mean[rvOffset + prob[t]->coord->rvOffset[4] + m - 1];
 		}
 
 		/* Transfer matrix */
-
 		for ( m = 1; m <= prob[t]->num->rvCOmCnt; m++ ) {
 			i = 1;
 			while ( i <= prob[t]->num->rvCOmCnt ) {

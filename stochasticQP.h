@@ -30,7 +30,6 @@ typedef struct Mat {
 	int col;
 }Mat;
 
-
 typedef struct {
 	int		cnt;					/* number of elements in the structure */
 	double* 	mubar;					
@@ -87,7 +86,7 @@ typedef struct {
 
 typedef struct {
 	int         cnt;        /* Number of elements */
-	int**       part;       /*Storing partitions with 0 inactive 1 lower bound 2 upperbound*/
+	int**       part;       /*Storing partitions with 0 inactive 1 lower bound, and 2 upperbound*/
 	long long int* basnum;
 }PartitionType;
 
@@ -303,8 +302,8 @@ void freeSolnType(solnType *soln);
 void VsumVsparse(dVector result , dVector v, sparseVector* vs , int len);
 int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega);
 void PartCalc(solnType* sol, dVector yund, dVector ybar, int numc, int* part, int* up, int* inact, int* low);
-void newPartition(int Partsize, probType* prob, cellType* cell);
-int partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset);
+PartitionType *newPartition(int Partsize);
+oneCut * partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset);
 int AddtoPart(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln, bool* flag, int* up, int* inact, int* low , int* base);
 void newSolSet(int Partsize, probType* prob, cellType* cell);
 void freeSolSet(solutionSetType* SolSet);

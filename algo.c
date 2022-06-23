@@ -14,15 +14,13 @@
 extern configType config;
 
 int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
+	oneCut *cut = NULL;
 
-
-	clock_t tStart = clock();
-	double newobj = 0;
-	double oldobj = -INFINITY;
 	double subset = config.SAMPLE_FRACTION * cell->omega->cnt; /*initialize the number of samples you want to take from Omega in each iteration*/
 
-	oneCut *cut = NULL;
-	while ( cell->k < 10000) {
+	clock_t tStart = clock();
+//	while ( cell->k < config.MAX_ITER) {
+	while ( cell->k < 1) {
 		cell->k++;
 		/* 1. Check optimality */
 
@@ -35,14 +33,19 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 				goto TERMINATE;
 			}
 			break;
-		case 1:	cut = dualSolve(prob[1], cell, stoc, cell->candidX, subset);
+		case 1:
+			cut = dualSolve(prob[1], cell, stoc, cell->candidX, subset);
 			if (cut == NULL) {
-				errMsg("algorithm", "runAlgo", "failed to create the cut using full solve", 0);
+				errMsg("algorithm", "runAlgo", "failed to create the cut using dual solve", 0);
 				goto TERMINATE;
 			}
 			break;
 		case 2:
-			 partSolve(prob[1],  cell,  stoc, cell->candidX, subset);
+			cut = partSolve(prob[1],  cell,  stoc, cell->candidX, subset);
+			if (cut == NULL) {
+				errMsg("algorithm", "runAlgo", "failed to create the cut using partition-based solve", 0);
+				goto TERMINATE;
+			}
 			break;
 		default:
 			errMsg("ALGO", "main", "Unknown algorithm type", 0);
@@ -84,12 +87,6 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 #if defined(ALGO_CHECK)
 		printf("\tObjective function value = %lf\n", getObjective(cell->master->model));
 #endif
-	//	newobj = getObjective(cell->master->model);
-		//if (objEst - newobj < 0.0000001) {
-			//printf("Time taken: %.2fs\n", (double)(clock() - tStart) / CLOCKS_PER_SEC);
-		//	break;
-		//}
-		
 
 		if (getPrimal(cell->master->model, cell->candidX, 0, prob[0]->num->cols) ) {
 			errMsg("solver", "fullSolve", "failed to obtain the candidate solution", 0);

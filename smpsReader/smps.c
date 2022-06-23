@@ -70,7 +70,7 @@ oneProblem *readCore(cString inputDir, cString probName) {
 			return NULL;
 		}
 
-		fptr = fopen(srcFile, "r");
+		fptr = fopen(dstFile, "r");
 		rename(dstFile, srcFile);
 	}
 	else {

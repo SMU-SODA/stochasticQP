@@ -52,34 +52,23 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 	cell->incumbEst = 0.0;
 	cell->candidEst = 0.0;
 
-	double SigmaSize = config.SAMPLE_FRACTION * cell->omega->cnt * config.MAX_ITER;
-	if (config.ALGOTYPE == PARTITIONBASED) {
-		SigmaSize = prob[1]->num->cols; /*TO DO: SEE HOW MANY YOU NEED*/
-	}
 	/*6. Allocate memory to SigmaType, LambdaType, DeltaType*/
+	cell->lambda 	= NULL;
+	cell->sigma 	= NULL;
+	cell->delta 	= NULL;
+	cell->partition = NULL;
+
+	double structSize = config.SAMPLE_FRACTION * cell->omega->cnt * config.MAX_ITER;
 	if (config.ALGOTYPE == DUALLBASED) {
-		cell->lambda = newLambda(SigmaSize, prob);
-		cell->sigma  = newSigma(SigmaSize, prob);
-		cell->delta  = newDelta( SigmaSize, prob,cell);
+		cell->lambda = newLambda(structSize, prob);
+		cell->sigma  = newSigma(structSize, prob);
+		cell->delta  = newDelta(structSize, prob,cell);
 	}
-	else {
-		cell->lambda = NULL;
-		cell->sigma = NULL;
-		cell->delta = NULL;
-	}
-	if (config.ALGOTYPE == PARTITIONBASED)
-	{
-		int Partsize = 1;
-		for (int i = 1; i < prob[1]->num->cols ; i++) {
-			Partsize = Partsize * 2;
-		}
-		newPartition(Partsize, prob, cell);
-		cell->sigma = newSigma(Partsize, prob);
-		cell->lambda =  newLambda(Partsize, prob);
-		cell->delta = newDelta(Partsize, prob,cell);
-	}
-	else{
-		cell->partition = NULL;
+	else if (config.ALGOTYPE == PARTITIONBASED) {
+		cell->partition = newPartition(structSize);
+		cell->sigma  = newSigma(structSize, prob);
+		cell->lambda = newLambda(structSize, prob);
+		cell->delta  = newDelta(structSize, prob,cell);
 	}
 
 	return cell;
@@ -87,7 +76,7 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 
 
 void newDeltaSol(cellType* cell , int partSize , int obsnum ) {
-	
+
 	cell->deltaSol = (deltaSolType*)mem_malloc(sizeof(deltaSolType)) ;
 	cell->deltaSol->cnt = 0;
 	cell->deltaSol->sol = (solnType***)arr_alloc(partSize, solnType**);
@@ -149,23 +138,29 @@ int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector 
 			return 1;
 		}
 
+		for ( int n = 0; n < dOmega->cnt; n++ )
+			indices[n] = dOmega->col[n+1]-1;
+
 		/* (b2) change cost coefficients in the solver */
-		if (changeObjCoeffArray(subproblem->model, dOmega->cnt, dOmega->col, cost + 1)) {
+		if (changeObjCoeffArray(subproblem->model, dOmega->cnt, indices, cost + 1)) {
 			errMsg("solver", "solve_subprob", "failed to change the cost coefficients in the solver", 0);
 			return 1;
 		}
 	}
 
 	if ( prob->num->rvyuOmCnt > 0 ) {
-		/* (c1) compute the cost coefficients using current observation */
+		/* (c1) compute the upper bounds using current observation */
 		bds = computeBDS(prob->uBar, uOmega, prob->num->cols);
 		if (bds == NULL) {
 			errMsg("algorithm", "solveSubprob", "failed to compute subproblem upper bounds", 0);
 			return 1;
 		}
 
-		/* (c2) change cost coefficients in the solver */
-		if (changeBDSArray(subproblem->model, "UB", uOmega->cnt, uOmega->col+1, bds+1)) {
+		for ( int n = 0; n < uOmega->cnt; n++ )
+			indices[n] =uOmega->col[n+1]-1;
+
+		/* (c2) change upper bounds in the solver */
+		if (changeBDSArray(subproblem->model, "UB", uOmega->cnt, indices, bds+1)) {
 			errMsg("solver", "solve_subprob", "failed to change the upper bounds in the solver", 0);
 			return 1;
 		}
@@ -173,15 +168,18 @@ int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector 
 	}
 
 	if ( prob->num->rvylOmCnt > 0 ) {
-		/* (c1) compute the cost coefficients using current observation */
+		/* (c1) compute the lower bounds using current observation */
 		bds = computeBDS(prob->uBar, lOmega, prob->num->cols);
 		if (cost == NULL) {
 			errMsg("algorithm", "solveSubprob", "failed to compute subproblem lower bounds", 0);
 			return 1;
 		}
 
-		/* (c2) change cost coefficients in the solver */
-		if (changeBDSArray(subproblem->model, "LB", lOmega->cnt, lOmega->col, bds+1)) {
+		for ( int n = 0; n < lOmega->cnt; n++ )
+			indices[n] = lOmega->col[n+1]-1;
+
+		/* (c2) change lower bounds in the solver */
+		if (changeBDSArray(subproblem->model, "LB", lOmega->cnt, indices, bds+1)) {
 			errMsg("solver", "solve_subprob", "failed to change the lower bounds in the solver", 0);
 			return 1;
 		}
@@ -189,7 +187,7 @@ int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector 
 	}
 
 #if defined(WRITE_FILES)
-	writeProblem(subproblem->model, "cellSubprob.mps");
+	writeProblem(subproblem->model, "cellSubprob.lp");
 #endif
 
 	/* (e) Solve the subproblem to obtain the optimal dual solution. */
@@ -272,7 +270,7 @@ dVector computeBDS(sparseVector* bdsBar, sparseVector* bdsOmega, int numCols) {
 
 	bdsFull = expandVector(bdsBar->val, bdsBar->col, bdsBar->cnt, numCols);
 	for ( int n = 1; n <= bdsOmega->cnt; n++ ) {
-		bdsFull[bdsOmega->col[n]+1] += bdsOmega->val[n];
+		bdsFull[bdsOmega->col[n]] += bdsOmega->val[n];
 	}
 
 	bds = reduceVector(bdsFull, bdsOmega->col, bdsOmega->cnt);
@@ -634,45 +632,58 @@ void freeCellType (cellType *cell) {
 
 } /** EndfreeCellType() **/
 
-void newPartition(int Partsize, probType* prob, cellType* cell) {
+PartitionType *newPartition(int Partsize) {
+	PartitionType *partition;
 
-	cell->partition = (PartitionType*)mem_malloc(sizeof(PartitionType));
-	cell->partition->cnt = 0;
-	cell->partition->part = (int**)arr_alloc(Partsize,int*);
-	cell->partition->basnum = (int*)arr_alloc(Partsize, int);
-	for (int i = 0; i<= Partsize; i++) {
-	cell->partition->part[i] = (int*)arr_alloc(prob->num->cols, int);
-	}
+	partition = (PartitionType*) mem_malloc(sizeof(PartitionType));
+	partition->cnt    = 0;
+	partition->part   = (int**) arr_alloc(Partsize, int*);
+	partition->basnum = (long long int*) arr_alloc(Partsize, int);
+	// TODO: Allocate memory to individual elements of partition->part as and when you discover new partitions.
+
+	return partition;
 }; /*End newPartition*/
 
 void freePartition( PartitionType* partition) {
 
-	for (int i = 1; i <= partition->cnt ; i++) {
+	for (int i = 0; i < partition->cnt ; i++) {
 		mem_free(partition->part[i]);
 	}
 	mem_free(partition->part);
+	mem_free(partition->basnum);
 	mem_free(partition);
+
 }; //EndfreePartition
 
 int AddtoPart(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln , bool* flag, int* up , int* inact , int* low , int* base ) {
-	int* part = (iVector)arr_alloc(prob->num->cols + 1, int);
-	double Lstat = 0;
-	double  Ustat = 0;
-	double eps = 0.00001;
 	long long int index = 0;
-	int partIndx = -1;
+
+	dVector lStat, uStat;
+
+	lStat = (dVector) arr_alloc(prob->num->cols+1, double);
+	if ( getDoubleAttributeArray (cell->subprob->model, "LB", 0, prob->num->cols, lStat+1) ) {
+		errMsg("solver", "AddtoPart", "failed to obtain variable lower bounds", 0);
+		goto TERMINATE;
+	}
+
+	uStat = (dVector) arr_alloc(prob->num->cols+1, double);
+	if ( getDoubleAttributeArray (cell->subprob->model, "UB", 0, prob->num->cols, uStat+1) ) {
+		errMsg("solver", "AddtoPart", "failed to obtain variable upper bounds", 0);
+		goto TERMINATE;
+	}
+
+	iVector part = (iVector)arr_alloc(prob->num->cols + 1, int);
 	/* for current solution check and save the status of bound constraints, if set to lower bound 
 	put 1 in vector part, if on upper bound put 2 in vector part, if inactive put 0 in part */
-
 	for (int i = 1; i <= prob->num->cols; i++) {
-		GRBgetdblattrelement(cell->subprob->model, "LB", i, &Lstat);
-		GRBgetdblattrelement(cell->subprob->model, "UB", i, &Ustat);
-		if (Lstat - eps < soln->y[i]  & soln->y[i] < Lstat + eps) {
+		//		GRBgetdblattrelement(cell->subprob->model, "LB", i, &Lstat);
+		//		GRBgetdblattrelement(cell->subprob->model, "UB", i, &Ustat);
+
+		if ( fabs(soln->y[i] - lStat[i]) < config.TOLERANCE ) {
 			part[i] = 1;
 			(*low)++;
 		}
-		else if(Ustat - eps < soln->y[i] & soln->y[i] < Ustat + eps)
-		{			
+		else if(fabs(uStat[i] - soln->y[i]) < config.TOLERANCE) {
 			part[i] = 2;
 			(*up)++;
 		}
@@ -683,32 +694,33 @@ int AddtoPart(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector
 	}
 
 	/* produce a number using 3  as a basis from the obtained partition*/
-
 	for (int i = 1; i <= prob->num->cols; i++) {
 		index = base[i] * part[i]  + index;
 	}
-	
 
 	/* Check to see if this partition is obtained before */
-
-	for (int i = 0; i < cell->partition->cnt; i++) {
-		if (cell->partition->basnum[i] == index) {
-			partIndx = i;
+	int partIdx = 0;
+	while ( partIdx < cell->partition->cnt ) {
+		if (cell->partition->basnum[partIdx] == index) {
 			break;
 		}
+		partIdx++;
 	}
 
-
-	if (partIndx == -1) {
+	if ( partIdx == cell->partition->cnt ) {
+		/* New partition discovered */
 		(*flag) = true;
-		partIndx = cell->partition->cnt;
-		copyVector(part + 1 , cell->partition->part[partIndx] + 1, prob->num->cols - 1);
-		cell->partition->basnum[partIndx] = index;
+		cell->partition->part[partIdx] = part;
+		cell->partition->basnum[partIdx] = index;
 		cell->partition->cnt++;
 	}
 
-	mem_free(part);
-	return partIndx;
+	mem_free(lStat); mem_free(uStat);
+	return partIdx;
+
+	TERMINATE:
+	mem_free(lStat); mem_free(uStat);
+	return -1;
 }; /*EndAddtoPart*/
 
 
@@ -729,7 +741,7 @@ void freeSolSet(solutionSetType* SolSet) {
 void addtoDeltaP(cellType* cell, solnType* soln, Mat* W, Mat* T, Mat* WT, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega, int obs, int lambdaIdx, int inact, int up , int low) {
 
 	int elm = 0;
-	
+
 	Mat* rhyu = newmat(prob->num->rows + up, 1, 0);
 	Mat* deltaPD;
 	double* deltaLd;
@@ -759,15 +771,15 @@ void addtoDeltaP(cellType* cell, solnType* soln, Mat* W, Mat* T, Mat* WT, probTy
 
 		rhyu->entries[up + bOmega->col[i] - 1 ] = bOmega->val[i];
 	}
-	
+
 
 	/* 2. Calculate the delta [yI,lambda,nuL,muU] */
-	
-	 deltaPD =  multiply(WT, rhyu);
-	
+
+	deltaPD =  multiply(WT, rhyu);
+
 	/* 3. put pibar in lambda */
 
-	 int cnt = 0;
+	int cnt = 0;
 	copyVector(deltaPD + inact, deltaLd + 1 , prob->num->rows - 1 );
 
 	int* index = (iVector)arr_alloc(prob->num->prevCols + 1,int);
@@ -861,10 +873,10 @@ void addtoDeltaP(cellType* cell, solnType* soln, Mat* W, Mat* T, Mat* WT, probTy
 
 	/* calculate alpha */
 	cell->delta->vals[lambdaIdx][obs]->alpha = -vXv(vxMSparse(deltay, prob->sp->objQ, prob->num->cols), deltay, index2, prob->num->cols)
-		- 2 * vXv(vxMSparse(cell->lambda->y[lambdaIdx], prob->sp->objQ, prob->num->cols), deltay, index2, prob->num->cols) + vXvSparse(deltaLd , prob->bBar)
-		+ vXvSparse(cell->lambda->pi[lambdaIdx], bOmega) + vXvSparse(deltaLd, bOmega) + vXvSparse(dnu, prob->lBar)
-		+ vXvSparse(cell->lambda->lmu[lambdaIdx], lOmega) + vXvSparse(dnu, lOmega) + vXvSparse(dmu, prob->uBar)
-		+ vXvSparse(dmu, uOmega) + vXvSparse(cell->lambda->umu[lambdaIdx], uOmega);
+								- 2 * vXv(vxMSparse(cell->lambda->y[lambdaIdx], prob->sp->objQ, prob->num->cols), deltay, index2, prob->num->cols) + vXvSparse(deltaLd , prob->bBar)
+								+ vXvSparse(cell->lambda->pi[lambdaIdx], bOmega) + vXvSparse(deltaLd, bOmega) + vXvSparse(dnu, prob->lBar)
+								+ vXvSparse(cell->lambda->lmu[lambdaIdx], lOmega) + vXvSparse(dnu, lOmega) + vXvSparse(dmu, prob->uBar)
+								+ vXvSparse(dmu, uOmega) + vXvSparse(cell->lambda->umu[lambdaIdx], uOmega);
 
 	mem_free(dbeta);
 
@@ -893,10 +905,10 @@ void AddtoSigmaP(cellType* cell ,solnType* sol , probType* prob ) {
 	cell->sigma->vals[cnt] = (pixbCType*)mem_malloc(sizeof(pixbCType));
 
 	cell->sigma->vals[cnt]->alpha = -vXv(vxMSparse(cell->lambda->y[cnt], prob->sp->objQ, prob->num->cols), cell->lambda->y[cnt], index, prob->num->cols) +
-		vXvSparse(cell->lambda->pi[cnt], prob->bBar) + vXvSparse(cell->lambda->lmu[cnt], prob->lBar) + vXvSparse(cell->lambda->umu[cnt], prob->uBar);
+			vXvSparse(cell->lambda->pi[cnt], prob->bBar) + vXvSparse(cell->lambda->lmu[cnt], prob->lBar) + vXvSparse(cell->lambda->umu[cnt], prob->uBar);
 
 	cell->sigma->vals[cnt]->beta = vxMSparse(cell->lambda->pi[cnt], prob->Cbar, prob->num->prevCols);
-    
+
 	mem_free(index);
 }; //EndAddtoSigmaP
 
@@ -921,151 +933,151 @@ void addtoLambdaP(cellType* cell, solnType* soln, Mat* WT ,  probType* prob, spa
 	//** Build a vector [yi,lambda,nul,muu]
 	Mat* pdsol = newmat(prob->num->cols + prob->num->rows, 1 , 0); /* The current primal-dual vector [yI,PI,nuL,muU] in this partition */
 
-    /* 1. Copy the inactive variables in yI segment of pdsol*/
+	/* 1. Copy the inactive variables in yI segment of pdsol*/
 
-	    for (int i = 1; i  <= prob->num->cols; i++) {		    
-			int num = 0;
-		    if (cell->partition->part[idx][i] == 0)
-		    {
+	for (int i = 1; i  <= prob->num->cols; i++) {
+		int num = 0;
+		if (cell->partition->part[idx][i] == 0)
+		{
 			pdsol->entries[num] = soln->y[i];
 			//cell->lambda->y[idx][i]= soln->y[i];
 			num++;
-		    }
-	    }
+		}
+	}
 
-    /* 2. Put the duals of equality constraints after yI in pdsol */
+	/* 2. Put the duals of equality constraints after yI in pdsol */
 
-	    copyVector(soln->pi + 1 , pdsol->entries + inact, prob->num->rows);
+	copyVector(soln->pi + 1 , pdsol->entries + inact, prob->num->rows);
 
 	/* 3. copy the nonzero nu and mu values*/
 
-	    int num1 = 0;
-	    int num2 = 0;
+	int num1 = 0;
+	int num2 = 0;
 
-	    for (int i = prob->num->cols; i >= 1; i--) {
-		
-	    	if (cell->partition->part[idx][i] == 1 )
-	    	{
+	for (int i = prob->num->cols; i >= 1; i--) {
+
+		if (cell->partition->part[idx][i] == 1 )
+		{
 			pdsol->entries[inact + prob->num->rows + num1] = soln->lmu[i];
 			num1++;
-	    	}
-	     	if ( cell->partition->part[idx][i] == 2)
-	    	{
+		}
+		if ( cell->partition->part[idx][i] == 2)
+		{
 			pdsol->entries[inact + prob->num->rows + low + num2] = soln->umu[i];
 			num2++;
-	     	}
-	    }
+		}
+	}
 
-        /* 5.Build a vector of [delta yubar , delta rho ] */
+	/* 5.Build a vector of [delta yubar , delta rho ] */
 
-		int elm = 0;
+	int elm = 0;
 
-		for (int i = 1; i <= prob->num->cols; i++) {
-			if (cell->partition->part[idx][i] == 2){
-				for (int j = 1; j <= uOmega->cnt; j++) {
+	for (int i = 1; i <= prob->num->cols; i++) {
+		if (cell->partition->part[idx][i] == 2){
+			for (int j = 1; j <= uOmega->cnt; j++) {
 
-					{/*check i-1*/
-						if (uOmega->col[j] == i) {  /* col is from 0 or 1?*/
-							rhyu->entries[elm] = uOmega->val[i];
-						}
+				{/*check i-1*/
+					if (uOmega->col[j] == i) {  /* col is from 0 or 1?*/
+						rhyu->entries[elm] = uOmega->val[i];
 					}
 				}
-				elm++;
 			}
+			elm++;
+		}
+	}
+
+
+	for (int i = 1; i <= bOmega->cnt; i++) {
+
+		/*check i-1*/
+		rhyu->entries[up + bOmega->col[i]] = bOmega->val[i];
+	}
+
+
+	/* 6.Calculate ybar = y - [WT]delta */
+
+	cell->lambda->pd[idx] = sum(pdsol , multiply(scalermultiply(WT,-1), rhyu)); /* to do : add minus */
+
+	/* 7. Complete ybar in lambda */
+	dVector Ubar = (dVector)arr_alloc(prob->num->cols + 1 ,double);
+	for (int i = 1; i <= prob->uBar->cnt ; i++) {
+		Ubar[prob->uBar->col[i]] = prob->uBar->val[i];
+	}
+	dVector Lbar = (dVector)arr_alloc(prob->num->cols + 1, double);
+	for (int i = 1; i <= prob->lBar->cnt; i++) {
+		Lbar[prob->lBar->col[i]] = prob->lBar->val[i];
+	}
+	int cnt = 0;
+	for (int i = 1; i <= prob->num->cols; i++) {
+
+		if (cell->partition->part[idx][i] == 2 ) {
+
+			cell->lambda->y[idx][i] = Ubar[i];
 		}
 
+		if ( cell->partition->part[idx][i] == 1) {
 
-		for (int i = 1; i <= bOmega->cnt; i++) {
-			 
-			/*check i-1*/
-		    rhyu->entries[up + bOmega->col[i]] = bOmega->val[i];
-		}
-    
-
-	    /* 6.Calculate ybar = y - [WT]delta */
-
-		cell->lambda->pd[idx] = sum(pdsol , multiply(scalermultiply(WT,-1), rhyu)); /* to do : add minus */
-
-       /* 7. Complete ybar in lambda */
-		dVector Ubar = (dVector)arr_alloc(prob->num->cols + 1 ,double);
-		for (int i = 1; i <= prob->uBar->cnt ; i++) {
-			Ubar[prob->uBar->col[i]] = prob->uBar->val[i];
-		}
-		dVector Lbar = (dVector)arr_alloc(prob->num->cols + 1, double);
-		for (int i = 1; i <= prob->lBar->cnt; i++) {
-			Lbar[prob->lBar->col[i]] = prob->lBar->val[i];
-		}
-		int cnt = 0;
-		for (int i = 1; i <= prob->num->cols; i++) {
-
-			if (cell->partition->part[idx][i] == 2 ) {
-
-				cell->lambda->y[idx][i] = Ubar[i];
-			}
-
-			if ( cell->partition->part[idx][i] == 1) {
-
-				cell->lambda->y[idx][i] = Lbar[i];
-			}
-			
-			if (cell->partition->part[idx][i] == 0) {
-
-				cell->lambda->y[idx][i] = cell->lambda->pd[idx]->entries[cnt];
-				cnt++;
-			}
+			cell->lambda->y[idx][i] = Lbar[i];
 		}
 
-	   /* 8. Complete pibar in lambda*/
+		if (cell->partition->part[idx][i] == 0) {
 
-		copyVector(cell->lambda->pd[idx]->entries + inact, cell->lambda->pi[idx] + 1, prob->num->rows);
+			cell->lambda->y[idx][i] = cell->lambda->pd[idx]->entries[cnt];
+			cnt++;
+		}
+	}
 
-		/* 9. Complete nu in lambda*/
+	/* 8. Complete pibar in lambda*/
 
-		cnt = 0;
-		for (int i = 1; i <= prob->num->cols; i++) {
-			if (cell->partition->part[idx][i] == 0 || cell->partition->part[idx][i] == 2) {
+	copyVector(cell->lambda->pd[idx]->entries + inact, cell->lambda->pi[idx] + 1, prob->num->rows);
 
-				cell->lambda->lmu[idx][i] = 0;
+	/* 9. Complete nu in lambda*/
 
-			}
-			if (cell->partition->part[idx][i] == 1) {
-				cell->lambda->lmu[idx][i] = cell->lambda->pd[idx]->entries[ inact + prob->num->rows +cnt];
-				cnt++;
-			}
+	cnt = 0;
+	for (int i = 1; i <= prob->num->cols; i++) {
+		if (cell->partition->part[idx][i] == 0 || cell->partition->part[idx][i] == 2) {
+
+			cell->lambda->lmu[idx][i] = 0;
+
+		}
+		if (cell->partition->part[idx][i] == 1) {
+			cell->lambda->lmu[idx][i] = cell->lambda->pd[idx]->entries[ inact + prob->num->rows +cnt];
+			cnt++;
+		}
+	}
+
+	/* 10. Complete mu in lambda*/
+
+	cnt = 0;
+	for (int i = 1; i <= prob->num->cols; i++) {
+		if (cell->partition->part[idx][i] == 0 || cell->partition->part[idx][i] == 1) {
+
+			cell->lambda->umu[idx][i] = 0;
+
 		}
 
-		/* 10. Complete mu in lambda*/
-
-		cnt = 0;
-		for (int i = 1; i <= prob->num->cols; i++) {
-			if (cell->partition->part[idx][i] == 0 || cell->partition->part[idx][i] == 1) {
-
-				cell->lambda->umu[idx][i] = 0;
-
-			}
-
-			if (cell->partition->part[idx][i] == 2) {
-				cell->lambda->umu[idx][i] = cell->lambda->pd[idx]->entries[inact + low + prob->num->rows + cnt];
-				cnt++;
-			}
+		if (cell->partition->part[idx][i] == 2) {
+			cell->lambda->umu[idx][i] = cell->lambda->pd[idx]->entries[inact + low + prob->num->rows + cnt];
+			cnt++;
 		}
+	}
 
-		freemat(pdsol);
-		freemat(rhyu);
-		mem_free(Ubar);
-		mem_free(Lbar);
+	freemat(pdsol);
+	freemat(rhyu);
+	mem_free(Ubar);
+	mem_free(Lbar);
 
 }; //EndaddtoLambdaP
 
 
-void Buildbase(long long int* basis, int cols, int bas) {
+void Buildbase(long long int* basis, int cols, int base) {
 
 	long long int pow = 1;
 
 	for (int i = 1; i <= cols; i++) {
 
 		basis[i] = pow;
-		pow = pow * 3;
+		pow = (long long int) pow * base;
 
 	}
 };//EndBuildbase

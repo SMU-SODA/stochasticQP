@@ -83,7 +83,7 @@ void addtoDelta(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVect
 
 	/* calculate alpha and beta*/
 	cell->delta->vals[numPi][obs]->alpha = vXvSparse(cell->lambda->pi[numPi], bOmega)
-														+ vXvSparse(cell->lambda->umu[numPi], uOmega) + vXvSparse(cell->lambda->lmu[numPi], lOmega); /*TO DO: ybar and yund vals start from index 0*/
+																+ vXvSparse(cell->lambda->umu[numPi], uOmega) + vXvSparse(cell->lambda->lmu[numPi], lOmega); /*TO DO: ybar and yund vals start from index 0*/
 
 	if ( prob->num->rvCOmCnt > 0 )
 		cell->delta->vals[numPi][obs]->beta = reduceVector(dbeta, prob->coord->rvCOmCols, prob->num->rvCOmCnt);
@@ -196,12 +196,12 @@ lambdaType* newLambda(double SigmaSize, probType** prob) {
 corresponds to upper bounds and mu3 corresponds to lower bounds */
 
 	lambda = (lambdaType*)mem_malloc(sizeof(lambdaType));
-	lambda->pi = (double**)arr_alloc(SigmaSize, double*);
-	lambda->umu = (double**)arr_alloc(SigmaSize, double*);
-	lambda->lmu = (double**)arr_alloc(SigmaSize, double*);
-	lambda->y =   (double**)arr_alloc(SigmaSize, double*);
-	lambda->pd = (Mat**)arr_alloc(SigmaSize, Mat*);
 	lambda->cnt = 0;
+	lambda->pi = (double**) arr_alloc(SigmaSize, double*);
+	lambda->umu = (double**) arr_alloc(SigmaSize, double*);
+	lambda->lmu = (double**) arr_alloc(SigmaSize, double*);
+	lambda->y =   (double**) arr_alloc(SigmaSize, double*);
+	lambda->pd = (Mat**) arr_alloc(SigmaSize, Mat*);
 	lambda->mubar = (double*)arr_alloc(SigmaSize, double*);
 
 	return lambda;
@@ -215,13 +215,6 @@ sigmaType* newSigma(double SigmaSize, probType** prob ) {
 	return sigma;
 }//END newSigma()
 
-
-
-
-//void addSigPart(cell, soln, prob) {
-
-
-//};
 
 deltaType* newDelta(double SigmaSize, probType** prob , cellType* cell) {
 	deltaType* delta = NULL;
@@ -259,17 +252,14 @@ void freeSigma(sigmaType* sigma) {
 
 void freeLambda(lambdaType* lambda) {
 
-	if (lambda)
-	{
-		if (lambda->pi)
-		{
+	if (lambda) {
+		if (lambda->pi) {
 			for (int i = 0; i < lambda->cnt;i++) {
 				mem_free(lambda->pi[i]);
 			}
 			mem_free(lambda->pi);
 		}
-		if (lambda->umu)
-		{
+		if (lambda->umu) {
 			for (int i = 0; i < lambda->cnt; i++) {
 				mem_free(lambda->umu[i]);
 			}
@@ -281,6 +271,19 @@ void freeLambda(lambdaType* lambda) {
 			}
 			mem_free(lambda->lmu);
 		}
+		if (lambda->y) {
+			for (int i = 0; i < lambda->cnt; i++) {
+				mem_free(lambda->y[i]);
+			}
+			mem_free(lambda->y);
+		}
+		if (lambda->pd) {
+			for (int i = 0; i < lambda->cnt; i++) {
+				freemat(lambda->pd[i]);
+			}
+			mem_free(lambda->pd);
+		}
+		if ( lambda->mubar ) mem_free(lambda->mubar);
 		mem_free(lambda);
 	}
 
@@ -297,8 +300,8 @@ void freeDelta(deltaType* delta, int numobs) {
 					}
 					mem_free(delta->vals[i]);
 				}
-				mem_free(delta->vals);
 			}
+			mem_free(delta->vals);
 		}
 		mem_free(delta);
 	}
