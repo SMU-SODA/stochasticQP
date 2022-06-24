@@ -16,7 +16,6 @@ oneCut *partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 	lOmega = (sparseVector*)mem_malloc(sizeof(sparseVector));
 	COmega = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));
 
-
 	bOmega->cnt = prob->num->rvbOmCnt;
 	bOmega->col = prob->coord->rvbOmRows;
 
@@ -67,7 +66,7 @@ oneCut *partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 			}
 			StocUpdatePart( cell,  prob,  bOmega,  COmega, lOmega,  uOmega,  soln, basis , &partIndx);
 
-			//			/*3c. Calculate observations specific coefficients. */
+			//			/*4b. Calculate observations specific coefficients. */
 			//			double* beta = (double*)arr_alloc(prob->num->prevCols + 1, double);
 			//
 			//			alpha = cell->sigma->vals[partIndx]->alpha + cell->delta->vals[partIndx][obs]->alpha;
@@ -85,7 +84,7 @@ oneCut *partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 			//			printf("Dif  = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols)-obj );
 			//#endif
 			//
-			//			/* 3d. Aggregate the cut coefficients by weighting by observation probability. */
+			//			/* 4c. Aggregate the cut coefficients by weighting by observation probability. */
 			//			cut->alpha += cell->omega->probs[obs] * alpha;
 			//			for (int c = 1; c <= prob->num->prevCols; c++) {
 			//				cut->beta[c] += cell->omega->probs[obs] * beta[c];
@@ -148,36 +147,31 @@ oneCut *partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 	return NULL;
 }//END partSolve()
 
-int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseMatrix* COmega , sparseVector* lOmega, sparseVector* uOmega, solnType* soln , int* basis , int* partIndx) {
+int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseMatrix* COmega , sparseVector* lOmega,
+		sparseVector* uOmega, solnType* soln , long long int* basis , int* partIndx) {
 	int up = 0, inact = 0, low = 0; /*Number of variables on their bounds*/
 	bool newPartFlag = false;
 	Mat* W ;
 	Mat* T ;
 
 	/* 4b. Calculate the partition */
-	(*partIndx) = AddtoPart(prob, cell, uOmega, lOmega, soln, &newPartFlag, &up, &inact, &low, basis);
+	(*partIndx) = addtoPartition(prob, cell, uOmega, lOmega, soln, &newPartFlag, &up, &inact, &low, basis);
 
 	/* 4d. Store the fixed parts of current partition if needed*/
 	if (newPartFlag) {
 
 		/* 4d.1 Extract the WT matrices*/
-
 		CalcWT(cell, prob, prob->sp->objQ, prob->Dbar, &W, &T, low, up, inact);
-
-		/* 4d.2 Add the obtained solution to the lambda structure*/
-
-		/* 4.Build [W;T] */
 
 		Mat* WT = CombineWT(prob, W, T, low, up, inact);
 
+		/* 4d.2 Add the obtained solution to the lambda structure*/
 		addtoLambdaP(cell, soln, WT, prob, bOmega, uOmega, lOmega, low, up, inact);
 
 		/* 4d.2 Add to alpha and beta Bar*/
-
 		AddtoSigmaP(cell, soln, prob);
 
 		/* 4d.3 add to  delta sol and complete a row*/
-
 		for (int obs = 0; obs < cell->omega->cnt; obs++) {
 			/* Add a new row to the delta structure for all observations and the latest lambda (lambdaIdx) */
 			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0] - 1;
@@ -192,5 +186,6 @@ int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseM
 		freemat(W);
 		freemat(T);
 	}
-	return partIndx;
+
+	return 0;
 }; //EndStocUpdatePart

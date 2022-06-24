@@ -138,20 +138,24 @@ void freeTimeType(timeType *tim);
 void freeStocType(stocType *stoc);
 void freeStatModel(statModel *model);
 void freetimeType(timeType *);
+
 /* subroutines in rvgen.c */
 int generateOmegaIdx(stocType *stoc, long long *seed);
 void generateOmega(stocType *stoc, dVector observ, double minVal, long long *seed, FILE **fptr);
 void generateBlocks(stocType *stoc, dVector observ, int groupID, long long *seed);
 void generateIndep(stocType *stoc, dVector observ, int groupID, long long *seed);
 void generateLinTran(stocType *stoc, dVector observ, int groupID, double minVal, long long *seed);
+void generateScenario(stocType *stoc, dVector observ, long long *seed);
+
 int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *seed);
 int weibull(double scaleParam, double shapeParam, int numOmega, dVector observ, long long *seed);
-double scalit(float lower, float upper, long long *RUN_SEED);
-double randUniform();
-int randInteger(int iMax);
-int setupSAA(stocType *stoc, cString fname, long long *seed, dVector *simObservVals, dVector probs,
-		int *numObs, int desiredSampleSize, double TOLERANCE);
-int readSimData(cString fname, dVector *simObservVals, int numRV, int *numSamples);
+float scalit(float lower, float upper, long long *seed);
+float randUniform(long long *SEED);
+int randInteger(long long *seed, int iMax);
+
+int setupSAA(stocType *stoc, cString fname, long long *seed, dVector **simObservVals, dVector probs, iVector weights,
+		int *desiredSampleSize, double TOLERANCE);
+int readSimData(cString fname, dVector *simObservVals, int numRV, int numSamples);
 int readSimLine(FILE **fid, dVector observ, int numRV, bool simulate);
 void computeSampleMean(dVector *vals, iVector weights, int numRV, int sampleSize, int numObs, dVector sampleMean);
 

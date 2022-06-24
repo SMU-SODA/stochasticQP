@@ -655,7 +655,8 @@ void freePartition( PartitionType* partition) {
 
 }; //EndfreePartition
 
-int AddtoPart(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln , bool* flag, int* up , int* inact , int* low , int* base ) {
+int addtoPartition(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln,
+		bool* flag, int* up , int* inact , int* low , long long int* base ) {
 	long long int index = 0;
 
 	dVector lStat, uStat;
@@ -676,8 +677,6 @@ int AddtoPart(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector
 	/* for current solution check and save the status of bound constraints, if set to lower bound 
 	put 1 in vector part, if on upper bound put 2 in vector part, if inactive put 0 in part */
 	for (int i = 1; i <= prob->num->cols; i++) {
-		//		GRBgetdblattrelement(cell->subprob->model, "LB", i, &Lstat);
-		//		GRBgetdblattrelement(cell->subprob->model, "UB", i, &Ustat);
 
 		if ( fabs(soln->y[i] - lStat[i]) < config.TOLERANCE ) {
 			part[i] = 1;
@@ -721,8 +720,7 @@ int AddtoPart(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector
 	TERMINATE:
 	mem_free(lStat); mem_free(uStat);
 	return -1;
-}; /*EndAddtoPart*/
-
+}; /*END addtoPartition()*/
 
 void freeSolSet(solutionSetType* SolSet) {
 	for (int i = 0; i < SolSet->cnt; i++) {
@@ -774,13 +772,11 @@ void addtoDeltaP(cellType* cell, solnType* soln, Mat* W, Mat* T, Mat* WT, probTy
 
 
 	/* 2. Calculate the delta [yI,lambda,nuL,muU] */
-
 	deltaPD =  multiply(WT, rhyu);
 
 	/* 3. put pibar in lambda */
-
 	int cnt = 0;
-	copyVector(deltaPD + inact, deltaLd + 1 , prob->num->rows - 1 );
+	copyVector(deltaPD->entries + inact, deltaLd + 1, prob->num->rows-1);
 
 	int* index = (iVector)arr_alloc(prob->num->prevCols + 1,int);
 	int* index2 = (iVector)arr_alloc(prob->num->cols + 1, int);
@@ -914,7 +910,8 @@ void AddtoSigmaP(cellType* cell ,solnType* sol , probType* prob ) {
 
 
 
-void addtoLambdaP(cellType* cell, solnType* soln, Mat* WT ,  probType* prob, sparseVector*  bOmega, sparseVector* uOmega, sparseVector* lOmega, int low, int up, int inact) {
+void addtoLambdaP(cellType* cell, solnType* soln, Mat* WT ,  probType* prob, sparseVector*  bOmega, sparseVector* uOmega,
+		sparseVector* lOmega, int low, int up, int inact) {
 
 	int idx = cell->lambda->cnt;
 	cell->lambda->cnt++;
@@ -946,11 +943,9 @@ void addtoLambdaP(cellType* cell, solnType* soln, Mat* WT ,  probType* prob, spa
 	}
 
 	/* 2. Put the duals of equality constraints after yI in pdsol */
-
-	copyVector(soln->pi + 1 , pdsol->entries + inact, prob->num->rows);
+	copyVector(soln->pi+1, pdsol->entries + inact, prob->num->rows-1);
 
 	/* 3. copy the nonzero nu and mu values*/
-
 	int num1 = 0;
 	int num2 = 0;
 
@@ -1028,8 +1023,7 @@ void addtoLambdaP(cellType* cell, solnType* soln, Mat* WT ,  probType* prob, spa
 	}
 
 	/* 8. Complete pibar in lambda*/
-
-	copyVector(cell->lambda->pd[idx]->entries + inact, cell->lambda->pi[idx] + 1, prob->num->rows);
+	copyVector(cell->lambda->pd[idx]->entries + inact, cell->lambda->pi[idx] + 1, prob->num->rows-1);
 
 	/* 9. Complete nu in lambda*/
 
@@ -1092,3 +1086,309 @@ Mat* CombineWT(probType* prob,Mat* W, Mat* T , int low , int up  , int inact) {
 
 	return WT;
 };
+
+//* Mtrix W caculation  *//
+void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , Mat** W, Mat** T, int low, int up, int inact) {
+
+	int elm = 0;
+	Mat* QII = transSparsM(Q, prob->num->cols, prob->num->cols);
+	Mat* QIU = transSparsM(Q, prob->num->cols, prob->num->cols);
+	Mat* QLU = transSparsM(Q, prob->num->cols, prob->num->cols);
+	Mat* QUU = transSparsM(Q, prob->num->cols, prob->num->cols);
+	Mat* QUI = transSparsM(Q, prob->num->cols, prob->num->cols);
+	Mat* QLI = transSparsM(Q, prob->num->cols, prob->num->cols);
+	Mat* DMU = transSparsM(D, prob->num->cols, prob->num->rows);
+	Mat* DML = transSparsM(D, prob->num->cols, prob->num->rows);
+	Mat* DMI = transSparsM(D, prob->num->cols, prob->num->rows);
+	Mat* M1;
+	Mat* M2;
+	Mat* minvM1;
+	Mat* DMLT;
+	Mat* DMUT;
+	Mat* w2;
+	Mat* W2W;
+	Mat* DMIT;
+	Mat* invM1;
+	Mat* w1;
+
+	/*Build Q(II) in a mat strcture*/
+	int cnt = cell->partition->cnt - 1;
+	for (int i = prob->num->cols ; i >= 1; i--) {
+		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
+		{
+			QII = removecol(QII, i);
+			QII = removerow(QII, i);
+		}
+	}
+
+	/*Build D(MI)*/
+	for (int i = prob->num->cols; i >= 1; i--) {
+		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
+		{
+			DMI = removecol(DMI, i);
+		}
+	}
+
+	/*Build D(MI) transpose*/
+
+	DMIT = transpose(DMI);
+
+	M1 = newmat(prob->num->rows + inact , prob->num->rows + inact , 0);
+
+	//* Build Matrix M1 which is equal to [ QII , DMIT ; DMI , 0 ] *//
+
+	// 1. place the first I rows
+
+	for (int i = 0; i < inact; i++) {
+		for (int j = 0; j < inact ; j++) {
+			M1->entries[elm] = QII->entries[i* inact + j];
+			elm++;
+		}
+		for (int j = 0; j < prob->num->rows; j++) {
+			M1->entries[elm] = DMIT->entries[i* prob->num->rows +j];
+			elm++;
+		}
+	}
+
+	// 2. place the next M rows
+	for (int i = 0; i < prob->num->rows; i++) {
+		for (int j = 0; j < inact; j++) {
+			M1->entries[elm] = DMI->entries[(i) * inact + j];
+			elm++;
+		}
+		for (int j = 1; j <= prob->num->rows; j++) {
+			M1->entries[elm] = 0;
+			elm++;
+		}
+	}
+	invM1 = inverse(M1);
+
+	/* Build Matrix M2 Which is equal to [QIU , 0 ; DMU , -I] */
+
+	M2 = newmat(prob->num->rows + inact, prob->num->rows + up, 0);
+
+	/*Build QIU in a mat strcture*/
+	for (int i = prob->num->cols; i >= 1; i--) {
+		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
+		{
+			removerow(QIU, i);
+		}
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
+		{
+
+			removecol(QIU, i);
+		}
+	}
+
+	/*Build DMU in a mat strcture*/
+	for (int i = 1; i < prob->num->cols; i++) {
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
+		{
+			removecol(DMU, i);
+		}
+	}
+
+	/* first I rows of M2*/
+
+	elm = 0;
+	for (int i = 0; i < inact; i++) {
+
+		for (int j = 0; j < up; j++) {
+			M2->entries[elm] = QIU->entries[i * up + j];
+			elm++;
+		}
+
+		for (int j = 0; j < prob->num->rows; j++) {
+			M2->entries[elm] = 0;
+			elm++;
+		}
+
+	}
+
+	/* next M rows of M2*/
+	for (int i = 0; i < prob->num->rows; i++) {
+		for (int j = 0; j < up; j++) {
+			M2->entries[elm] = DMU->entries[i*up + j];
+			elm++;
+		}
+		for (int j = 0; j < prob->num->rows; j++) {
+			if (i  == j ) {
+				M2->entries[elm] = -1;
+				elm++;
+			}
+			else {
+				M2->entries[elm] = 0;
+				elm++;
+			}
+		}
+	}
+
+	/*Calculate 4 components of the W*/
+
+	minvM1 = scalermultiply(invM1 , -1);
+	(*W) = multiply(minvM1, M2);
+
+	//* Mtrix T caculation  *//
+
+	/* QLU */
+
+	for (int i = prob->num->cols ; i >= 1  ; i--) {
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 2)
+		{
+			removerow(QLU, i);
+		}
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
+		{
+			removecol(QLU, i);
+		}
+	}
+
+	/* QUU */
+
+	for (int i = prob->num->cols; i >=  1; i--) {
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
+		{
+			removerow(QUU, i);
+			removecol(QUU, i);
+		}
+	}
+
+	/* QUI */
+
+	for (int i = prob->num->cols; i >= 1; i--) {
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
+		{
+			removerow(QUI, i);
+		}
+		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
+		{
+			removecol(QUI, i);
+		}
+	}
+
+	/* QLI */
+
+	for (int i = prob->num->cols; i >= 1; i--) {
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 2)
+		{
+			removerow(QLI, i);
+		}
+		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
+		{
+			removecol(QLI, i);
+		}
+	}
+
+	/* QUI */
+
+	for (int i = prob->num->cols; i >= 1; i--) {
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 1)
+		{
+			removerow(QLI, i);
+		}
+		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2)
+		{
+			removecol(QLI, i);
+		}
+	}
+
+	/*DML*/
+
+	for (int i = prob->num->cols; i >= 1; i--) {
+		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 2)
+		{
+			removecol(DML, i);
+		}
+	}
+
+	/* Build T=  w1 - w2 * w*/
+
+	w1 = newmat(low+up,prob->num->rows + up ,0);
+
+	/*Build w1*/
+	/* first L rows of W1*/
+
+	elm = 0;
+	for (int i = 0; i < low; i++) {
+		for (int j = 0; j < up; j++) {
+			w1->entries[elm] = -QLU->entries[i * up + j];
+			elm++;
+		}
+		for (int j = 0; j < prob->num->rows; j++) {
+			w1->entries[elm] = 0;
+			elm++;
+		}
+	}
+
+	/* next U rows of W1*/
+
+	for (int i = 0; i < up; i++) {
+		for (int j = 0; j < up; j++) {
+			w1->entries[elm] = -QUU->entries[i*up + j];
+			elm++;
+		}
+		for (int j = 0; j < prob->num->rows; j++) {
+
+			w1->entries[elm] = 0;
+			elm++;
+
+		}
+	}
+
+	/*Build w2*/
+
+	w2 = newmat(low + up, prob->num->rows + inact, 0);
+	elm = 0;
+	DMLT = transpose(DML);
+	DMUT  = transpose(DMU);
+
+	/* first L rows of W2*/
+	for (int i = 0; i < low; i++) {
+		for (int j = 0; j < inact; j++) {
+			w2->entries[elm] = -QLU->entries[i * up + j];
+			elm++;
+		}
+		for (int j = 0; j < prob->num->rows; j++) {
+			w2->entries[elm] = -DMLT->entries[i * prob->num->rows + j];
+			elm++;
+		}
+	}
+
+	/* next U rows of W2*/
+
+	for (int i = 0; i < up; i++) {
+		for (int j = 0; j < inact; j++) {
+			w2->entries[elm] = -QUI->entries[i * up + j];
+			elm++;
+		}
+		for (int j = 0; j < prob->num->rows; j++) {
+			w2->entries[elm] = -DMUT->entries[i * prob->num->rows + j];
+			elm++;
+		}
+	}
+
+	/*Build T*/
+
+	W2W = multiply(w2 , (*W));
+	(*T) = sum(w1, W2W);
+
+	freemat(QII);
+	freemat(QIU);
+	freemat(QLU);
+	freemat(QUU);
+	freemat(QUI);
+	freemat(QLI);
+	freemat(DMU);
+	freemat(DML);
+	freemat(DMI);
+	freemat(M1);
+	freemat(M2);
+	freemat(invM1);
+	freemat(DMLT);
+	freemat(DMUT);
+	freemat(w2);
+	freemat(w1);
+	freemat(W2W);
+	freemat(minvM1);
+	freemat(DMIT);
+}

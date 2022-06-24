@@ -191,7 +191,6 @@ typedef struct {
 	int		SAA; 				/* Use SAA when continuous distribution in stoch file (1), or not (0) */
 	int		MAX_OBS;			/* Maximum number of iterations before which SAA is invoked */
 
-
 	double  MAX_TIME;			/* Maximum per replication run time */
 }configType;
 
@@ -304,7 +303,8 @@ int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* C
 void PartCalc(solnType* sol, dVector yund, dVector ybar, int numc, int* part, int* up, int* inact, int* low);
 PartitionType *newPartition(int Partsize);
 oneCut * partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset);
-int AddtoPart(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln, bool* flag, int* up, int* inact, int* low , int* base);
+int addtoPartition(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln, bool* flag,
+		int* up, int* inact, int* low , long long int* base);
 void newSolSet(int Partsize, probType* prob, cellType* cell);
 void freeSolSet(solutionSetType* SolSet);
 void Buildbase(long long int* basis, int cols, int bas);
@@ -336,4 +336,5 @@ void newDeltaSol(cellType* cell, int sigmaSize , int obsnum);
 Mat* adjoint(Mat* A);
 void removecol2(Mat* A, Mat* B, int c);
 void showmat(Mat* A);
-int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseMatrix* COmega, sparseVector* lOmega, sparseVector* uOmega, solnType* soln, int* basis , int* partIndx);
+int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseMatrix* COmega, sparseVector* lOmega,
+		sparseVector* uOmega, solnType* soln, long long int* basis , int* partIndx);

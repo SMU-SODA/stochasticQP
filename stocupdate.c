@@ -8,7 +8,7 @@ bool *subsetGenerator(int numObs) {
 
 	Repeat:
 	for (int obs = 0; obs < numObs; obs++) {
-		omegaP[obs] = randUniform() <= config.SAMPLE_FRACTION;
+		omegaP[obs] = randUniform(config.RUN_SEED) <= config.SAMPLE_FRACTION;
 		if(omegaP[obs] == true){
 			cnt++;
 		}
@@ -116,24 +116,33 @@ int addtoLambda(lambdaType* lambda, solnType *dual, int numRows, int numCols, bo
 	return idx;
 }//END addtoLambda()
 
-
-
 /* This function allocates memory for an omega structure.  It allocates the memory to structure elements: a dVector to hold an array of
  * observation and the probability associated with it. */
 omegaType* newOmega(stocType* stoc) {
 	omegaType* omega;
 	int cnt, i, base, idx;
 
-	omega = (omegaType*)mem_malloc(sizeof(omegaType));
-	omega->probs = (dVector)arr_alloc(config.MAX_OBS, double);
-	omega->weights = (iVector)arr_alloc(config.MAX_OBS, int);
-	omega->vals = (dVector*)arr_alloc(config.MAX_OBS, dVector);
+	omega = (omegaType*) mem_malloc(sizeof(omegaType));
+	omega->probs = (dVector) arr_alloc(config.MAX_OBS, double);
+	omega->weights = (iVector) arr_alloc(config.MAX_OBS, int);
+	omega->vals = (dVector*) arr_alloc(config.MAX_OBS, dVector);
 	omega->cnt = 0; omega->numRV = stoc->numOmega;
 
-	if (config.SAA == 1 ) { //|| !stoc->isDiscrete
-		config.SAA = 1;
+	SETUP_SAA:
+	if (config.SAA == 1 ) {
 		omega->cnt = config.MAX_OBS;
-		// return omega;
+		if (setupSAA(stoc, NULL, &config.RUN_SEED[0], &omega->vals, omega->probs, omega->weights,
+				&omega->cnt, config.TOLERANCE) ) {
+			errMsg("rvgen", "newOmega", "failed to generate an SAA", 0);
+			return NULL;
+		}
+
+		/* Center the outcomes at zero mean */
+		for ( int m = 0; m < omega->cnt; m++ )
+			for ( int n = 1; n <= stoc->numOmega; n++ )
+				omega->vals[m][n] -= stoc->mean[n-1];
+
+		return omega;
 	}
 
 	if (strstr(stoc->type, "BLOCKS") != NULL) {
@@ -152,6 +161,7 @@ omegaType* newOmega(stocType* stoc) {
 		else {
 			omega->cnt = config.MAX_OBS;
 			config.SAA = 1;
+			goto SETUP_SAA;
 		}
 	}
 	else if (strstr(stoc->type, "INDEP") != NULL) {
@@ -161,7 +171,7 @@ omegaType* newOmega(stocType* stoc) {
 			if (omega->cnt > config.MAX_OBS) {
 				omega->cnt = config.MAX_OBS;
 				config.SAA = 1;
-				break;
+				goto SETUP_SAA;
 			}
 			i++;
 		}
@@ -185,6 +195,7 @@ omegaType* newOmega(stocType* stoc) {
 	else {
 		omega->cnt = config.MAX_OBS;
 		config.SAA = 1;
+		goto SETUP_SAA;
 	}
 
 	return omega;
