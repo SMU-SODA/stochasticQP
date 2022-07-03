@@ -1,8 +1,0 @@
-\ Model PGP2_1_copy
-\ LP format - for model browsing. Use MPS format to capture full model detail.
-Minimize
-  0 EQ4ND2
-Subject To
-Bounds
- 0.1 <= EQ4ND2 <= 0
-End

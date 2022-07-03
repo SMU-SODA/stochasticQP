@@ -3,8 +3,6 @@
 #include "math.h"
 #include "stochasticQP.h"
 
-
-
 void showmat(Mat* A) {
 	if (A->row > 0 && A->col > 0) {
 		int k = 0;
@@ -32,24 +30,24 @@ void showmat(Mat* A) {
 	}
 }
 
-
 Mat* newmat(int r, int c, double d) {
-	Mat* M = (Mat*)malloc(sizeof(Mat));
+
+	Mat* M;
+	M = (Mat*) mem_malloc(sizeof(Mat));
 	M->row = r; M->col = c;
-	M->entries = (double*)arr_alloc(r * c+1,double);
-	int k = 0;
-	for (int i = 1; i <= M->row; i++) {
-		for (int j = 1; j <= M->col; j++) {
-			M->entries[k++] = d;
-		}
-	}
+	M->entries = (dVector) arr_alloc(r*c+1, double);
+
 	return M;
-}
+}//END newmat()
 
 void freemat(Mat* A) {
-	free(A->entries);
-	free(A);
-}
+
+	if ( A ) {
+		mem_free(A->entries);
+		mem_free(A);
+	}
+
+}//END freemat();
 
 Mat* eye(int n) {
 	Mat* I = newmat(n, n, 0);
@@ -62,10 +60,12 @@ Mat* zeros(int r, int c) {
 	Mat* Z = newmat(r, c, 0);
 	return Z;
 }
+
 Mat* ones(int r, int c) {
 	Mat* O = newmat(r, c, 1);
 	return O;
 }
+
 Mat* randm(int r, int c, double l, double u) {
 	Mat* R = newmat(r, c, 1);
 	int k = 0;
@@ -166,35 +166,74 @@ Mat* multiply(Mat* A, Mat* B) {
 	}
 	return C;
 }
-Mat* removerow(Mat* A, int r) {
-	Mat* B = newmat(A->row - 1, A->col, 0);
+
+void removeCol(Mat* A, int colIdx) {
+	int drop = 1;
+
+	for (int r = 1; r <= A->row; r++) {
+		for (int c = 1; c <= A->col; c++) {
+			if (c == colIdx) {
+				continue;
+			}
+			else {
+				A->entries[drop] = A->entries[(r-1)*A->col + c - 1];
+				drop++;
+			}
+		}
+	}
+	A->entries = (dVector) mem_realloc(A->entries, drop*sizeof(double));
+	A->col--;
+
+}//END removeCol()
+
+void removeRow(Mat* A, int rowIdx) {
+	int drop = 1;
+	for (int r = 1; r <= A->row; r++) {
+		if (r == rowIdx) {
+			continue;
+		}
+		else {
+			for (int c = 1; c <= A->col; c++) {
+				A->entries[drop] = A->entries[(r-1)*A->col + c - 1];
+				drop++;
+			}
+		}
+	}
+	A->entries = (dVector) mem_realloc(A->entries, drop*sizeof(double));
+	A->row--;
+
+}//END removeRow()
+
+Mat *shrinkMat_Col(Mat *A, int colIdx) {
+	Mat* B = newmat(A->row, A->col-1, 0);
 	int k = 0;
 	for (int i = 1; i <= A->row; i++) {
 		for (int j = 1; j <= A->col; j++) {
-			if (i != r) {
+			if (j != colIdx) {
 				B->entries[k] = A->entries[(i - 1) * A->col + j - 1];
 				k += 1;
 			}
 		}
 	}
+
 	return B;
-}
-Mat* removecol(Mat* A, int c) {
-	Mat* B = newmat(A->row, A->col - 1, 0);
+}//END shrinkMat_Col();
+
+Mat* shrinkMat_Row(Mat *A, int rowIdx) {
+	Mat* B = newmat(A->row-1, A->col, 0);
+
 	int k = 0;
-	for (int i = 1; i <= A->row; i++) {
-		for (int j = 1; j <= A->col; j++) {
-			if (j != c) {
-				B->entries[k] = A->entries[(i - 1) * A->col + j - 1];
+	for (int r = 1; r <= A->row; r++) {
+		for (int c = 1; c <= A->col; c++) {
+			if (r != rowIdx) {
+				B->entries[k] = A->entries[(r - 1) * A->col + c - 1];
 				k += 1;
 			}
 		}
 	}
+
 	return B;
-}
-
-
-
+}//END shrinkMat_Row()
 
 void removerow2(Mat* A, Mat* B, int r) {
 	int k = 0;
@@ -216,7 +255,9 @@ void removecol2(Mat* A, Mat* B, int c) {
 		}
 	}
 }
+
 Mat* transpose(Mat* A) {
+
 	Mat* B = newmat(A->col, A->row, 0);
 	int k = 0;
 	for (int i = 1; i <= A->col; i++) {
@@ -225,8 +266,10 @@ Mat* transpose(Mat* A) {
 			k += 1;
 		}
 	}
+
 	return B;
-}
+}//END transpose()
+
 double det(Mat* M) {
 	int r = M->row;
 	int c = M->col;
@@ -234,13 +277,13 @@ double det(Mat* M) {
 		double d = M->entries[0];
 		return d;
 	}
-	Mat* M1 = removerow(M, 1);
+	Mat* M1 = shrinkMat_Row(M, 1);
 	Mat* M2 = newmat(M->row - 1, M->col - 1, 0);
 	double d = 0, si = +1;
 	for (int j = 1; j <= M->col; j++) {
 		double c = M->entries[j - 1];
 		removecol2(M1, M2, j);
-		if (c > 0.00000000001 || c < -0.00000000001) {
+		if (c > 0.001 || c < -0.001) {
 			d += si * det(M2) * c;
 		}
 		si *= -1;
@@ -283,8 +326,9 @@ Mat* inverse(Mat* A) {
 	
 	Mat* C = scalermultiply(B, 1 / de);
 	freemat(B);
+
 	return C;
-}
+}//END inverse()
 
 Mat* copyvalue(Mat* A) {
 	Mat* B = newmat(A->row, A->col, 0);
@@ -297,6 +341,7 @@ Mat* copyvalue(Mat* A) {
 	}
 	return B;
 }
+
 Mat* triinverse(Mat* A) {
 	Mat* B = newmat(A->row, A->col, 0);
 	for (int i = 1; i <= B->row; i++) {
@@ -365,8 +410,8 @@ Mat* rowechelon(Mat* A) {
 			}
 		}
 	}
-	Mat* B1 = removerow(B, 1);
-	Mat* B2 = removecol(B1, 1);
+	Mat* B1 = shrinkMat_Row(B, 1);
+	Mat* B2 = shrinkMat_Col(B1, 1);
 	Mat* Be = rowechelon(B2);
 	for (int i = 1; i <= Be->row; i++) {
 		for (int j = 1; j <= Be->col; j++) {
@@ -395,6 +440,7 @@ Mat* hconcat(Mat* A, Mat* B) {
 	}
 	return C;
 }
+
 Mat* vconcat(Mat* A, Mat* B) {
 	Mat* C = newmat(A->row + B->row, A->col, 0);
 	int k = 0;
@@ -496,12 +542,12 @@ double innermultiply(Mat* a, Mat* b) {
 
 Mat* transSparsM(sparseMatrix* M , int col , int row){
 	int i = 0;
-	Mat* M1 = (Mat*)malloc(sizeof(Mat));
-	M1->row = row;   M1->col = col;
-	M1->entries = (double*)arr_alloc(row * col +1, double);
+
+	Mat* M1 = newmat(row, col, 0);
+
 	for (int cnt = 1; cnt <= M->cnt; cnt++) {
 		i = (M->row[cnt] - 1) * col + M->col[cnt];
 		M1->entries[i-1] = M->val[cnt] ; 
 	}
 	return M1;
-}
+}//END transSparsM()

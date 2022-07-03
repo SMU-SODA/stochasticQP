@@ -322,8 +322,9 @@ void freeDelta(deltaType* delta, int numobs) {
 void freeLambdaDelta(pixbCType* lambdadelta) {
 	if (lambdadelta) {
 		mem_free(lambdadelta->beta);
+		mem_free(lambdadelta);
 	}
-}
+}//END freeLambdaDelta()
 
 void freeOmegaType(omegaType* omega, bool partial) {
 	int n;

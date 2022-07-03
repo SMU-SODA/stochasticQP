@@ -24,8 +24,8 @@ typedef struct {
 } omegaType;
 
 
-typedef struct Mat {
-	double* entries;
+typedef struct {
+	dVector entries;
 	int row;
 	int col;
 }Mat;
@@ -44,12 +44,6 @@ typedef struct {
 	double  	alpha;	           	/* scalar pi x b */
 	dVector 	beta;	           	/* dVector pi x C */
 } pixbCType;
-
-//typedef struct {
-//	int 			state; 			/*0 if assignd value 1 ow*/
-//	double 			alpha;
-//	sparseVector* 	beta;
-//} lambdadeltaType;
 
 typedef struct {
 	dVector y;
@@ -318,8 +312,10 @@ Mat* CombineWT(probType* prob, Mat* W, Mat* T, int low, int up, int inact);
 Mat* newmat(int r, int c, double d);
 double det(Mat* M);
 Mat* transSparsM(sparseMatrix* M, int col, int row);
-Mat* removerow(Mat* A, int r);
-Mat* removecol(Mat* A, int c);
+void removeRow(Mat* A, int r);
+void removeCol(Mat* A, int c);
+Mat *shrinkMat_Col(Mat *A, int colIdx);
+Mat* shrinkMat_Row(Mat *A, int rowIdx);
 Mat* transpose(Mat* A);
 Mat* inverse(Mat* A);
 Mat* scalermultiply(Mat* M, double c);

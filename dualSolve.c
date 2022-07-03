@@ -155,7 +155,3 @@ int argmax(probType *prob, sigmaType *sigma, deltaType *delta, dVector Xvect, in
 
 	return lambdaIdx;
 }//END argmax()
-
-
-
-
