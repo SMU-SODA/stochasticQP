@@ -53,11 +53,11 @@ oneCut *partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 	for (int obs = 0; obs < cell->omega->cnt; obs++) {
 
 		if (omegaP[obs]) {
-			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0] - 1;
-			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1] - 1;
-			dOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[2] - 1;
-			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3] - 1;
-			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4] - 1;
+			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
+			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
+			dOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[2];
+			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
+			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
 
 			/* 4a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
 			if (solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], bOmega, COmega, dOmega, lOmega, uOmega, soln)) {
