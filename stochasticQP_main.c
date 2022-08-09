@@ -1,10 +1,13 @@
 #include "stochasticQP.h"
+#define _CRTDBG_MAP_ALLOC
+#include "crtdbg.h"
 
 cString outputDir;
 long MEM_USED;
 configType config;
 
 int main(int argc, char* argv[]) {
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	cString inputDir, probname;
 	int numStages;
 	stocType*  stoch= NULL;
@@ -54,6 +57,8 @@ int main(int argc, char* argv[]) {
 	mem_free(inputDir);
 	if (cell) freeCellType(cell);
 	if (stoch) freeStocType(stoch);
+
+
 	TERMINATE: return 0;
 } /*END main()*/ 
 

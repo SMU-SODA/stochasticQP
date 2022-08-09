@@ -1128,13 +1128,13 @@ void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , M
 	Mat* QUI = transSparsM(Q, prob->num->cols, prob->num->cols);
 	Mat* QLI = transSparsM(Q, prob->num->cols, prob->num->cols);
 	showmat(QLI);
-
+	_CrtDumpMemoryLeaks();
 	
 	Mat* DMU = transSparsM(D, prob->num->cols, prob->num->rows);
-	showmat(DMU);
+	_CrtDumpMemoryLeaks();
 	Mat* DML = transSparsM(D, prob->num->cols, prob->num->rows);
 	Mat* DMI = transSparsM(D, prob->num->cols, prob->num->rows);
-
+	_CrtDumpMemoryLeaks();
 	
 	Mat* M1;
 	Mat* M2;

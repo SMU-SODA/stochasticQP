@@ -1,6 +1,7 @@
 #include "stochasticQP.h"
 
 oneCut *partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset) {
+
 	double alpha;
 	int lambdaIdx;
 
@@ -33,7 +34,7 @@ oneCut *partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 	lOmega->col = prob->coord->rvylOmRows;
 
 	/* Structure to hold dual solutions */
-	solnType* soln = buildSolnType(prob->num);
+
 	bool* omegaP;
 
 	/* 1. define a new cut */
@@ -44,7 +45,7 @@ oneCut *partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 
 	/*3. Initialize the partition vector*/
 	int partIndx = 0;
-
+	
 	/* Build a basis */
 	long long int* basis = (long long int*) arr_alloc(prob->num->cols + 1,long long int);
 	Buildbase(basis, prob->num->cols, 3);
@@ -53,6 +54,7 @@ oneCut *partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 	for (int obs = 0; obs < cell->omega->cnt; obs++) {
 
 		if (omegaP[obs]) {
+			solnType* soln = buildSolnType(prob->num);
 			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0] - 1;
 			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1] - 1;
 			dOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[2] - 1;
@@ -64,6 +66,7 @@ oneCut *partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 				errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 				goto TERMINATE;
 			}
+			_CrtDumpMemoryLeaks();
 			StocUpdatePart( cell,  prob,  bOmega,  COmega, lOmega,  uOmega,  soln, basis , &partIndx);
 
 			//			/*4b. Calculate observations specific coefficients. */
@@ -90,6 +93,7 @@ oneCut *partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 			//				cut->beta[c] += cell->omega->probs[obs] * beta[c];
 			//			}
 			//			mem_free(beta);
+			freeSolnType(soln);
 		}
 	}
 
@@ -140,7 +144,7 @@ oneCut *partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 	mem_free(lOmega);
 	mem_free(COmega);
 	mem_free(basis);
-	freeSolnType(soln);
+	
 	return cut;
 
 	TERMINATE:
@@ -156,7 +160,7 @@ int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseM
 
 	/* 4b. Calculate the partition */
 	(*partIndx) = addtoPartition(prob, cell, uOmega, lOmega, soln, &newPartFlag, &up, &inact, &low, basis);
-
+	_CrtDumpMemoryLeaks();
 	/* 4d. Store the fixed parts of current partition if needed*/
 	if (newPartFlag) {
 
@@ -176,10 +180,8 @@ int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseM
 			/* Add a new row to the delta structure for all observations and the latest lambda (lambdaIdx) */
 			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0] - 1;
 			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1] - 1;
-
 			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3] - 1;
 			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4] - 1;
-
 			addtoDeltaP(cell, soln, W, T, WT, prob, COmega, bOmega, uOmega, lOmega, obs, (*partIndx), inact, up, low);
 		}
 		freemat(WT);

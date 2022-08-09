@@ -33,16 +33,16 @@ void showmat(Mat* A) {
 Mat* newmat(int r, int c, double d) {
 
 	Mat* M;
-	M = (Mat*) mem_malloc(sizeof(Mat));
+	M = (Mat*)mem_malloc(sizeof(Mat));
 	M->row = r; M->col = c;
-	M->entries = (dVector) arr_alloc(r*c+1, double);
+	M->entries = (dVector)arr_alloc(r * c , double);
 
 	return M;
 }//END newmat()
 
 void freemat(Mat* A) {
 
-	if ( A ) {
+	if (A) {
 		mem_free(A->entries);
 		mem_free(A);
 	}
@@ -176,12 +176,12 @@ void removeCol(Mat* A, int colIdx) {
 				continue;
 			}
 			else {
-				A->entries[drop] = A->entries[(r-1)*A->col + c - 1];
+				A->entries[drop-1] = A->entries[(r - 1) * A->col + c - 1];
 				drop++;
 			}
 		}
 	}
-	A->entries = (dVector) mem_realloc(A->entries, drop*sizeof(double));
+	//A->entries = (dVector)realloc(A->entries, (drop-1) );
 	A->col--;
 
 }//END removeCol()
@@ -194,18 +194,18 @@ void removeRow(Mat* A, int rowIdx) {
 		}
 		else {
 			for (int c = 1; c <= A->col; c++) {
-				A->entries[drop] = A->entries[(r-1)*A->col + c - 1];
+				A->entries[drop-1] = A->entries[(r - 1) * A->col + c - 1];
 				drop++;
 			}
 		}
 	}
-	A->entries = (dVector) mem_realloc(A->entries, drop*sizeof(double));
+	//A->entries = (dVector)realloc(A->entries, (drop-1));
 	A->row--;
 
 }//END removeRow()
 
-Mat *shrinkMat_Col(Mat *A, int colIdx) {
-	Mat* B = newmat(A->row, A->col-1, 0);
+Mat* shrinkMat_Col(Mat* A, int colIdx) {
+	Mat* B = newmat(A->row, A->col - 1, 0);
 	int k = 0;
 	for (int i = 1; i <= A->row; i++) {
 		for (int j = 1; j <= A->col; j++) {
@@ -219,8 +219,8 @@ Mat *shrinkMat_Col(Mat *A, int colIdx) {
 	return B;
 }//END shrinkMat_Col();
 
-Mat* shrinkMat_Row(Mat *A, int rowIdx) {
-	Mat* B = newmat(A->row-1, A->col, 0);
+Mat* shrinkMat_Row(Mat* A, int rowIdx) {
+	Mat* B = newmat(A->row - 1, A->col, 0);
 
 	int k = 0;
 	for (int r = 1; r <= A->row; r++) {
@@ -318,12 +318,12 @@ Mat* adjoint(Mat* A) {
 	freemat(A2);
 	freemat(B);
 	return C;
-} 
+}
 
 Mat* inverse(Mat* A) {
 	double de = det(A);
 	Mat* B = adjoint(A);
-	
+
 	Mat* C = scalermultiply(B, 1 / de);
 	freemat(B);
 
@@ -540,14 +540,16 @@ double innermultiply(Mat* a, Mat* b) {
 }
 
 
+
+
+
 Mat* transSparsM(sparseMatrix* M , int col , int row){
 	int i = 0;
-
 	Mat* M1 = newmat(row, col, 0);
-
-	for (int cnt = 1; cnt <= M->cnt; cnt++) {
-		i = (M->row[cnt] - 1) * col + M->col[cnt];
-		M1->entries[i-1] = M->val[cnt] ; 
+	for (int cnt = 0; cnt < M->cnt; cnt++) {
+		i = (M->row[cnt] ) * col + M->col[cnt];
+		M1->entries[i] = M->val[cnt+1] ; 
 	}
 	return M1;
 }//END transSparsM()
+

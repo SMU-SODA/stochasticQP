@@ -394,7 +394,6 @@ int getDualSlack (modelPtr *model, double *dj, int start, int len) {
 	status = getDoubleAttributeArray(model, "RC", start, len, dj+1);
 	if (status)
 		errMsg("solver", "getPrimal", "failed to retrieve the reduced cost", 0);
-
 	return status;
 }//END getDualSlack()
 

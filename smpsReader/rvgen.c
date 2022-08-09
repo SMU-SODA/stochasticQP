@@ -349,8 +349,8 @@ int setupSAA(stocType *stoc, cString fname, long long *seed, dVector **simObserv
 
 int readSimData(cString fname, dVector *simObservVals, int numRV, int numSamples) {
 	FILE *fid;
-	int cnt = 0, bufferSize = numRV*NAMESIZE;
-	char buffer[bufferSize];
+	int cnt = 0, bufferSize = 100*NAMESIZE;
+	char buffer[100* NAMESIZE];
 
 	fid = fopen(fname, "r");
 	if ( fid == NULL ) {
@@ -390,12 +390,12 @@ int readSimData(cString fname, dVector *simObservVals, int numRV, int numSamples
 }//End readSimData()
 
 int readSimLine(FILE **fid, dVector observ, int numRV, bool simulate) {
-	int		bufferSize = numRV*NAMESIZE, cnt = 0;
-	char 	buffer[bufferSize], *field;
+	int		bufferSize = 100*NAMESIZE, cnt = 0;
+	char 	buffer[100*NAMESIZE], *field;
 
 	if (!simulate) {
 		/* Count the column headers to get the number of random variables */
-		char buffer[numRV*NAMESIZE];
+		char buffer[100*NAMESIZE];
 		fgets(buffer, numRV*NAMESIZE, (*fid));
 		char *field = strtok(buffer, ",");
 		while(field) {
