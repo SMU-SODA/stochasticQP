@@ -7,7 +7,14 @@ long MEM_USED;
 configType config;
 
 int main(int argc, char* argv[]) {
-	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+	// creating file pointer to work with files
+	FILE* fptr;
+
+	// opening file in writing mode
+	fptr = fopen("program.txt", "w+");
+
+	clock_t start = clock();
+	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	cString inputDir, probname;
 	int numStages;
 	stocType*  stoch= NULL;
@@ -50,8 +57,20 @@ int main(int argc, char* argv[]) {
 	runAlgo(prob, stoch, cell);
 
 	printf("Successfully completed executing the algorithm.\n");
+	clock_t end = clock();
+	cell->Totaltime = (end - start) / CLOCKS_PER_SEC;
 
+
+	fprintf(fptr, "Nunmer of iterations, %d \n", cell->numit);
+	fprintf(fptr , "Objective function value, %f \n" , cell->obj);
+	fprintf(fptr , "Time to solve master problem, %f \n", cell->Tmas);
+	fprintf(fptr, "Time to solve subproblem, %f \n" , cell->Tsub);
+	fprintf(fptr, "Total time to solve, %f \n", cell->Totaltime);
+	fprintf(fptr, "Nunmer of iterations to find partitions, %d \n", cell->IterPart);
+	fprintf(fptr, "Time to update stoc, %f \n", cell->stochupdate);
 	/* Free all the structures */
+	fclose(fptr);
+
 	if (prob) freeProbType(prob, 2);
 	mem_free(probname);
 	mem_free(inputDir);

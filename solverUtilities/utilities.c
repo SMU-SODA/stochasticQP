@@ -1,5 +1,5 @@
 /*
- * utility.c
+ * u tility.c
  *
  *  Created on: Apr 20, 2014
  *      Author: Harsha Gangammanavar
@@ -268,7 +268,7 @@ dVector vxMSparse(dVector v, sparseMatrix* M, int len) {
 	for (cnt = 1; cnt <= M->cnt; cnt++)
 		ans[M->col[cnt]] += v[M->row[cnt]] * M->val[cnt]; /*from 0 or 1?*/
 }
-	ans[0] = oneNorm(ans+1, len);
+	ans[0] = oneNorm(ans + 1, len);
 
 	return ans;
 }//END PIxT()

@@ -15,33 +15,49 @@ extern configType config;
 
 int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 	oneCut *cut = NULL;
-
+	clock_t StartCut;
+	clock_t EndCut;
+	clock_t StartMas;
+	clock_t EndMas;
 	double subset = config.SAMPLE_FRACTION * cell->omega->cnt; /*initialize the number of samples you want to take from Omega in each iteration*/
-
+	dVector dx = NULL;
 	clock_t tStart = clock();
-//	while ( cell->k < config.MAX_ITER) {
-	while ( cell->k < 1) {
-		cell->k++;
+
+
+	cell->k  = 0;
+	while (cell->numit < config.MAX_ITER){
+		cell->numit++;
+
 		/* 1. Check optimality */
 
 		/* 2. Switch between algorithms to add a new affine functions. */
 		switch (config.ALGOTYPE) {
 		case 0:
+			StartCut = clock();
 			cut = fullSolveCut(prob[1], cell, stoc, cell->candidX);
+			EndCut = clock();
+			cell->Tcut = cell->Tcut + (EndCut - StartCut);
 			if ( cut == NULL ) {
 				errMsg("algorithm", "runAlgo", "failed to create the cut using full solve", 0);
 				goto TERMINATE;
 			}
 			break;
 		case 1:
+			StartCut = clock();
 			cut = dualSolve(prob[1], cell, stoc, cell->candidX, subset);
+			EndCut = clock();
+			cell->Tcut = cell->Tcut + (EndCut - StartCut);
 			if (cut == NULL) {
 				errMsg("algorithm", "runAlgo", "failed to create the cut using dual solve", 0);
 				goto TERMINATE;
 			}
 			break;
 		case 2:
-			cut = partSolve(prob[1],  cell,  stoc, cell->candidX, subset);
+			/* calculate delta x*/
+			StartCut = clock();
+			cut = partSolve(prob[1],  cell,  stoc, cell->candidX, subset);			
+			EndCut = clock();
+			cell->Tcut = cell->Tcut + (EndCut - StartCut);
 			if (cut == NULL) {
 				errMsg("algorithm", "runAlgo", "failed to create the cut using partition-based solve", 0);
 				goto TERMINATE;
@@ -79,15 +95,19 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 #endif
 
 		/* 4. Solve the master problem. */
+		StartMas = clock();
 		if ( solveProblem(cell->master->model) ) {
 			errMsg("solver", "fullSolve", "failed to solve the master problem", 0);
 			return 1;
 		}
+		EndMas = clock();
+		cell->Tmas = cell->Tmas + (EndMas - StartMas);
 
 #if defined(ALGO_CHECK)
 		printf("\tObjective function value = %lf\n", getObjective(cell->master->model));
 #endif
-
+		printf("\tObjective function value = %lf\n", getObjective(cell->master->model));
+		cell->obj = getObjective(cell->master->model);
 		if (getPrimal(cell->master->model, cell->candidX, 0, prob[0]->num->cols) ) {
 			errMsg("solver", "fullSolve", "failed to obtain the candidate solution", 0);
 			return 1;

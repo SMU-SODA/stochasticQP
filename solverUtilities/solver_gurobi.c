@@ -284,7 +284,9 @@ int freeProblem(modelPtr *model) {
  * a MIP model). Upon successful completion, this method will populate the solution related attributes of the model. */
 int solveProblem ( modelPtr *model ) {
 	int status, optimstatus;
-
+	GRBsetintparam( env,
+		"method",
+		0);
 	status =  GRBoptimize(model);
 	if ( status ) {
 		solverErrMsg(status);

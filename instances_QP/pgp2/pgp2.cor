@@ -124,4 +124,11 @@ QUADOBJ
     PEN2         PEN2               11.
     PEN3         PEN3               11.
     PEN4         PEN4               11.
+    S3        S3          1.0
+    S4        S4          1.0
+    S5        S5          1.0
+    S6        S6          1.0
+    S7        S7          1.0
+    S8        S8          1.0
+    S9        S9          1.0
 ENDATA

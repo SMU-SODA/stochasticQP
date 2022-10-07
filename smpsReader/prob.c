@@ -198,8 +198,8 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			prob[t]->sp->rname[k] = (cString) arr_alloc(NAMESIZE, char);
 			strcpy(prob[t]->sp->rname[k], orig->rname[m]);
 
-			prob[t]->bBar->val[prob[t]->bBar->cnt+1] = orig->rhsx[m];
-			prob[t]->bBar->col[prob[t]->bBar->cnt+1] = m - tim->row[t]+1;
+			prob[t]->bBar->val[prob[t]->bBar->cnt + 1] = orig->rhsx[m];
+			prob[t]->bBar->col[prob[t]->bBar->cnt + 1] = m - tim->row[t] + 1;
 			prob[t]->bBar->cnt++;
 		}
 
@@ -227,7 +227,7 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 		k = m - tim->col[t];
 
 		prob[t]->dBar->val[prob[t]->dBar->cnt+1] = orig->objx[m];
-		prob[t]->dBar->col[prob[t]->dBar->cnt+1] = m-tim->col[t]+1;
+		prob[t]->dBar->col[prob[t]->dBar->cnt+1] = m - tim->col[t] + 1;
 		prob[t]->dBar->cnt++;
 
 		prob[t]->uBar->val[prob[t]->uBar->cnt + 1] = orig->bdu[m];

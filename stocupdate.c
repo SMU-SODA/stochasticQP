@@ -232,6 +232,9 @@ deltaType* newDelta(double SigmaSize, probType** prob , cellType* cell) {
 	/* assign memory to deta structure, this will record the deltaAlpha and deltaBetha associated with each observation*/
 
 	delta = (deltaType*)mem_malloc(sizeof(deltaType));
+	delta->dy = (double***)arr_alloc(SigmaSize, double**); /*TODO.INcrease the size later*/
+	delta->dmu = (double***)arr_alloc(SigmaSize, double**); /*TODO.INcrease the size later*/
+	delta->dnu = (double***)arr_alloc(SigmaSize, double**); /*TODO.INcrease the size later*/
 	delta->vals = (pixbCType ***)arr_alloc(SigmaSize, pixbCType **);
 	delta->cnt = 0;
 
@@ -308,11 +311,21 @@ void freeDelta(deltaType* delta, int numobs) {
 				if (delta->vals[i]) {
 					for (int j = 0; j < numobs; j++) {
 						freeLambdaDelta(delta->vals[i][j]);
+
+						mem_free(delta->dy[i][j]);
+						mem_free(delta->dmu[i][j]);
+						mem_free(delta->dnu[i][j]);
 					}
 					mem_free(delta->vals[i]);
+					mem_free(delta->dy[i]);
+					mem_free(delta->dmu[i]);
+					mem_free(delta->dnu[i]);
 				}
 			}
 			mem_free(delta->vals);
+			mem_free(delta->dy);
+			mem_free(delta->dmu);
+			mem_free(delta->dnu);
 		}
 		mem_free(delta);
 	}
@@ -321,7 +334,18 @@ void freeDelta(deltaType* delta, int numobs) {
 
 void freeLambdaDelta(pixbCType* lambdadelta) {
 	if (lambdadelta) {
-		mem_free(lambdadelta->beta);
+		if (config.ALGOTYPE == 2) {
+			if (lambdadelta->feas == 1)
+			{
+				mem_free(lambdadelta->beta);
+			}
+
+			if (config.ALGOTYPE != 2) {
+
+				mem_free(lambdadelta->beta);
+			}
+				
+	}
 		mem_free(lambdadelta);
 	}
 }//END freeLambdaDelta()

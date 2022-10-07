@@ -146,7 +146,7 @@ int argmax(probType *prob, sigmaType *sigma, deltaType *delta, dVector Xvect, in
 				- vXv(Xvect, sigma->vals[j]->beta, prob->coord->CCols, prob->num->cntCcols)
 				- vXv(Xvect, delta->vals[j][obs]->beta, prob->coord->rvCOmCols, prob->num->rvCOmCnt);
 
-		/*4b. calculate estimated Obj value beta x+alpha*/
+		/*4b. calculate estimated Obj value beta x + alpha*/
 		if (tempobj > maxobj) {
 			maxobj = tempobj;
 			lambdaIdx = j;
@@ -155,3 +155,6 @@ int argmax(probType *prob, sigmaType *sigma, deltaType *delta, dVector Xvect, in
 
 	return lambdaIdx;
 }//END argmax()
+
+
+

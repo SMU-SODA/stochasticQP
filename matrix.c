@@ -49,6 +49,9 @@ void freemat(Mat* A) {
 
 }//END freemat();
 
+
+
+
 Mat* eye(int n) {
 	Mat* I = newmat(n, n, 0);
 	for (int i = 1; i <= n; i++) {
@@ -546,10 +549,36 @@ double innermultiply(Mat* a, Mat* b) {
 Mat* transSparsM(sparseMatrix* M , int col , int row){
 	int i = 0;
 	Mat* M1 = newmat(row, col, 0);
-	for (int cnt = 0; cnt < M->cnt; cnt++) {
-		i = (M->row[cnt] ) * col + M->col[cnt];
-		M1->entries[i] = M->val[cnt+1] ; 
+	for (int cnt = 1; cnt <= M->cnt; cnt++) {
+		i = (M->row[cnt]-1 ) * col + M->col[cnt];
+		M1->entries[i-1] = M->val[cnt] ; 
 	}
 	return M1;
 }//END transSparsM()
 
+sparseMatrix* BuildHess(sparseMatrix* M) {
+	sparseMatrix* N;
+	N = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));
+	int elm = 1;
+	N->col = (iVector)arr_alloc(2 * M->cnt +1, int);
+	N->row = (iVector)arr_alloc(2 * M->cnt +1, int);
+	N->val = (dVector)arr_alloc(2 * M->cnt +1, double);
+	for (int i = 1; i <= M->cnt; i++) {
+		N->row[elm] = M->row[i];
+		N->col[elm] = M->col[i];
+		N->val[elm] =  M->val[i];
+		if (M->col[i] == M->row[i]) {
+		N->val[elm] = 2 * M->val[i];
+		}
+		elm++;
+		if (M->col[i] != M->row[i]) {
+			N->row[elm] = M->col[i];
+			N->col[elm] = M->row[i];
+			N->val[elm] = M->val[i];
+			elm++;
+		}
+
+	}
+	N->cnt = elm - 1;
+	return N;
+}

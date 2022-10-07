@@ -4,9 +4,9 @@
 #include "./smpsReader/prob.h"
 
 
-#define WRITE_FILES
-#define ALGO_CHECK
-#define STOCH_CHECK
+#undef WRITE_FILES
+#undef ALGO_CHECK
+#undef STOCH_CHECK
 
 typedef enum {
 	FULL,
@@ -41,6 +41,7 @@ typedef struct {
 }lambdaType;
 
 typedef struct {
+	int         feas ;
 	double  	alpha;	           	/* scalar pi x b */
 	dVector 	beta;	           	/* dVector pi x C */
 } pixbCType;
@@ -55,6 +56,9 @@ typedef struct {
 
 typedef struct {
 	int cnt;
+	double*** dy;
+	double*** dmu;
+	double*** dnu;
 	pixbCType ***vals;
 } deltaType;
 
@@ -82,6 +86,10 @@ typedef struct {
 	int         cnt;        /* Number of elements */
 	int**       part;       /*Storing partitions with 0 inactive 1 lower bound, and 2 upperbound*/
 	long long int* basnum;
+	int* low;
+	int* up;
+	int* inact;
+
 }PartitionType;
 
 /* structure for the problem type:
@@ -119,6 +127,13 @@ typedef struct {
 }deltaSolType;
 
 
+
+typedef struct {
+	int cnt;
+	Mat** wt ;
+}WT;
+
+
 typedef struct {
 	int cnt;
 	solnType** vals;
@@ -144,7 +159,7 @@ typedef struct {
 	int      	maxCuts;            /* maximum number of cuts to be used*/
 	cutsType*   cuts;              /* optimality cuts */
 	cutsType*   fCuts;             /* feasibility cuts */
-
+     
 	omegaType*  omega;				/* all realizations observed during the algorithm */
 
 	bool        optFlag;
@@ -158,8 +173,22 @@ typedef struct {
 	deltaType* delta;
 	PartitionType* partition;
 	deltaSolType* deltaSol;
+	WT* wtSet;
+
+	int numit;
+	double obj;
+	double Tcut; /* Total time required to produce cuts */
+	double Tmas; /* Total time required to solve the master problem */
+	double Tsub; /* Total time for solving subpoblems*/
+	double  Totaltime; /* total time */
+	int IterPart; /* the iteration that all the partitions are recognized  */
+	double stochupdate; /* average time of iterations */
+
 }cellType;
 
+
+void newWTset(int structSize, cellType* cell);
+void freeWTset(cellType* cell);
 
 
 
@@ -227,8 +256,8 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 
 /* dualSolve.c */
 int argmax(probType *prob, sigmaType *sigma, deltaType *delta, dVector Xvect, int obs);
+int argmaxPart(cellType* cell, double tol, probType* prob, sigmaType* sigma, deltaType* delta, dVector Xvect, int obs, int prev, int* index, bool* flag, pixbCType** deltaxp, double** dy, double** dld, double** dnu, double** dmu, sparseVector* bomega, sparseVector* lomega, sparseVector* uomega);
 
-/* Source.c */
 cellType* buildCell(probType** prob, stocType* stoc);
 int solveSubprob(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals,
 		sparseVector* bOmega, sparseMatrix* COmega, sparseVector* dOmega, sparseVector* lOmega, sparseVector* uOmega, solnType *dual);
@@ -284,10 +313,13 @@ bool *subsetGenerator(int numObs);
 
 omegaType* newOmega(stocType* stoc);
 
- void addtoLambdaP(cellType* cell, solnType* soln,  Mat* WT, probType* prob, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega, int low, int up, int inact);
+void addtoLambdaP(cellType* cell, solnType* soln, Mat* W, probType* prob, sparseVector* bOmega, sparseVector* uOmega,
+	sparseVector* lOmega, int low, int up, int inact, dVector dx);
+
+
  int addtoLambda(lambdaType* lambda, solnType* dual, int numRows, int numCols, bool* newLambdaFlag);
 void addtoSigma(cellType* cell, probType* prob, solnType *soln);
-void addtoDelta(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* ybar, sparseVector* yund, int obs,int num);
+void addtoDelta(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* bOmegaorig, sparseVector* ybar, sparseVector* yund, int obs,int num);
 
 solnType* buildSolnType (numType *num);
 void freeSolnType(solnType *soln);
@@ -297,8 +329,8 @@ int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* C
 void PartCalc(solnType* sol, dVector yund, dVector ybar, int numc, int* part, int* up, int* inact, int* low);
 PartitionType *newPartition(int Partsize);
 oneCut * partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset);
-int addtoPartition(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln, bool* flag,
-		int* up, int* inact, int* low , long long int* base);
+int addtoPartition(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln,
+	bool* flag, int* up, int* inact, int* low, long long int* base, dVector lStat, dVector uStat);
 void newSolSet(int Partsize, probType* prob, cellType* cell);
 void freeSolSet(solutionSetType* SolSet);
 void Buildbase(long long int* basis, int cols, int bas);
@@ -322,15 +354,18 @@ Mat* scalermultiply(Mat* M, double c);
 Mat* multiply(Mat* A, Mat* B);
 Mat* sum(Mat* A, Mat* B);
 void freemat(Mat* A);
-void CalcWT(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D, Mat** W, Mat** T, int low, int up, int inact);
+sparseMatrix* BuildHess(sparseMatrix* M);
+void CalC(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D, Mat** W, Mat** T, int low, int up, int inact);
 Mat* transSparsM(sparseMatrix* M, int col, int row);
 Mat* removerow(Mat* A, int r);
 Mat* removecol(Mat* A, int c);
 void AddtoSigmaP(cellType* cell, solnType* sol, probType* prob);
-void addtoDeltaP(cellType* cell, solnType* soln, Mat* W, Mat* T, Mat* WT, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega, int obs, int lambdaIdx, int inact, int up, int low);
-void newDeltaSol(cellType* cell, int sigmaSize , int obsnum);
+void addtoDeltaP(cellType* cell, solnType* soln, Mat* W, Mat* T, Mat* WT, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega, int obs, int lambdaIdx, int inact, int up, int low, dVector lStat, dVector uStat, double* dy, double* dld, double* ddnu, double* ddmu);
+void newDeltaSol(cellType* cell, int sigmaSize );
 Mat* adjoint(Mat* A);
 void removecol2(Mat* A, Mat* B, int c);
 void showmat(Mat* A);
 int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseMatrix* COmega, sparseVector* lOmega,
-		sparseVector* uOmega, solnType* soln, long long int* basis , int* partIndx);
+	sparseVector* uOmega, solnType* soln, long long int* basis, int* partIndx, dVector dx, pixbCType** deltax, double** dy, double** dld, double** dnu, double** dmu);
+
+void AddtoDettaX(probType* prob, cellType* cell, pixbCType** delta, dVector deltaX, int low, int up, int inact, int partindex, double** deltay, double** deltaLd, double** dnu, double** dmu);
