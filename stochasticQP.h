@@ -84,12 +84,11 @@ typedef struct {
 
 typedef struct {
 	int         cnt;        /* Number of elements */
-	int**       part;       /*Storing partitions with 0 inactive 1 lower bound, and 2 upperbound*/
-	long long int* basnum;
-	int* low;
-	int* up;
-	int* inact;
-
+	iVector*	part;       /* Storing partitions with 0 inactive 1 lower bound, and 2 upperbound*/
+	long long int* basnum;	/* partition ID encoded using the vector part[i] */
+	iVector		low;
+	iVector 	up;
+	iVector 	inact;
 }PartitionType;
 
 /* structure for the problem type:
@@ -319,13 +318,15 @@ void addtoLambdaP(cellType* cell, solnType* soln, Mat* W, probType* prob, sparse
 
  int addtoLambda(lambdaType* lambda, solnType* dual, int numRows, int numCols, bool* newLambdaFlag);
 void addtoSigma(cellType* cell, probType* prob, solnType *soln);
-void addtoDelta(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* bOmegaorig, sparseVector* ybar, sparseVector* yund, int obs,int num);
+void addtoDelta(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVector* bOmega,
+		sparseVector* ybar, sparseVector* yund, int obs,int num);
 
 solnType* buildSolnType (numType *num);
 void freeSolnType(solnType *soln);
 
 void VsumVsparse(dVector result , dVector v, sparseVector* vs , int len);
-int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega);
+stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* COmega, sparseVector* bOmega,
+		sparseVector* uOmega, sparseVector* lOmega);
 void PartCalc(solnType* sol, dVector yund, dVector ybar, int numc, int* part, int* up, int* inact, int* low);
 PartitionType *newPartition(int Partsize);
 oneCut * partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset);
@@ -361,7 +362,7 @@ Mat* removerow(Mat* A, int r);
 Mat* removecol(Mat* A, int c);
 void AddtoSigmaP(cellType* cell, solnType* sol, probType* prob);
 void addtoDeltaP(cellType* cell, solnType* soln, Mat* W, Mat* T, Mat* WT, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega, int obs, int lambdaIdx, int inact, int up, int low, dVector lStat, dVector uStat, double* dy, double* dld, double* ddnu, double* ddmu);
-void newDeltaSol(cellType* cell, int sigmaSize );
+void newDeltaSol(cellType* cell, int sigmaSize, int obsnum);
 Mat* adjoint(Mat* A);
 void removecol2(Mat* A, Mat* B, int c);
 void showmat(Mat* A);

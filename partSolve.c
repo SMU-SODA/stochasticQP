@@ -482,7 +482,7 @@ void AddtoDettaX(probType* prob, cellType* cell, pixbCType** delta, dVector delt
 
 	delta[partindex] = (pixbCType*)mem_malloc(sizeof(pixbCType));
 
-	dVector dbeta = (dVector)arr_alloc(prob->num->prevCols + 1, double);
+	dVector dbeta;
 	dnu[partindex] = (dVector)arr_alloc(prob->num->cols + 1, double);
 	dmu[partindex] = (dVector)arr_alloc(prob->num->cols + 1, double);
 	/* 1. Calculate  vector [delta ubarU , delta rho] */

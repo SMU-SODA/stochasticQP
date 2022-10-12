@@ -5,8 +5,8 @@
  */
 
 #include "stochasticQP.h"
-#define _CRTDBG_MAP_ALLOC
-#include "crtdbg.h"
+//#define _CRTDBG_MAP_ALLOC
+//#include "crtdbg.h"
 extern configType config;
 
 /* Building the cell for the 2-SQP algorithms */
@@ -59,7 +59,7 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 	cell->delta 	= NULL;
 	cell->partition = NULL;
 
-	int structSize = config.SAMPLE_FRACTION * cell->omega->cnt * config.MAX_ITER;
+	int structSize = cell->omega->cnt * config.MAX_ITER;
 	if (config.ALGOTYPE == DUALLBASED) {
 		cell->lambda = newLambda(structSize, prob);
 		cell->sigma  = newSigma(structSize, prob);
@@ -70,7 +70,7 @@ cellType* buildCell(probType** prob , stocType* stoc) {
 		cell->sigma  = newSigma(structSize, prob);
 		cell->lambda = newLambda(structSize, prob);
 		cell->delta  = newDelta(structSize, prob,cell);
-		 newWTset(structSize,cell);
+		newWTset(structSize,cell);
 	}
 
 
@@ -96,7 +96,6 @@ void newWTset( int structSize,cellType* cell) {
 
 }; //EndnewWTset
 
-
 void freeWTset( cellType* cell) {
 
 	for (int i = 0; i < cell->wtSet->cnt; i++) {
@@ -107,10 +106,7 @@ void freeWTset( cellType* cell) {
 
 }; //EndnewWTset
 
-
-
-
-void newDeltaSol(cellType* cell , int partSize , int obsnum ) {
+void newDeltaSol(cellType* cell, int partSize, int obsnum) {
 
 	cell->deltaSol = (deltaSolType*)mem_malloc(sizeof(deltaSolType)) ;
 	cell->deltaSol->cnt = 0;
@@ -594,7 +590,8 @@ void VsumVsparse(dVector result, dVector v, sparseVector* vs, int len) {
 	}
 }
 
-int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* bOmegaorig, sparseVector* uOmega, sparseVector* lOmega) {
+int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* COmega, sparseVector* bOmega,
+		sparseVector* uOmega, sparseVector* lOmega) {
 	int lambdaIdx = 0;
 	bool newLambdaFlag = false;
 
@@ -608,14 +605,12 @@ int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* C
 
 		for (int obs = 0; obs < cell->omega->cnt; obs++) {
 			/* Add a new row to the delta structure for all observations and the latest lambda (lambdaIdx) */
-			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0]-1;
-			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1]-1;
-			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3]-1;
-			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4]-1;
+			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
+			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
+			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
+			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
 
-
-
-			addtoDelta(cell, prob, COmega, bOmega, uOmega, lOmega, obs, lambdaIdx,bOmegaorig);
+			addtoDelta(cell, prob, COmega, bOmega, uOmega, lOmega, obs, lambdaIdx);
 		}
 
 	}
@@ -659,8 +654,9 @@ void freeCellType (cellType *cell) {
 	freeSigma(cell->sigma);
 	freeLambda(cell->lambda);
 	freeDelta(cell->delta, cell->omega->cnt);
-	if (config.ALGOTYPE == 2) { freePartition(cell->partition);
-	freeWTset(cell);
+	if (config.ALGOTYPE == 2) {
+		freePartition(cell->partition);
+		freeWTset(cell);
 	}
 	freeOmegaType(cell->omega,false);
 
@@ -670,7 +666,7 @@ void freeCellType (cellType *cell) {
 
 } /** EndfreeCellType() **/
 
-    PartitionType *newPartition(int Partsize) {
+PartitionType *newPartition(int Partsize) {
 	PartitionType *partition;
 
 	partition = (PartitionType*) mem_malloc(sizeof(PartitionType));
@@ -688,11 +684,15 @@ void freeCellType (cellType *cell) {
 void freePartition( PartitionType* partition) {
 
 	for (int i = 0; i < partition->cnt ; i++) {
-			mem_free(partition->part[i]);
-		
+		mem_free(partition->part[i]);
+
 	}
 	mem_free(partition->part);
 	mem_free(partition->basnum);
+
+	mem_free(partition->low);
+	mem_free(partition->up);
+	mem_free(partition->inact);
 	mem_free(partition);
 
 }; //EndfreePartition
@@ -702,7 +702,7 @@ int addtoPartition(probType* prob, cellType* cell, sparseVector* uOmega, sparseV
 	long long int index = 0;
 
 	iVector part;
-		
+
 	part =	(iVector) arr_alloc(prob->num->cols + 1, int);
 
 	/* for current solution check and save the status of bound constraints, if set to lower bound 
@@ -739,7 +739,7 @@ int addtoPartition(probType* prob, cellType* cell, sparseVector* uOmega, sparseV
 		partIdx++;
 	}
 
-	    if ( partIdx == cell->partition->cnt ) {
+	if ( partIdx == cell->partition->cnt ) {
 		/* New partition discovered */
 		(*flag) = true;
 
@@ -748,15 +748,14 @@ int addtoPartition(probType* prob, cellType* cell, sparseVector* uOmega, sparseV
 		cell->partition->basnum[partIdx] = index;
 
 		cell->partition->low[cell->partition->cnt] = low[0];
-			cell->partition->up[cell->partition->cnt] = up[0];
-			cell->partition->inact[cell->partition->cnt] = inact[0];
-			cell->partition->cnt = cell->partition->cnt + 1;
-	    }
+		cell->partition->up[cell->partition->cnt] = up[0];
+		cell->partition->inact[cell->partition->cnt] = inact[0];
+		cell->partition->cnt++;
+	}
 
-	
 	mem_free(part);
 	return partIdx;
-	
+
 	TERMINATE:
 	mem_free(lStat); mem_free(uStat);
 	mem_free(part);
@@ -862,7 +861,7 @@ void addtoDeltaP(cellType* cell, solnType* soln, Mat* W, Mat* T, Mat* WT, probTy
 
 				if (uOmega->col[j] == i) {
 					if (cell->lambda->y[lambdaIdx][i] + deltay[i] + dy[i] > uOmega->val[j] + prob->uBar->val[i] + config.TOLERANCE) {
- 						feas = 1;
+						feas = 1;
 					}
 				}
 			}
@@ -935,18 +934,18 @@ void addtoDeltaP(cellType* cell, solnType* soln, Mat* W, Mat* T, Mat* WT, probTy
 
 
 		cell->delta->vals[lambdaIdx][obs]->alpha =
-			-vXv(temp4, deltay, index2, prob->num->cols)
-			- vXv(temp5, deltay, index2, prob->num->cols)
-			- vXv(temp6, cell->lambda->y[lambdaIdx], index2, prob->num->cols)
-			+ vXvSparse(deltaLd, prob->bBar)
-			+ vXvSparse(cell->lambda->pi[lambdaIdx], bOmega)
-			+ vXvSparse(deltaLd, bOmega)
-			+ vXvSparse(dnu, prob->lBar)
-			+ vXvSparse(cell->lambda->lmu[lambdaIdx], lOmega)
-			+ vXvSparse(dnu, lOmega)
-			- vXvSparse(dmu, prob->uBar)
-			- vXvSparse(dmu, uOmega)
-			- vXvSparse(cell->lambda->umu[lambdaIdx], uOmega);
+				-vXv(temp4, deltay, index2, prob->num->cols)
+				- vXv(temp5, deltay, index2, prob->num->cols)
+				- vXv(temp6, cell->lambda->y[lambdaIdx], index2, prob->num->cols)
+				+ vXvSparse(deltaLd, prob->bBar)
+				+ vXvSparse(cell->lambda->pi[lambdaIdx], bOmega)
+				+ vXvSparse(deltaLd, bOmega)
+				+ vXvSparse(dnu, prob->lBar)
+				+ vXvSparse(cell->lambda->lmu[lambdaIdx], lOmega)
+				+ vXvSparse(dnu, lOmega)
+				- vXvSparse(dmu, prob->uBar)
+				- vXvSparse(dmu, uOmega)
+				- vXvSparse(cell->lambda->umu[lambdaIdx], uOmega);
 
 
 		mem_free(temp4); mem_free(temp5); mem_free(temp6);
@@ -962,7 +961,7 @@ void addtoDeltaP(cellType* cell, solnType* soln, Mat* W, Mat* T, Mat* WT, probTy
 	freemat(deltaPD);
 	mem_free(deltaLd);
 
-    cell->delta->dy[lambdaIdx][obs]  =  deltay;
+	cell->delta->dy[lambdaIdx][obs]  =  deltay;
 	cell->delta->dmu[lambdaIdx][obs] = dmu;
 	cell->delta->dnu[lambdaIdx][obs] = dnu;
 	mem_free(deltaL);
@@ -993,8 +992,8 @@ void AddtoSigmaP(cellType* cell ,solnType* sol , probType* prob ) {
 	double an = vXvSparse(cell->lambda->umu[cnt], prob->uBar);
 	cell->sigma->vals[cnt]->alpha = -vXv(temp, cell->lambda->y[cnt], index, prob->num->cols) +
 			vXvSparse(cell->lambda->pi[cnt], prob->bBar) + 
-		vXvSparse(cell->lambda->lmu[cnt], prob->lBar) - 
-		vXvSparse(cell->lambda->umu[cnt], prob->uBar);
+			vXvSparse(cell->lambda->lmu[cnt], prob->lBar) -
+			vXvSparse(cell->lambda->umu[cnt], prob->uBar);
 	cell->sigma->vals[cnt]->beta = vxMSparse(cell->lambda->pi[cnt], prob->Cbar, prob->num->prevCols);
 
 	mem_free(temp);
@@ -1186,16 +1185,16 @@ void Buildbase(long long int* basis, int cols, int base) {
 	}
 };//EndBuildbase
 
-Mat* CombineWT(probType* prob,Mat* W, Mat* T , int low , int up  , int inact) {
+Mat* CombineWT(probType* prob, Mat* W, Mat* T , int low , int up  , int inact) {
 	Mat* WT = newmat(prob->num->cols + prob->num->rows, up + prob->num->rows, 0);
 
 	WT->col = up + prob->num->rows;
 	WT->row = prob->num->cols + prob->num->rows;
-	copyVector(W->entries, WT->entries, (inact + prob->num->rows) * (up + prob->num->rows));
-	copyVector(T->entries, WT->entries + (inact + prob->num->rows) * (up + prob->num->rows), (low + up) * (up + prob->num->rows));
+	copyVector(W->entries, WT->entries, W->row*W->col-1);
+	copyVector(T->entries, WT->entries + W->row*W->col, T->row*T->col-1);
 
 	return WT;
-};
+}//END CombineWT()
 
 //* Matrix W calculation  *//
 void CalC(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , Mat** W, Mat** T, int low, int up, int inact) {
@@ -1221,7 +1220,7 @@ void CalC(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , Mat
 	Mat* DML = transSparsM(D, prob->num->cols, prob->num->rows);
 	Mat* DMI = transSparsM(D, prob->num->cols, prob->num->rows);
 
-	
+
 	/*Build Q(II) in a mat strcture*/
 	int cnt = cell->partition->cnt - 1;
 	for (int i = prob->num->cols; i >= 1; i--) {
@@ -1231,7 +1230,7 @@ void CalC(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , Mat
 		}
 	}
 
-	
+
 	/*Build D(MI)*/
 	for (int i = prob->num->cols; i >= 1; i--) {
 		if (cell->partition->part[cnt][i] == 1 || cell->partition->part[cnt][i] == 2) {
@@ -1266,7 +1265,7 @@ void CalC(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , Mat
 			elm++;
 		}
 	}
-	
+
 	invM1 = inverse(M1);
 
 	/* Build Matrix M2 Which is equal to [QIU , 0 ; DMU , -I] */
@@ -1329,7 +1328,7 @@ void CalC(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , Mat
 
 	minvM1 = scalermultiply(invM1, -1);
 	W[0] = multiply(minvM1, M2);
-	
+
 	//* Matrix T caculation  *//
 
 	/* QLU */
@@ -1377,7 +1376,7 @@ void CalC(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , Mat
 			removeCol(QLI, i);
 		}
 	}
-	
+
 	/*DML*/
 	for (int i = prob->num->cols; i >= 1; i--) {
 		if (cell->partition->part[cnt][i] == 0 || cell->partition->part[cnt][i] == 2) {
@@ -1391,7 +1390,7 @@ void CalC(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , Mat
 
 
 	/*Build w1*/
-/* first L rows of W1*/
+	/* first L rows of W1*/
 
 	elm = 0;
 	for (int i = 0; i < low; i++) {
@@ -1419,7 +1418,7 @@ void CalC(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , Mat
 
 		}
 	}
-	
+
 	/*Build w2*/
 
 	w2 = newmat(low + up, prob->num->rows + inact, 0);
@@ -1438,7 +1437,7 @@ void CalC(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , Mat
 			elm++;
 		}
 	}
-	
+
 	/* next U rows of W2*/
 
 	for (int i = 0; i < up; i++) {

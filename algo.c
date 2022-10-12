@@ -106,7 +106,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 #if defined(ALGO_CHECK)
 		printf("\tObjective function value = %lf\n", getObjective(cell->master->model));
 #endif
-		printf("\tObjective function value = %lf\n", getObjective(cell->master->model));
+		printf("\t%d: Objective function value = %lf\n", cell->numit, getObjective(cell->master->model));
 		cell->obj = getObjective(cell->master->model);
 		if (getPrimal(cell->master->model, cell->candidX, 0, prob[0]->num->cols) ) {
 			errMsg("solver", "fullSolve", "failed to obtain the candidate solution", 0);

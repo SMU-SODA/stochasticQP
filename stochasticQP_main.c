@@ -1,6 +1,6 @@
 #include "stochasticQP.h"
-#define _CRTDBG_MAP_ALLOC
-#include "crtdbg.h"
+//#define _CRTDBG_MAP_ALLOC
+//#include "crtdbg.h"
 
 cString outputDir;
 long MEM_USED;
@@ -61,9 +61,9 @@ int main(int argc, char* argv[]) {
 	cell->Totaltime = (end - start) / CLOCKS_PER_SEC;
 
 
-	fprintf(fptr, "Nunmer of iterations, %d \n", cell->numit);
-	fprintf(fptr , "Objective function value, %f \n" , cell->obj);
-	fprintf(fptr , "Time to solve master problem, %f \n", cell->Tmas);
+	fprintf(fptr, "Number of iterations, %d \n", cell->numit);
+	fprintf(fptr, "Objective function value, %f \n" , cell->obj);
+	fprintf(fptr, "Time to solve master problem, %f \n", cell->Tmas);
 	fprintf(fptr, "Time to solve subproblem, %f \n" , cell->Tsub);
 	fprintf(fptr, "Total time to solve, %f \n", cell->Totaltime);
 	fprintf(fptr, "Nunmer of iterations to find partitions, %d \n", cell->IterPart);

@@ -624,7 +624,6 @@ void subVectors(dVector a, dVector b, iVector indices, int len){
 
 }//END subVectors()
 
-
 void freeSparseMatrix(sparseMatrix *M) {
 
 	if (M->col) mem_free(M->col);
@@ -636,8 +635,10 @@ void freeSparseMatrix(sparseMatrix *M) {
 
 void freeSparseVector(sparseVector *v) {
 
-	if (v->col) mem_free(v->col);
-	if (v->val) mem_free(v->val);
-	mem_free(v);
+	if ( v ) {
+		if (v->col) mem_free(v->col);
+		if (v->val) mem_free(v->val);
+		mem_free(v);
+	}
 
 }//END freeSparseMatrix()

@@ -35,7 +35,7 @@ Mat* newmat(int r, int c, double d) {
 	Mat* M;
 	M = (Mat*)mem_malloc(sizeof(Mat));
 	M->row = r; M->col = c;
-	M->entries = (dVector)arr_alloc(r * c , double);
+	M->entries = (dVector) arr_alloc(r * c , double);
 
 	return M;
 }//END newmat()

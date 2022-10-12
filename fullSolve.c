@@ -7,22 +7,22 @@ oneCut* fullSolveCut(probType* prob, cellType* cell, stocType* stoch, double* x)
 
 
 	int* index;
-	index = (int*)arr_alloc(prob->num->cols + 1, int);
+	index = (int*) arr_alloc(prob->num->cols + 1, int);
 	for (int i = 1; i <= prob->num->cols; i++) {
 		index[i] = i;
 	}
 	/* initialization of the parameters */
-	sparseVector* bOmega;  	/* Presenting the b vector associated with an observation(I mean the difference from bBar)*/
-	sparseMatrix* COmega; 	/* Presenting the C matrix associated with an observation(I mean the difference from Cbar)*/
-	sparseVector* dOmega;	/* Presenting the cost coefficient vector associated with an observation */
-	sparseVector* uOmega;	/* Presenting the upperbound  vector associated with an observation(I mean the difference from yBar)*/
-	sparseVector* lOmega;	/* Presenting the lowerbound  vector associated with an observation(I mean the difference from mean of yunderscore)*/
+	sparseVector* bOmega = NULL;  	/* Presenting the b vector associated with an observation(I mean the difference from bBar)*/
+	sparseMatrix* COmega = NULL; 	/* Presenting the C matrix associated with an observation(I mean the difference from Cbar)*/
+	sparseVector* dOmega = NULL;	/* Presenting the cost coefficient vector associated with an observation */
+	sparseVector* uOmega = NULL;	/* Presenting the upperbound  vector associated with an observation(I mean the difference from yBar)*/
+	sparseVector* lOmega = NULL;	/* Presenting the lowerbound  vector associated with an observation(I mean the difference from mean of yunderscore)*/
 
-	bOmega = (sparseVector*)mem_malloc(sizeof(sparseVector));
-	dOmega = (sparseVector*)mem_malloc(sizeof(sparseVector));
-	uOmega = (sparseVector*)mem_malloc(sizeof(sparseVector));
-	lOmega = (sparseVector*)mem_malloc(sizeof(sparseVector));
-	COmega = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));
+	bOmega = (sparseVector*) mem_malloc(sizeof(sparseVector));
+	dOmega = (sparseVector*) mem_malloc(sizeof(sparseVector));
+	uOmega = (sparseVector*) mem_malloc(sizeof(sparseVector));
+	lOmega = (sparseVector*) mem_malloc(sizeof(sparseVector));
+	COmega = (sparseMatrix*) mem_malloc(sizeof(sparseMatrix));
 
 	bOmega->cnt = prob->num->rvbOmCnt;
 	bOmega->col = prob->coord->rvbOmRows;
@@ -39,8 +39,6 @@ oneCut* fullSolveCut(probType* prob, cellType* cell, stocType* stoch, double* x)
 
 	lOmega->cnt = prob->num->rvylOmCnt;
 	lOmega->col = prob->coord->rvylOmRows;
-
-
 
 	/* 1. Create a new cut */
 	oneCut* cut = newCut(prob->num->cols);
@@ -101,10 +99,21 @@ oneCut* fullSolveCut(probType* prob, cellType* cell, stocType* stoch, double* x)
 
 	}
 
+	mem_free(bOmega);
+	mem_free(dOmega);
+	mem_free(uOmega);
+	mem_free(lOmega);
+	mem_free(COmega);
 	mem_free(index);
 	return cut;
 
 TERMINATE:
+    //freeSparseVector(bOmega);
+	//freeSparseVector(dOmega);
+	//freeSparseVector(uOmega);
+	//freeSparseVector(lOmega);
+	//freeSparseMatrix(COmega);
+	mem_free(index);
 	return NULL;
 }//END fullSolve()
 
