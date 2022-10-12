@@ -1,6 +1,6 @@
 #include "stochasticQP.h"
 
-oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x) {
+oneCut* fullSolveCut(probType* prob, cellType* cell, stocType* stoch, double* x) {
 	double 		 alpha;
 	clock_t Start;
 	clock_t End;
@@ -12,11 +12,11 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 		index[i] = i;
 	}
 	/* initialization of the parameters */
-	sparseVector *bOmega;  	/* Presenting the b vector associated with an observation(I mean the difference from bBar)*/
-	sparseMatrix *COmega; 	/* Presenting the C matrix associated with an observation(I mean the difference from Cbar)*/
-	sparseVector *dOmega;	/* Presenting the cost coefficient vector associated with an observation */
-	sparseVector *uOmega;	/* Presenting the upperbound  vector associated with an observation(I mean the difference from yBar)*/
-	sparseVector *lOmega;	/* Presenting the lowerbound  vector associated with an observation(I mean the difference from mean of yunderscore)*/
+	sparseVector* bOmega;  	/* Presenting the b vector associated with an observation(I mean the difference from bBar)*/
+	sparseMatrix* COmega; 	/* Presenting the C matrix associated with an observation(I mean the difference from Cbar)*/
+	sparseVector* dOmega;	/* Presenting the cost coefficient vector associated with an observation */
+	sparseVector* uOmega;	/* Presenting the upperbound  vector associated with an observation(I mean the difference from yBar)*/
+	sparseVector* lOmega;	/* Presenting the lowerbound  vector associated with an observation(I mean the difference from mean of yunderscore)*/
 
 	bOmega = (sparseVector*)mem_malloc(sizeof(sparseVector));
 	dOmega = (sparseVector*)mem_malloc(sizeof(sparseVector));
@@ -40,20 +40,21 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 	lOmega->cnt = prob->num->rvylOmCnt;
 	lOmega->col = prob->coord->rvylOmRows;
 
-	
+
 
 	/* 1. Create a new cut */
-	oneCut *cut = newCut(prob->num->cols);
-	double x1 =0,x2 = 0;
+	oneCut* cut = newCut(prob->num->cols);
+	double x1 = 0, x2 = 0;
+
 	/* 2. loop through observations and solve subproblem for all of them. */
 	for (int obs = 0; obs < cell->omega->cnt; obs++) {
 		/* Structure to hold dual solutions */
 		solnType* dual = buildSolnType(prob->num);
-		bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0] ;
-		COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1] ;
-		dOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[2] ;
-		uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3] ;
-		lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4] ;
+		bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
+		COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
+		dOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[2];
+		uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
+		lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
 
 		/* 2a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
 		Start = clock();
@@ -63,17 +64,17 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 		}
 		End = clock();
 		cell->Tsub = cell->Tsub + (End - Start);
-		cell->LPcnt++;	
-
+		cell->LPcnt++;
+		dVector temp1 = vxMSparse(dual->y, prob->sp->objQ, prob->num->cols);
 		/* Optimality cut calculations */
-		alpha  = -vXv(vxMSparse(dual->y, prob->sp->objQ, prob->num->cols), dual->y, index, prob->num->cols) +
-			vXvSparse(dual->pi, prob->bBar) + vXvSparse(dual->lmu, prob->lBar) - vXvSparse(dual->umu, prob->uBar)+
-			vXvSparse(dual->pi, bOmega)	- vXvSparse(dual->umu, uOmega) + vXvSparse(dual->lmu, lOmega); /*TO DO: ybar and yund vals start from index 0*/
-		
+		alpha = -vXv(temp1, dual->y, index, prob->num->cols) +
+			vXvSparse(dual->pi, prob->bBar) + vXvSparse(dual->lmu, prob->lBar) - vXvSparse(dual->umu, prob->uBar) +
+			vXvSparse(dual->pi, bOmega) - vXvSparse(dual->umu, uOmega) + vXvSparse(dual->lmu, lOmega); /*TO DO: ybar and yund vals start from index 0*/
+		mem_free(temp1);
 		dVector beta = vxMSparse(dual->pi, prob->Cbar, prob->num->prevCols);
-	
+
 		double* dbeta = vxMSparse(dual->pi, COmega, prob->num->prevCols);
-		
+
 
 		if (prob->num->rvCOmCnt > 0) {
 			dbeta = vxMSparse(dual->pi, COmega, prob->num->prevCols);
@@ -90,19 +91,20 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
 #endif
 
 		/* 2c. Aggregate the cut coefficients by weighting by observation probability. */
-		cut->alpha = cut->alpha + cell->omega->probs[obs]*alpha;
+		cut->alpha = cut->alpha + cell->omega->probs[obs] * alpha;
 		for (int c = 1; c <= prob->num->prevCols; c++)
-			cut->beta[c] += cell->omega->probs[obs]*beta[c];
+			cut->beta[c] += cell->omega->probs[obs] * beta[c];
 
 		mem_free(beta);
 		mem_free(dbeta);
-		mem_free(dual);
+		freeSolnType(dual);
+
 	}
-	
+
 	mem_free(index);
 	return cut;
 
-	TERMINATE:
+TERMINATE:
 	return NULL;
 }//END fullSolve()
 
@@ -118,7 +120,7 @@ oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x)
  * reserved, and the actual values begin at rhs[1].
  \***********************************************************************/
 int updateRHSwState(numType* num, coordType* coord, sparseVector* bBar, sparseMatrix* Cbar, dVector X,
-		dVector obs, dVector *rhs) {
+	dVector obs, dVector* rhs) {
 	(*rhs) = expandVector(bBar->val, bBar->col, bBar->cnt, num->rows);
 	sparseMatrix Comega;
 	sparseVector bomega;
