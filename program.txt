@@ -1,0 +1,7 @@
+Nunmer of iterations, 30 
+Objective function value, 662.897996 
+Time to solve master problem, 34.000000 
+Time to solve subproblem, 199.000000 
+Total time to solve, 439.000000 
+Nunmer of iterations to find partitions, 0 
+Time to update stoc, 438503.000000 

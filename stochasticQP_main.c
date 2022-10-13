@@ -8,12 +8,9 @@ configType config;
 
 int main(int argc, char* argv[]) {
 	// creating file pointer to work with files
-	FILE* fptr;
+	FILE* fptr = NULL;
 
-	// opening file in writing mode
-	fptr = fopen("program.txt", "w+");
-
-	clock_t start = clock();
+	clock_t start;
 	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	cString inputDir, probname;
 	int numStages;
@@ -21,6 +18,7 @@ int main(int argc, char* argv[]) {
 	probType** prob = NULL;
 	cellType*  cell = NULL;
 	char configFile[BLOCKSIZE];
+	clock_t end;
 
 	/* Obtain parameter input from the command line */
 	parseCmdLine(argc, argv, &probname, &inputDir);
@@ -36,16 +34,22 @@ int main(int argc, char* argv[]) {
 
 	/* set up output directory: using the outputDir in config file and the input problem name */
 	createOutputDir(outputDir, "stochasticQP", probname);
-
+	// opening file in writing mode
+	fptr = openFile(outputDir, "PartSolve100.csv", "w");
+	fprintf(fptr, "Iterations , Part iteration ,Objective function , Master time, Subproblem time, Cut time , Total time\n ");
 	/*This function reads the problem and decomposes that into stages.*/
+	
 	prob = newProbwSMPS(inputDir, probname, &stoch, &numStages);
 	if ( prob == NULL ) {
 		errMsg("read", "main", "failed to read files or setup the probType", 0);
 		goto TERMINATE;
 	}
 
+
+	for (int i = 0; i < 30; i++) {
+		config.RUN_SEED[0] = config.RUN_SEED[1 + i];
+		start = clock();
 	/*Build the algorithm cell..*/
-	config.RUN_SEED[0] = config.RUN_SEED[1];
 
 	cell = buildCell(prob, stoch);
 	if ( cell == NULL ) {
@@ -57,24 +61,21 @@ int main(int argc, char* argv[]) {
 	runAlgo(prob, stoch, cell);
 
 	printf("Successfully completed executing the algorithm.\n");
-	clock_t end = clock();
-	cell->Totaltime = (end - start) / CLOCKS_PER_SEC;
+	    end = clock();
+	cell->Totaltime = (end - start);
 
+	fprintf(fptr, "%d, %d, %f, %f , %f , %f , %f \n", cell->numit, cell->IterPart, cell->obj, cell->Tmas / CLOCKS_PER_SEC , cell->Tsub / CLOCKS_PER_SEC , cell->Tcut / CLOCKS_PER_SEC , cell->Totaltime / CLOCKS_PER_SEC);
+	
 
-	fprintf(fptr, "Number of iterations, %d \n", cell->numit);
-	fprintf(fptr, "Objective function value, %f \n" , cell->obj);
-	fprintf(fptr, "Time to solve master problem, %f \n", cell->Tmas);
-	fprintf(fptr, "Time to solve subproblem, %f \n" , cell->Tsub);
-	fprintf(fptr, "Total time to solve, %f \n", cell->Totaltime);
-	fprintf(fptr, "Nunmer of iterations to find partitions, %d \n", cell->IterPart);
-	fprintf(fptr, "Time to update stoc, %f \n", cell->stochupdate);
 	/* Free all the structures */
-	fclose(fptr);
+	if (cell) freeCellType(cell);
+}
 
+	fclose(fptr);
 	if (prob) freeProbType(prob, 2);
 	mem_free(probname);
 	mem_free(inputDir);
-	if (cell) freeCellType(cell);
+	
 	if (stoch) freeStocType(stoch);
 
 
@@ -226,3 +227,7 @@ void freeConfig() {
 	if (config.EVAL_SEED)
 		mem_free(config.EVAL_SEED);
 }//END freeConfig()
+
+
+
+

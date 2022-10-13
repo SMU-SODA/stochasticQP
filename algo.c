@@ -20,12 +20,12 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 	clock_t StartMas;
 	clock_t EndMas;
 	double subset = config.SAMPLE_FRACTION * cell->omega->cnt; /*initialize the number of samples you want to take from Omega in each iteration*/
-	dVector dx = NULL;
 	clock_t tStart = clock();
-
+	double Tempobj = -1000;
+	cell->obj = -500;
 
 	cell->k  = 0;
-	while (cell->numit < config.MAX_ITER){
+	while (cell->obj - Tempobj > 0.001 ||  cell->numit < 5){
 		cell->numit++;
 
 		/* 1. Check optimality */
@@ -106,6 +106,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 #if defined(ALGO_CHECK)
 		printf("\tObjective function value = %lf\n", getObjective(cell->master->model));
 #endif
+		Tempobj = cell->obj;
 		printf("\t%d: Objective function value = %lf\n", cell->numit, getObjective(cell->master->model));
 		cell->obj = getObjective(cell->master->model);
 		if (getPrimal(cell->master->model, cell->candidX, 0, prob[0]->num->cols) ) {
@@ -142,7 +143,7 @@ int addCut2Solver(modelPtr *model, oneCut *cut, int lenX) {
 	}
 
 
-	writeProblem(model, "addcut.lp");
+//	writeProblem(model, "addcut.lp");
 
 	mem_free(rmatind);
 
