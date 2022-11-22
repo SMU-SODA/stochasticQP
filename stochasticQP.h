@@ -171,6 +171,12 @@ void printHelpMenu();
 /* fullSolve.c */
 oneCut *fullSolveCut(probType *prob, cellType* cell, stocType* stoch, double* x);
 
+/* partSolve.c */
+int partSolve();
+
+/* dualSolve.c */
+int dualSolve();
+
 /* Source.c */
 cellType* buildCell(probType** prob, stocType* stoc);
 int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector obsVals, dVector piS, double *mubBar);
