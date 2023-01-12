@@ -66,7 +66,7 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 	for (int i = 0; i <= prob->num->prevCols; i++) {
 		dx[i] = cell->candidX[i] - cell->incumbX[i];
 	}
-	int size = 100;
+	int size = 1000;
 	double*** dnu;
 	double*** dmu;
 	double*** dy;
@@ -112,8 +112,8 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 
 			End = clock();
 
-			cell->stochupdate = cell->stochupdate + (End - Start);
-
+			cell->stochupdate = cell->stochupdate + (End - Start)/ CLOCKS_PER_SEC;
+			//printf("\n %f", cell->stochupdate );
 
 			/*4b. Calculate observations specific coefficients. */
 			double* beta = (double*)arr_alloc(prob->num->prevCols + 1, double);
@@ -237,7 +237,6 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 		mem_free(deltax[i]);
 	}
 	mem_free(deltax);
-
 	mem_free(dnu);
 	mem_free(dmu);
 	mem_free(dy);

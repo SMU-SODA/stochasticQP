@@ -30,13 +30,16 @@ void showmat(Mat* A) {
 	}
 }
 
-Mat* newmat(int r, int c, double d) {
-
-	Mat* M;
-	M = (Mat*)mem_malloc(sizeof(Mat));
-	M->row = r; M->col = c;
-	M->entries = (dVector) arr_alloc(r * c , double);
-
+Mat* newmat(int r,int c,double d){
+	Mat* M=(Mat*)malloc(sizeof(Mat));			
+	M->row=r;M->col=c;
+	M->entries=(double*)malloc(sizeof(double)*r*c);
+	int k=0;
+	for(int i=1;i<=M->row;i++){
+		for(int j=1;j<=M->col;j++){
+			M->entries[k++]=d;
+		}
+	}
 	return M;
 }//END newmat()
 

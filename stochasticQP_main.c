@@ -1,6 +1,9 @@
+#define _CRTDBG_MAP_ALLOC
 #include "stochasticQP.h"
-//#define _CRTDBG_MAP_ALLOC
-//#include "crtdbg.h"
+#include <stdlib.h>
+#include <crtdbg.h>
+#define DEBUG_NEW new(_NORMAL_BLOCK, __FILE__, __LINE__)
+#define new DEBUG_NEW
 
 cString outputDir;
 long MEM_USED;
@@ -8,15 +11,18 @@ configType config;
 
 int main(int argc, char* argv[]) {
 	// creating file pointer to work with files
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+	_CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_DEBUG);
+	//_CrtSetBreakAlloc(28288723);
 	FILE* fptr = NULL;
 
 	clock_t start;
 	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	cString inputDir, probname;
 	int numStages;
-	stocType*  stoch= NULL;
+	stocType* stoch = NULL;
 	probType** prob = NULL;
-	cellType*  cell = NULL;
+	cellType* cell = NULL;
 	char configFile[BLOCKSIZE];
 	clock_t end;
 
@@ -35,57 +41,64 @@ int main(int argc, char* argv[]) {
 	/* set up output directory: using the outputDir in config file and the input problem name */
 	createOutputDir(outputDir, "stochasticQP", probname);
 	// opening file in writing mode
-	fptr = openFile(outputDir, "PartSolve100.csv", "w");
+	fptr = openFile(outputDir, "pSolve50000.csv", "w");
 	fprintf(fptr, "Iterations , Part iteration ,Objective function , Master time, Subproblem time, Cut time , Total time\n ");
 	/*This function reads the problem and decomposes that into stages.*/
-	
+
 	prob = newProbwSMPS(inputDir, probname, &stoch, &numStages);
-	if ( prob == NULL ) {
+	if (prob == NULL) {
 		errMsg("read", "main", "failed to read files or setup the probType", 0);
 		goto TERMINATE;
 	}
 
 
-	for (int i = 0; i < 30; i++) {
+	for (int i = 0; i < 2; i++) {
+		printf("iteration number %d", i);
 		config.RUN_SEED[0] = config.RUN_SEED[1 + i];
 		start = clock();
-	/*Build the algorithm cell..*/
+		/*Build the algorithm cell..*/
 
-	cell = buildCell(prob, stoch);
-	if ( cell == NULL ) {
-		errMsg("setup", "main", "failed to build the cell", 0);
-		goto TERMINATE;
+		cell = buildCell(prob, stoch);
+		if (cell == NULL) {
+			errMsg("setup", "main", "failed to build the cell", 0);
+			goto TERMINATE;
+		}
+
+		/* Invoke the algorithm */
+		runAlgo(prob, stoch, cell);
+
+		printf("Successfully completed executing the algorithm.\n");
+		end = clock();
+		cell->Totaltime = (end - start);
+
+		fprintf(fptr, "%d, %d, %f, %f , %f , %f , %f \n", cell->numit, cell->IterPart, cell->obj, cell->Tmas / CLOCKS_PER_SEC, cell->Tsub / CLOCKS_PER_SEC, cell->Tcut / CLOCKS_PER_SEC, cell->Totaltime / CLOCKS_PER_SEC);
+
+
+		/* Free all the structures */
+		printf("%d, %d, %f, %f , %f , %f , %f \n", cell->numit, cell->IterPart, cell->obj, cell->Tmas / CLOCKS_PER_SEC, cell->Tsub / CLOCKS_PER_SEC, cell->Tcut / CLOCKS_PER_SEC, cell->Totaltime / CLOCKS_PER_SEC);
+		//printf("%d, %d, %f, %f , %f , %f , %f \n", cell->numit, cell->IterPart, cell->obj, cell->Tmas / CLOCKS_PER_SEC, cell->Tsub / CLOCKS_PER_SEC, cell->Tcut / CLOCKS_PER_SEC, cell->Totaltime / CLOCKS_PER_SEC);
+		//printf("%d, %d, %f, %f , %f , %f , %f \n", cell->numit, cell->IterPart, cell->obj, cell->Tmas / CLOCKS_PER_SEC, cell->Tsub / CLOCKS_PER_SEC, cell->Tcut / CLOCKS_PER_SEC, cell->Totaltime / CLOCKS_PER_SEC);
+
+		
+		if (cell) freeCellType(cell);
 	}
 
-	/* Invoke the algorithm */
-	runAlgo(prob, stoch, cell);
-
-	printf("Successfully completed executing the algorithm.\n");
-	    end = clock();
-	cell->Totaltime = (end - start);
-
-	fprintf(fptr, "%d, %d, %f, %f , %f , %f , %f \n", cell->numit, cell->IterPart, cell->obj, cell->Tmas / CLOCKS_PER_SEC , cell->Tsub / CLOCKS_PER_SEC , cell->Tcut / CLOCKS_PER_SEC , cell->Totaltime / CLOCKS_PER_SEC);
-	
-
-	/* Free all the structures */
-	if (cell) freeCellType(cell);
-}
-
 	fclose(fptr);
+	freeConfig();
 	if (prob) freeProbType(prob, 2);
-	mem_free(probname);
-	mem_free(inputDir);
-	
+	mem_free(outputDir);
+	mem_free(probname); mem_free(inputDir);
 	if (stoch) freeStocType(stoch);
+	_CrtDumpMemoryLeaks();
 
-
-	TERMINATE: return 0;
-} /*END main()*/ 
+TERMINATE: return 0;
+} /*END main()*/
 
 void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir) {
 
 	if (argc == 1) {
-		printHelpMenu(); exit(0);	}
+		printHelpMenu(); exit(0);
+	}
 
 
 	for (int i = 1; (i < argc); i++) {

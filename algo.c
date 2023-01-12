@@ -25,7 +25,8 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 	cell->obj = -500;
 
 	cell->k  = 0;
-	while (cell->obj - Tempobj > 0.001 ||  cell->numit < 5){
+	//||  cell->numit < 5 cell->obj - Tempobj > 0.001
+	while (cell->obj - Tempobj > 0.001 || cell->numit < 50){
 		cell->numit++;
 
 		/* 1. Check optimality */
@@ -37,11 +38,14 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 			cut = fullSolveCut(prob[1], cell, stoc, cell->candidX);
 			EndCut = clock();
 			cell->Tcut = cell->Tcut + (EndCut - StartCut);
+			//printf("\n %f", ((EndCut - StartCut) / CLOCKS_PER_SEC));
+			//printf("\n %f", cell->Tcut / CLOCKS_PER_SEC);
 			if ( cut == NULL ) {
 				errMsg("algorithm", "runAlgo", "failed to create the cut using full solve", 0);
 				goto TERMINATE;
 			}
 			break;
+
 		case 1:
 			StartCut = clock();
 			cut = dualSolve(prob[1], cell, stoc, cell->candidX, subset);
@@ -58,6 +62,8 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 			cut = partSolve(prob[1],  cell,  stoc, cell->candidX, subset);			
 			EndCut = clock();
 			cell->Tcut = cell->Tcut + (EndCut - StartCut);
+			//printf("\n %f", ((EndCut - StartCut)/ CLOCKS_PER_SEC));
+			//printf("\n %f", cell->Tcut  / CLOCKS_PER_SEC);
 			if (cut == NULL) {
 				errMsg("algorithm", "runAlgo", "failed to create the cut using partition-based solve", 0);
 				goto TERMINATE;

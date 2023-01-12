@@ -17,10 +17,10 @@ ALGOTYPE 2
 SAA 1
 
 // Number of observations to be used to set the sample average approximation
-MAX_OBS 100
+MAX_OBS 50000
 
 // A fraction (0,1] to determine what fraction of samples are solved
-SAMPLE_FRACTION 0.1
+SAMPLE_FRACTION 0.0005
 
 // Run seeds
 RUN_SEED    3554548844580680

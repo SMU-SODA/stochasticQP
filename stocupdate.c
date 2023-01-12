@@ -46,20 +46,25 @@ void addtoSigma(cellType* cell, probType* prob, solnType *soln) {
 		index[i] = i ;
 	}
 
-	cell->sigma->vals[obs] = (pixbCType *) mem_malloc(sizeof(pixbCType));
+	cell->sigma->vals[obs] = (pixbCType*) mem_malloc(sizeof(pixbCType));
 
 
 	/*Calculate fixed section of beta = Cbar*pi (pi is the dual vector associated with equality constraints)*/
 	dVector fbeta = vxMSparse(soln->pi, prob->Cbar, prob->num->prevCols);
 	cell->sigma->vals[obs]->beta = reduceVector(fbeta, prob->coord->CCols, prob->num->cntCcols);
 
-	/*Calculate fixred section of alpha -.5 yQy  + bbar* pi + yunder nu - ybar mu)*/
-	cell->sigma->vals[obs]->alpha = vXvSparse(soln->pi, prob->bBar) + vXvSparse(soln->lmu, prob->lBar) + vXvSparse(soln->umu, prob->uBar);
-	if ( prob->sp->objQ != NULL) {
+
+	cell->sigma->vals[obs]->alpha = 0;
+	
 		dVector yTopQbar = vxMSparse(soln->y, prob->sp->objQ, prob->num->cols);
-		cell->sigma->vals[obs]->alpha -= vXv(yTopQbar, soln->y, index, prob->num->cols);
+		cell->sigma->vals[obs]->alpha = cell->sigma->vals[obs]->alpha - vXv(yTopQbar, soln->y, index, prob->num->cols);
 		mem_free(yTopQbar);
-	}
+	
+	/*Calculate fixred section of alpha -.5 yQy  + bbar* pi + yunder nu - ybar mu)*/
+	cell->sigma->vals[obs]->alpha = cell->sigma->vals[obs]->alpha + vXvSparse(soln->pi, prob->bBar) + vXvSparse(soln->lmu, prob->lBar) - vXvSparse(soln->umu, prob->uBar);
+
+
+
 	cell->sigma->cnt++;
 
 	mem_free(fbeta);
@@ -82,12 +87,14 @@ void addtoDelta(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVect
 
 	/* calculate alpha and beta*/
 	cell->delta->vals[numPi][obs]->alpha = vXvSparse(cell->lambda->pi[numPi], bOmega)
-																+ vXvSparse(cell->lambda->umu[numPi], uOmega) + vXvSparse(cell->lambda->lmu[numPi], lOmega); /*TO DO: ybar and yund vals start from index 0*/
+																- vXvSparse(cell->lambda->umu[numPi], uOmega) + vXvSparse(cell->lambda->lmu[numPi], lOmega); /*TO DO: ybar and yund vals start from index 0*/
 
 	if ( prob->num->rvCOmCnt > 0 )
 		cell->delta->vals[numPi][obs]->beta = reduceVector(dbeta, prob->coord->rvCOmCols, prob->num->rvCOmCnt);
 	else
 		cell->delta->vals[numPi][obs]->beta = NULL;
+
+
 
 	free(dbeta);
 
@@ -107,9 +114,9 @@ int addtoLambda(lambdaType* lambda, solnType *dual, int numRows, int numCols, bo
 	if ( idx == lambda->cnt ) {
 		/* TODO: New lambda discovered */
 		(*newLambdaFlag) = true;
-		lambda->pi[lambda->cnt]  = duplicVector(dual->pi, numRows+1);
-		lambda->umu[lambda->cnt] = duplicVector(dual->umu, numCols+1);
-		lambda->lmu[lambda->cnt] = duplicVector(dual->lmu, numCols+1);
+		lambda->pi[lambda->cnt]  = duplicVector(dual->pi, numRows);
+		lambda->umu[lambda->cnt] = duplicVector(dual->umu, numCols);
+		lambda->lmu[lambda->cnt] = duplicVector(dual->lmu, numCols);
 		lambda->cnt++;
 	}
 	return idx;
@@ -290,12 +297,17 @@ void freeLambda(lambdaType* lambda) {
 			}
 			mem_free(lambda->y);
 		}
-		if (lambda->pd) {
+
+
+		if (config.ALGOTYPE == 2) {
 			for (int i = 0; i < lambda->cnt; i++) {
-				freemat(lambda->pd[i]);
+				mem_free(lambda->pd[i]->entries);
+				mem_free(lambda->pd[i]);
 			}
 			mem_free(lambda->pd);
 		}
+
+
 		if ( lambda->mubar ) mem_free(lambda->mubar);
 		mem_free(lambda);
 	}
@@ -310,10 +322,11 @@ void freeDelta(deltaType* delta, int numobs) {
 				if (delta->vals[i]) {
 					for (int j = 0; j < numobs; j++) {
 						freeLambdaDelta(delta->vals[i][j]);
-
-						mem_free(delta->dy[i][j]);
-						mem_free(delta->dmu[i][j]);
-						mem_free(delta->dnu[i][j]);
+						if (config.ALGOTYPE == 2) {
+							mem_free(delta->dy[i][j]);
+							mem_free(delta->dmu[i][j]);
+							mem_free(delta->dnu[i][j]);
+						}
 					}
 					mem_free(delta->vals[i]);
 					mem_free(delta->dy[i]);

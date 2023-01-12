@@ -6,7 +6,7 @@
 
 #undef WRITE_FILES
 #undef ALGO_CHECK
-#undef STOCH_CHECK
+#define STOCH_CHECK
 
 typedef enum {
 	FULL,
@@ -342,6 +342,8 @@ Mat* CombineWT(probType* prob, Mat* W, Mat* T, int low, int up, int inact);
 	//Mat* mat;
 	//MatList* next;
 //}MatList;
+
+
 Mat* newmat(int r, int c, double d);
 double det(Mat* M);
 Mat* transSparsM(sparseMatrix* M, int col, int row);

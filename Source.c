@@ -310,7 +310,7 @@ dVector computeBDS(sparseVector* bdsBar, sparseVector* bdsOmega, int numCols) {
 	return bds;
 }//END computeCostCoeff()
 
-/* This function compute the reduced cost of every second stage variables. They will be used to calculate the \mu x b and then added to the \pi x b. */
+/* This function compute the reduced cost of every second stage variables. They will be used to calculate the \mu x b and then toled to the \pi x b. */
 int getBoundDual(modelPtr *model, int numCols, double* mu_up, double* mu_low) {
 	dVector u, dj;
 
@@ -602,7 +602,6 @@ int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* C
 	if ( newLambdaFlag ) {
 
 		addtoSigma(cell, prob, dual);
-
 		for (int obs = 0; obs < cell->omega->cnt; obs++) {
 			/* Add a new row to the delta structure for all observations and the latest lambda (lambdaIdx) */
 			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
@@ -614,9 +613,6 @@ int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* C
 		}
 
 	}
-	//	else {
-	//		AddtoDel(cell, prob, COmega, bOmega, ybar, yund,obs, lambdaIdx - 1); /* num position in lambda*/
-	//	}
 
 	return lambdaIdx;
 }//END stocUpdateQP()
@@ -1003,13 +999,20 @@ void AddtoSigmaP(cellType* cell ,solnType* sol , probType* prob ) {
 void addtoLambdaP(cellType* cell, solnType* soln, Mat* W, probType* prob, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega, int low, int up, int inact, dVector dx) {
 
 	int idx = cell->lambda->cnt;
+	//printf("%d \n", cell->lambda->cnt);
 	cell->lambda->cnt++;
-	cell->lambda->y[idx] = (dVector)arr_alloc(prob->num->cols + 1, double);
+	cell->lambda->y[idx]   = (dVector)arr_alloc(prob->num->cols + 1, double);
 	cell->lambda->umu[idx] = (dVector)arr_alloc(prob->num->cols + 1, double);
 	cell->lambda->lmu[idx] = (dVector)arr_alloc(prob->num->cols + 1, double);
-	cell->lambda->pi[idx] = (dVector)arr_alloc(prob->num->rows + 1, double);
+	cell->lambda->pi[idx]  = (dVector)arr_alloc(prob->num->rows + 1, double);
 	/* stores the vector [yI,PI,nuL,muU] bar */
-	cell->lambda->pd[idx] = newmat(prob->num->cols + prob->num->rows, 1, 0);
+	//cell->lambda->pd[idx] = (Mat*)mem_malloc(sizeof(Mat));
+	//cell->lambda->pd[idx]->entries = (dVector)arr_alloc(prob->num->cols + prob->num->rows, double);
+		
+	
+	//cell->lambda->pd[idx]->row = prob->num->cols + prob->num->rows; 
+	//cell->lambda->pd[idx]->col = 1;
+
 	Mat* rhyu = newmat(prob->num->rows + up, 1, 0);
 
 	/* Calculate yBar = y - [w,T]delta */
