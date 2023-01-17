@@ -215,9 +215,10 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 				}
 
 				prob[t]->sp->objQ->cnt++;
-				prob[t]->sp->objQ->col[prob[t]->sp->objQ->cnt] = orig->objQ->col[r1] - tim->col[t];
-				prob[t]->sp->objQ->row[prob[t]->sp->objQ->cnt] = orig->objQ->row[r1] - tim->col[t];
+				prob[t]->sp->objQ->col[prob[t]->sp->objQ->cnt] = orig->objQ->col[r1] - tim->col[t] + 1;
+				prob[t]->sp->objQ->row[prob[t]->sp->objQ->cnt] = orig->objQ->row[r1] - tim->col[t] + 1;
 				prob[t]->sp->objQ->val[prob[t]->sp->objQ->cnt] = orig->objQ->val[r1];
+ 
 			}
 		}
 	}

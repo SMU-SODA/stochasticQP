@@ -4,9 +4,9 @@
 #include "./smpsReader/prob.h"
 
 
-#undef WRITE_FILES
+#define WRITE_FILES
 #undef ALGO_CHECK
-#define STOCH_CHECK
+#undef STOCH_CHECK
 
 typedef enum {
 	FULL,

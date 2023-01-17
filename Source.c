@@ -475,11 +475,14 @@ oneProblem *newMaster(oneProblem *probSP) {
 
 
 		stage0->objQ->cnt = probSP->objQ->cnt;
-		for (int i = 0; i < probSP->objQ->cnt; i++) {
-			stage0->objQ->val[i] = probSP->objQ->val[i];
+		for (int i = 1; i <= probSP->objQ->cnt; i++) {
+			stage0->objQ->val[i ] = probSP->objQ->val[i ];
 			stage0->objQ->col[i] = probSP->objQ->col[i];
-			stage0->objQ->row[i] = probSP->objQ->row[i];
+			stage0->objQ->row[i ] = probSP->objQ->row[i];
 		}
+
+
+
 	}
 	else { stage0->objQ = NULL; }
 	stage0->objSense = probSP->objSense;
