@@ -3,7 +3,11 @@ INDEP         DISCRETE
     RHS       DNODE1      0.5                      0.00005
     RHS       DNODE1      1.0                      0.00125
     RHS       DNODE1      2.5                      0.02150
-    RHS       DNODE1      3.5                      0.28570
+    RHS       DNODE1      3.5                      0.05714
+    RHS       DNODE1      3.51                     0.05714
+    RHS       DNODE1      3.52                     0.05714
+    RHS       DNODE1      3.53                     0.05714
+    RHS       DNODE1      3.54                     0.05714
     RHS       DNODE1      5.0                      0.38300
     RHS       DNODE1      6.5                      0.28570
     RHS       DNODE1      7.5                      0.02150
@@ -11,7 +15,11 @@ INDEP         DISCRETE
     RHS       DNODE1      9.5                      0.00005
 *
     RHS       DNODE2      0.0                      0.00130
-    RHS       DNODE2      1.5                      0.02150
+    RHS       DNODE2      1.5                      0.0043
+    RHS       DNODE2      1.51                     0.0043
+    RHS       DNODE2      1.52                     0.0043
+    RHS       DNODE2      1.53                     0.0043
+    RHS       DNODE2      1.54                     0.0043
     RHS       DNODE2      2.5                      0.28570
     RHS       DNODE2      4.0                      0.38300
     RHS       DNODE2      5.5                      0.28570
