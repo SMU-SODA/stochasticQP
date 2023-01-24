@@ -1271,7 +1271,7 @@ void CalC(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D , Mat
 			elm++;
 		}
 	}
-
+	showmat(M1);
 	invM1 = inverse(M1);
 
 	/* Build Matrix M2 Which is equal to [QIU , 0 ; DMU , -I] */

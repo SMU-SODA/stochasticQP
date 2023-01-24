@@ -1,5 +1,5 @@
 * ENCODING=ISO-8859-1
-NAME          IloCplex
+NAME          soda30
 ROWS
  N  obj1               
  E  fbDA[0][1][0]      
@@ -146,14 +146,14 @@ ROWS
  E  dcRT[0][28,8][0]   
  E  dcRT[0][28,6][0]   
  E  refAngleRT[0][1][0]
- L  dgRTP[0][1][0]     
- L  dgRTP[0][2][0]     
- L  dgRTP[0][3][0]     
- L  dgRTP[0][4][0]     
- L  dgRTP[0][5][0]     
- L  dgRTP[0][6][0]     
- L  gaRT[0][3][0]      
- L  gaRT[0][5][0]      
+ E  dgRTP[0][1][0]     
+ E  dgRTP[0][2][0]     
+ E  dgRTP[0][3][0]     
+ E  dgRTP[0][4][0]     
+ E  dgRTP[0][5][0]     
+ E  dgRTP[0][6][0]     
+ E  gaRT[0][3][0]      
+ E  gaRT[0][5][0]      
 COLUMNS
     gen[0][1](0)         obj1                                      40
     gen[0][1](0)         fbDA[0][1][0]                              1
@@ -709,20 +709,16 @@ COLUMNS
     RTtheta[0][29](0)    dcRT[0][30,29][0]                        100
     RTtheta[0][30](0)    dcRT[0][30,27][0]                       -100
     RTtheta[0][30](0)    dcRT[0][30,29][0]                       -100
-    RTetaP[0][1](0)      obj1                                      48
     RTetaP[0][1](0)      fbRT[0][1][0]                              1
     RTetaP[0][1](0)      dgRTP[0][1][0]                             1
-    RTetaM[0][1](0)      obj1                                      32
     RTetaM[0][1](0)      fbRT[0][1][0]                             -1
     RTetaM[0][1](0)      dgRTP[0][1][0]                            -1
     RTetaP[0][2](0)      fbRT[0][2][0]                              1
     RTetaP[0][2](0)      dgRTP[0][2][0]                             1
     RTetaM[0][2](0)      fbRT[0][2][0]                             -1
     RTetaM[0][2](0)      dgRTP[0][2][0]                            -1
-    RTetaP[0][3](0)      obj1                                      54
     RTetaP[0][3](0)      fbRT[0][5][0]                              1
     RTetaP[0][3](0)      dgRTP[0][3][0]                             1
-    RTetaM[0][3](0)      obj1                                      36
     RTetaM[0][3](0)      fbRT[0][5][0]                             -1
     RTetaM[0][3](0)      dgRTP[0][3][0]                            -1
     RTetaP[0][4](0)      fbRT[0][8][0]                              1
@@ -731,17 +727,13 @@ COLUMNS
     RTetaM[0][4](0)      fbRT[0][8][0]                             -1
     RTetaM[0][4](0)      dgRTP[0][4][0]                            -1
     RTetaM[0][4](0)      gaRT[0][3][0]                             -1
-    RTetaP[0][5](0)      obj1                        50.3999996185303
     RTetaP[0][5](0)      fbRT[0][11][0]                             1
     RTetaP[0][5](0)      dgRTP[0][5][0]                             1
-    RTetaM[0][5](0)      obj1                        33.6000003814697
     RTetaM[0][5](0)      fbRT[0][11][0]                            -1
     RTetaM[0][5](0)      dgRTP[0][5][0]                            -1
-    RTetaP[0][6](0)      obj1                                      96
     RTetaP[0][6](0)      fbRT[0][13][0]                             1
     RTetaP[0][6](0)      dgRTP[0][6][0]                             1
     RTetaP[0][6](0)      gaRT[0][5][0]                              1
-    RTetaM[0][6](0)      obj1                                      64
     RTetaM[0][6](0)      fbRT[0][13][0]                            -1
     RTetaM[0][6](0)      dgRTP[0][6][0]                            -1
     RTetaM[0][6](0)      gaRT[0][5][0]                             -1
@@ -787,6 +779,13 @@ COLUMNS
     RTetaM[0][26](0)     fbRT[0][29][0]                            -1
     RTetaP[0][27](0)     fbRT[0][30][0]                             1
     RTetaM[0][27](0)     fbRT[0][30][0]                            -1
+    S1                   dgRTP[0][1][0]                             1
+    S2                   dgRTP[0][2][0]                             1
+    S3                   dgRTP[0][3][0]                             1
+    S4                   dgRTP[0][4][0]                             1
+    S5                   dgRTP[0][5][0]                             1
+    S6                   dgRTP[0][6][0]                             1    
+    S7                   gaRT[0][3][0]                              1
 RHS
     rhs                  dgRTP[0][1][0]                           200
     rhs                  dgRTP[0][2][0]                            80
@@ -1192,6 +1191,89 @@ QUADOBJ
     gen[0][4](0)        gen[0][4](0)                            0.00834
     gen[0][5](0)        gen[0][5](0)                            0.025
     gen[0][6](0)        gen[0][6](0)                            0.025
+    RTflow[0][1,2](0)    RTflow[0][1,2](0)	                 0.01
+    RTflow[0][1,3](0)	 RTflow[0][1,3](0)                       0.01
+    RTflow[0][2,4](0)	 RTflow[0][2,4](0)	                 0.01
+    RTflow[0][3,4](0)	 RTflow[0][3,4](0)	                 0.01
+    RTflow[0][2,5](0)	 RTflow[0][2,5](0)	                 0.01
+    RTflow[0][2,6](0)	 RTflow[0][2,6](0)	                 0.01
+    RTflow[0][4,6](0)	 RTflow[0][4,6](0)	                 0.01
+    RTflow[0][5,7](0)	 RTflow[0][5,7](0)	                 0.01
+    RTflow[0][6,7](0)    RTflow[0][6,7](0)	                 0.01
+    RTflow[0][6,8](0)	 RTflow[0][6,8](0)	                 0.01
+    RTflow[0][6,9](0)	 RTflow[0][6,9](0)	                 0.01
+    RTflow[0][6,10](0)	 RTflow[0][6,10](0)	                 0.01
+    RTflow[0][9,11](0)	 RTflow[0][9,11](0)	                 0.01
+    RTflow[0][9,10](0)	 RTflow[0][9,10](0)	                 0.01
+    RTflow[0][4,12](0)	 RTflow[0][4,12](0)                      0.01
+    RTflow[0][12,13](0)	 RTflow[0][12,13](0)	                 0.01
+    RTflow[0][12,14](0)	 RTflow[0][12,14](0)	                 0.01
+    RTflow[0][12,15](0)	 RTflow[0][12,15](0)	                 0.01
+    RTflow[0][12,16](0)	 RTflow[0][12,16](0)	                 0.01
+    RTflow[0][14,15](0)	 RTflow[0][14,15](0)	                 0.01
+    RTflow[0][16,17](0)	 RTflow[0][16,17](0)	                 0.01
+    RTflow[0][15,18](0)	 RTflow[0][15,18](0)	                 0.01
+    RTflow[0][18,19](0)	 RTflow[0][18,19](0)	                 0.01
+    RTflow[0][19,20](0)	 RTflow[0][19,20](0)	                 0.01
+    RTflow[0][10,20](0)	 RTflow[0][10,20](0)	                 0.01
+    RTflow[0][10,17](0)	 RTflow[0][10,17](0)	                 0.01
+    RTflow[0][10,21](0)	 RTflow[0][10,21](0)	                 0.01
+    RTflow[0][10,22](0)	 RTflow[0][10,22](0)	                 0.01
+    RTflow[0][21,22](0)	 RTflow[0][21,22](0)	                 0.01
+    RTflow[0][15,23](0)	 RTflow[0][15,23](0)             	 0.01
+    RTflow[0][22,24](0)	 RTflow[0][22,24](0)	                 0.01
+    RTflow[0][23,24](0)	 RTflow[0][23,24](0)	                 0.01
+    RTflow[0][24,25](0)  RTflow[0][24,25](0)	                 0.01
+    RTflow[0][25,26](0)	 RTflow[0][25,26](0)	                 0.01
+    RTflow[0][25,27](0)	 RTflow[0][25,27](0)	                 0.01
+    RTflow[0][28,27](0)	 RTflow[0][28,27](0)	                 0.01
+    RTflow[0][27,29](0)	 RTflow[0][27,29](0)	                 0.01
+    RTflow[0][27,30](0)	 RTflow[0][27,30](0)	                 0.01
+    RTflow[0][29,30](0)	 RTflow[0][29,30](0)	                 0.01
+    RTflow[0][8,28](0)	 RTflow[0][8,28](0)	                 0.01
+    RTflow[0][6,28](0)	RTflow[0][6,28](0)	                 0.01
+    RTtheta[0][1](0)	RTtheta[0][1](0)                         0.01
+    RTtheta[0][2](0)	RTtheta[0][2](0)	                 0.01
+    RTtheta[0][3](0)	RTtheta[0][3](0)	                 0.01
+    RTtheta[0][4](0)	RTtheta[0][4](0)                         0.01
+    RTtheta[0][5](0)	RTtheta[0][5](0)	                 0.01
+    RTtheta[0][6](0)	RTtheta[0][6](0)	                 0.01
+    RTtheta[0][7](0)	RTtheta[0][7](0)	                 0.01
+    RTtheta[0][8](0)	RTtheta[0][8](0)	                 0.01
+    RTtheta[0][9](0)	RTtheta[0][9](0)	                 0.01
+    RTtheta[0][10](0)	RTtheta[0][10](0)	                 0.01
+    RTtheta[0][11](0)	RTtheta[0][11](0)	                 0.01
+    RTtheta[0][12](0)	RTtheta[0][12](0)	                 0.01
+    RTtheta[0][13](0)	RTtheta[0][13](0)	                 0.01
+    RTtheta[0][14](0)	RTtheta[0][14](0)	                 0.01
+    RTtheta[0][15](0)	RTtheta[0][15](0)	                 0.01
+    RTtheta[0][16](0)	RTtheta[0][16](0)	                 0.01
+    RTtheta[0][17](0)	RTtheta[0][17](0)	                 0.01
+    RTtheta[0][18](0)	RTtheta[0][18](0)	                 0.01
+    RTtheta[0][19](0)	RTtheta[0][19](0)	                 0.01
+    RTtheta[0][20](0)	RTtheta[0][20](0)	                 0.01
+    RTtheta[0][21](0)	RTtheta[0][21](0)	                 0.01
+    RTtheta[0][22](0)	RTtheta[0][22](0)	                 0.01
+    RTtheta[0][23](0)	RTtheta[0][23](0)	                 0.01
+    RTtheta[0][24](0)	RTtheta[0][24](0)	                 0.01
+    RTtheta[0][25](0)	RTtheta[0][25](0)	                 0.01
+    RTtheta[0][26](0)	RTtheta[0][26](0)	                 0.01
+    RTtheta[0][27](0)	RTtheta[0][27](0)	                 0.01
+    RTtheta[0][28](0)	RTtheta[0][28](0)	                 0.01
+    RTtheta[0][29](0)	RTtheta[0][29](0)	                 0.01
+    RTtheta[0][30](0)	RTtheta[0][30](0)	                 0.01
+    RTetaP[0][1](0)      RTetaP[0][1](0)                           96
+    RTetaM[0][1](0)      RTetaM[0][1](0)                           64
+    RTetaP[0][2](0)      RTetaP[0][2](0)                         0.01
+    RTetaM[0][2](0)      RTetaM[0][2](0)                         0.01
+    RTetaP[0][3](0)      RTetaP[0][3](0)                          108
+    RTetaM[0][3](0)      RTetaM[0][3](0)                           72
+    RTetaP[0][4](0)      RTetaP[0][4](0)                         0.01
+    RTetaM[0][4](0)      RTetaM[0][4](0)                         0.01
+    RTetaP[0][5](0)      RTetaP[0][5](0)             100.799999237061
+    RTetaM[0][5](0)      RTetaM[0][5](0)             67.2000007629395
+    RTetaP[0][6](0)      RTetaP[0][6](0)                          192
+    RTetaM[0][6](0)      RTetaM[0][6](0)                          128
     RTetaP[0][7](0)      RTetaP[0][7](0)                         1600
     RTetaM[0][7](0)      RTetaM[0][7](0)                         2400
     RTetaP[0][8](0)      RTetaP[0][8](0)                         1600
@@ -1234,4 +1316,11 @@ QUADOBJ
     RTetaM[0][26](0)     RTetaM[0][26](0)                        2400
     RTetaP[0][27](0)     RTetaP[0][27](0)                        1600
     RTetaM[0][27](0)     RTetaM[0][27](0)                        2400
+    S1	                S1               	                 0.01
+    S2	                S2	                                 0.01
+    S3          	S3	                                 0.01
+    S4           	S4	                                 0.01
+    S5	                S5	                                 0.01
+    S6	                S6 	                                 0.01
+    S7  	        S7	                                 0.01  
 ENDATA

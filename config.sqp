@@ -11,16 +11,16 @@ MAX_ITER   100
 MASTER_TYPE 5
 
 // Type of algorithm to employ: full solve (0), dual-based (1), and partition-based (2)
-ALGOTYPE 0
+ALGOTYPE 2
 
 // Set to (1) if sample average approximation is to be constructed
 SAA 1
 
 // Number of observations to be used to set the sample average approximation
-MAX_OBS 50000
+MAX_OBS 5
 
 // A fraction (0,1] to determine what fraction of samples are solved
-SAMPLE_FRACTION 0.0005
+SAMPLE_FRACTION 0.1
 
 // Run seeds
 RUN_SEED    3554548844580680

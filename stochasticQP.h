@@ -325,8 +325,12 @@ solnType* buildSolnType (numType *num);
 void freeSolnType(solnType *soln);
 
 void VsumVsparse(dVector result , dVector v, sparseVector* vs , int len);
-stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* COmega, sparseVector* bOmega,
-		sparseVector* uOmega, sparseVector* lOmega);
+
+
+int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* COmega, sparseVector* bOmega,
+	sparseVector* uOmega, sparseVector* lOmega);
+
+
 void PartCalc(solnType* sol, dVector yund, dVector ybar, int numc, int* part, int* up, int* inact, int* low);
 PartitionType *newPartition(int Partsize);
 oneCut * partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset);
@@ -370,5 +374,8 @@ void removecol2(Mat* A, Mat* B, int c);
 void showmat(Mat* A);
 int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseMatrix* COmega, sparseVector* lOmega,
 	sparseVector* uOmega, solnType* soln, long long int* basis, int* partIndx, dVector dx, pixbCType** deltax, double** dy, double** dld, double** dnu, double** dmu);
+
+
+
 
 void AddtoDettaX(probType* prob, cellType* cell, pixbCType** delta, dVector deltaX, int low, int up, int inact, int partindex, double** deltay, double** deltaLd, double** dnu, double** dmu);

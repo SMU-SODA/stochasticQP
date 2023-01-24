@@ -65,6 +65,7 @@ int main(int argc, char* argv[]) {
 		}
 
 		/* Invoke the algorithm */
+
 		runAlgo(prob, stoch, cell);
 
 		printf("Successfully completed executing the algorithm.\n");

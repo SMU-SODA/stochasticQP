@@ -62,6 +62,9 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 			/*3b. update sigma, lambda, and delta structures */
 			lambdaIdx = stocUpdateQP(cell, prob, soln, COmega, bOmega, uOmega, lOmega);
 
+
+
+
 			/*3c. Calculate observations specific coefficients. */
 			double* beta = (double*)arr_alloc(prob->num->prevCols + 1, double);
 			alpha = cell->sigma->vals[lambdaIdx]->alpha + cell->delta->vals[lambdaIdx][obs]->alpha;

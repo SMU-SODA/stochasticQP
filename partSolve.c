@@ -67,10 +67,10 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 		dx[i] = cell->candidX[i] - cell->incumbX[i];
 	}
 	int size = 1000;
-	double*** dnu;
-	double*** dmu;
-	double*** dy;
-	double*** dld;
+	double** dnu;
+	double** dmu;
+	double** dy;
+	double** dld;
 	pixbCType** deltax; /*size has to be fixed- FREE*/
 	dnu = (double**)arr_alloc(size, double*); /*size has to be fixed- FREE*/;
 	dmu = (double**)arr_alloc(size, double*); /*size has to be fixed- FREE*/;

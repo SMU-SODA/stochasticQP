@@ -4,30 +4,35 @@
 #include "stochasticQP.h"
 
 void showmat(Mat* A) {
+	FILE* fptr = NULL;
+	fptr = openFile("C:\\Users\\Niloofar\\OutputFolder\\stochasticQP\\soda30\\", "mat1.txt", "w");
 	if (A->row > 0 && A->col > 0) {
 		int k = 0;
-		printf("[");
+		fprintf(fptr, "[");
 		for (int i = 1; i <= A->row; i++) {
+			fprintf(fptr, "[");
 			for (int j = 1; j <= A->col; j++) {
 				if (j < A->col) {
-					printf("%f\t", A->entries[k++]);
+					fprintf(fptr, "%f,", A->entries[k++]);
 				}
 				else {
-					printf("%f", A->entries[k++]);
+					fprintf(fptr, "%f]", A->entries[k++]);
 				}
 			}
 			if (i < A->row) {
-				printf("\n");
+				fprintf(fptr, ",");
 			}
 			else {
-				printf("]\n");
+				fprintf(fptr, "]\n");
 			}
 		}
-		printf("\n");
+		fprintf(fptr, "\n");
 	}
 	else {
-		printf("[]");
+		fprintf(fptr, "[]");
 	}
+
+	fclose(fptr);
 }
 
 Mat* newmat(int r,int c,double d){
@@ -289,7 +294,7 @@ double det(Mat* M) {
 	for (int j = 1; j <= M->col; j++) {
 		double c = M->entries[j - 1];
 		removecol2(M1, M2, j);
-		if (c > 0.001 || c < -0.001) {
+		if (c > 0.0001 || c < -0.0001) {
 			d += si * det(M2) * c;
 		}
 		si *= -1;
@@ -327,6 +332,7 @@ Mat* adjoint(Mat* A) {
 }
 
 Mat* inverse(Mat* A) {
+	
 	double de = det(A);
 	Mat* B = adjoint(A);
 
