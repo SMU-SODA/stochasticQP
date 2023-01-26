@@ -1,0 +1,8 @@
+STOCH         soda30
+INDEP         DISCRETE
+    RHS       fbRT[0][8][0]       0.5                      0.5
+    RHS       fbRT[0][8][0]       1.0                      0.5
+*
+    RHS       fbRT[0][13][0]      0.5                      0.5
+    RHS       fbRT[0][13][0]      1.0                      0.5
+ENDATA

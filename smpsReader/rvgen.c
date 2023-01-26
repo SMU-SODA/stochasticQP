@@ -64,8 +64,11 @@ void generateOmega(stocType *stoc, dVector observ, double minVal, long long *see
 		else if ( !strcmp(stoc->type, "SIMULATOR") ) {
 			/* Using an external simulator */
 			if ( readSimLine(fid, observ, stoc->numOmega, true) ) {
-				errMsg("algorithm", "evaluate", "failed to change right-hand side with random observations",0);
+				errMsg("algorithm", "generateOmega", "failed to obtain scenario from the simulator",0);
 			}
+		}
+		else if ( !strcmp(stoc->type, "SCENARIOS_DISCRETE") ) {
+			generateScenario(stoc, observ, seed);
 		}
 		else {
 			errMsg("rvgen", "generateOmega", "unknown section type in omegastuff", 0);
@@ -143,6 +146,15 @@ void generateLinTran(stocType *stoc, dVector observ, int groupID, double minVal,
 	return;
 }//END generateLinTran()
 
+void generateScenario(stocType *stoc, dVector observ, long long *seed) {
+	int n, val; /* select which block */
+
+	val = randInteger(seed, stoc->numVals[0]); /* read block realizations */
+	for (n = 0; n < stoc->numOmega; n++)
+		observ[n] = stoc->vals[n][val];
+
+}//END generateScenario()
+
 /* The following inverse normal variate generator was published by Micheal J. Wichura, University of Chicago in Applied Statistics, as Algorithm AS 241.  The C function normal() was converted from the
  * Fortran function PPND7 and produces normal random variates for the lower tail of a normal distribution accurate to approx. 7 significant figures. */
 int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *seed) {
@@ -152,7 +164,7 @@ int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *s
 	float endval;
 
 	for (i = 0; i < numOmega; i++) {
-		p = scalit(0, 1, seed);
+		p = scalit(pow(10,-35), 1-pow(10,-5), seed);
 
 		zero = 0.0;
 		one = 1.0;
@@ -192,7 +204,7 @@ int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *s
 		if (fabs(q) <= split1) {
 			r = const1 - q * q;
 			endval = q * (((a3 * r + a2) * r + a1) * r + a0)
-													/ (((b3 * r + b2) * r + b1) * r + one);
+																			/ (((b3 * r + b2) * r + b1) * r + one);
 			observ[i] = mu[i] + stdev[i] * endval;
 			continue;
 		}
@@ -210,13 +222,13 @@ int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *s
 		if (r <= split2) {
 			r = r - const2;
 			endval = (((c3 * r + c2) * r + c1) * r + c0)
-													/ ((d2 * r + d1) * r + one);
+																			/ ((d2 * r + d1) * r + one);
 			observ[i] = endval;
 		}
 		else {
 			r = r - split2;
 			endval = (((e3 * r + e2) * r + e1) * r + e0)
-													/ ((f2 * r + f1) * r + one);
+																			/ ((f2 * r + f1) * r + one);
 			observ[i] = endval;
 		}
 		if (q < 0)
@@ -239,7 +251,7 @@ int weibull(double scaleParam, double shapeParam, int numOmega, dVector observ, 
 	return 0;
 }//END weibull()
 
-double scalit(float lower, float upper, long long *seed) {
+float scalit(float lower, float upper, long long *seed) {
 	float val, wide;
 
 	wide = upper - lower;
@@ -248,7 +260,7 @@ double scalit(float lower, float upper, long long *seed) {
 	return ((wide * val) + lower);
 }//END scalit()
 
-float randUniform_old(long long *SEED) {
+float randUniform(long long *SEED) {
 	static int lo_bits, hi_bits;
 
 	lo_bits = ((*SEED) & 0xFFFFL) * 16807;
@@ -258,114 +270,87 @@ float randUniform_old(long long *SEED) {
 	return ((*SEED) < 0 ? ((*SEED) += 0x7FFFFFFFL) : (*SEED)) * 4.656612875E-10;
 }//END randUniform()
 
-int randInteger_old(long long *SEED, int iMax) {
+float randUniform_new(long long *SEED) {
 	static int lo_bits, hi_bits;
-	int val;
 
 	lo_bits = ((*SEED) & 0xFFFFL) * 16807;
 	hi_bits = (int) (((*SEED) >> 16) * 16807) + (lo_bits >> 16);
 	*SEED = ((lo_bits & 0xFFFFL) - 0x7FFFFFFFL) + ((hi_bits & 0x7FFFL) << 16) + (hi_bits >> 15);
 
 	srand((unsigned) (*SEED));
-	val = rand() % iMax;
-
-	return val;
-}//END randInteger()
-
-double randUniform() {
-	double val = ((double) rand()/((double) RAND_MAX+1));
-	return val;
+	return (rand()/RAND_MAX+1);
 }
 
-int randInteger(int iMax) {
+int randInteger(long long *seed, int iMax) {
+	return (int) (randUniform(seed) * iMax);
+}
 
-	int val = rand() % iMax;
-
-	return val;
-}//END randInteger_old()
-
-/* This function uses a sampling technique to set up a sample average approximation problem. The sampling procedure is conducted according to the continuous distribution and parameters provided in
- * stocType. The function takes number of samples as an input from the user. The function outputs the simulated observations as a matrix with each row corresponding to a random variable, and column corresponds to
- * a simulated observation. */
-int setupSAA(stocType *stoc, cString fname, long long *seed, dVector *simObservVals, dVector probs,
-		int *numObs, int desiredSampleSize, double TOLERANCE) {
+int setupSAA(stocType *stoc, cString fname, long long *seed, dVector **simObservVals, dVector probs, iVector weights,
+		int *desiredSampleSize, double TOLERANCE) {
 	dVector observ;
-	iVector weights;
 
-	if ( desiredSampleSize == 0 ) {
+	if ( (*desiredSampleSize) == 0 ) {
 		/* number of samples in SAA */
 		printf("Enter the number of samples used for setting up the SAA : ");
-		scanf("%d", numObs);
+		scanf("%d", desiredSampleSize);
 	}
 
-	printf("Generating SAA with %d samples.\n", desiredSampleSize);
-	(*numObs) = 0;
-
-	weights = (iVector) arr_alloc(desiredSampleSize, int);
+	printf("Generating SAA with %d samples.\n", (*desiredSampleSize));
 
 	if ( strcmp(stoc->type, "SIMULATOR") ) {
 		/* Using the internal simulator to generate samples */
-		for (int obs = 0; obs < desiredSampleSize; obs++ ) {
+		for (int obs = 0; obs < (*desiredSampleSize); obs++ ) {
 			observ = (dVector) arr_alloc(stoc->numOmega+1, double);
-			if ( strcmp(stoc->type, "BLOCKS_DISCRETE") ) {
+			if ( !strcmp(stoc->type, "BLOCKS_DISCRETE") ) {
 				generateBlocks(stoc, observ+1, 0, seed);
 			}
-			else if ( strcmp(stoc->type, "INDEP_DISCRETE") ) {
+			else if ( !strcmp(stoc->type, "INDEP_DISCRETE") ) {
 				generateIndep(stoc, observ+1, 0, seed);
 			}
-			else if ( strcmp(stoc->type, "INDEP_NORMAL") ) {
+			else if ( !strcmp(stoc->type, "INDEP_NORMAL") ) {
 				normal(stoc->mean, stoc->vals[0], stoc->numOmega, observ+1, seed);
 			}
-			else if ( strcmp(stoc->type, "LINTRAN") ) {
+			else if ( !strcmp(stoc->type, "LINTRAN") ) {
 				generateLinTran(stoc, observ+1, 0, TOLERANCE, seed);
+			}
+			else if ( !strcmp(stoc->type, "SCENARIOS_DISCRETE")) {
+				generateScenario(stoc, observ, seed);
 			}
 			else {
 				errMsg("simulate", "setupSAA", "no procedure for simulating distribution type", 0);
 				return 1;
 			}
-			observ[0] = oneNorm(observ+1, stoc->numOmega);
 
-			/* Check to see if the observation already exists. */
-			int cnt = 0;
-			while ( cnt < (*numObs) ) {
-				if ( equalVector(observ, simObservVals[cnt], stoc->numOmega+1, TOLERANCE) )
-					break;
-				cnt++;
-			}
-			if ( cnt < (*numObs) ) {
-				/* Repeated observation, increase the weight. */
-				weights[cnt]++;
-				mem_free(observ);
-			}
-			else {
-				/* New observation, set weight to one. */
-				simObservVals[cnt] = observ;
-				weights[cnt] = 1;
-				(*numObs)++;
-			}
+			/* Save the new observation and set weight to one. */
+			(*simObservVals)[obs] = observ;
+			weights[obs] = 1;
 		}
 	}
 	else {
 		/* Using the external simulator generated sample that is stored in a file with name _fname_ */
 		/* Allocate memory to elements of omegaType in cell */
-		for (int obs = 0; obs < desiredSampleSize; obs++ ) {
-			simObservVals[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
-			probs[(*numObs)] = 1/(double) desiredSampleSize;
-			(*numObs)++;
+		for (int obs = 0; obs < (*desiredSampleSize); obs++ ) {
+			(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
+			probs[obs] = 1/(double) (*desiredSampleSize);
+			weights[obs] = 1;
 		}
-		if ( readSimData(fname, simObservVals, stoc->numOmega, numObs) ) {
+		if ( readSimData(fname, (*simObservVals), stoc->numOmega, (*desiredSampleSize)) ) {
 			errMsg("read", "setupSAA", "failed to read simulated data", 0);
 			return 1;
 		}
 	}
 
+	for ( int cnt = 0; cnt < (*desiredSampleSize); cnt++ ) {
+		probs[cnt] = weights[cnt]/(double) (*desiredSampleSize);
+	}
+
 	return 0;
 }//END setupSAA()
 
-int readSimData(cString fname, dVector *simObservVals, int numRV, int *numSamples) {
+int readSimData(cString fname, dVector *simObservVals, int numRV, int numSamples) {
 	FILE *fid;
-	int cnt = 0, bufferSize = numRV*NAMESIZE;
-	char buffer[999];
+	int cnt = 0, bufferSize = 100*NAMESIZE;
+	char buffer[100* NAMESIZE];
 
 	fid = fopen(fname, "r");
 	if ( fid == NULL ) {
@@ -387,7 +372,7 @@ int readSimData(cString fname, dVector *simObservVals, int numRV, int *numSample
 
 	/* Read the rest of the file for data */
 	cnt = 0;
-	while ( fgets(buffer, bufferSize, fid) && cnt < (*numSamples) ) {
+	while ( fgets(buffer, bufferSize, fid) && cnt < numSamples ) {
 		field = strtok (buffer, ","); /* The first column has the row name */
 		field = strtok (NULL, ",");
 		int n = 1;
@@ -397,7 +382,7 @@ int readSimData(cString fname, dVector *simObservVals, int numRV, int *numSample
 		}
 		cnt++;
 	}
-	if ( cnt < (*numSamples) ) {
+	if ( cnt < numSamples ) {
 		printf("Warning:: Simulated file has less number of scenarios than desired.\n");
 	}
 
@@ -405,12 +390,12 @@ int readSimData(cString fname, dVector *simObservVals, int numRV, int *numSample
 }//End readSimData()
 
 int readSimLine(FILE **fid, dVector observ, int numRV, bool simulate) {
-	int		bufferSize = numRV*NAMESIZE, cnt = 0;
-	char 	buffer[999], *field;
+	int		bufferSize = 100*NAMESIZE, cnt = 0;
+	char 	buffer[100*NAMESIZE], *field;
 
 	if (!simulate) {
 		/* Count the column headers to get the number of random variables */
-		char buffer[999];
+		char buffer[100*NAMESIZE];
 		fgets(buffer, numRV*NAMESIZE, (*fid));
 		char *field = strtok(buffer, ",");
 		while(field) {
@@ -437,14 +422,16 @@ int readSimLine(FILE **fid, dVector observ, int numRV, bool simulate) {
 	return 0;
 }//End readSimLine()
 
-void computeSampleMean(dVector *vals, iVector weights, int numRV, int sampleSize, int numObs, dVector sampleMean) {
+void computeSampleStats(dVector *vals, iVector weights, int numRV, int sampleSize, int numObs, dVector *sampleStats, int numStats) {
 
 	for ( int n = 1; n <= numRV; n++ ) {
-		sampleMean[n] = 0.0;
-		for ( int m = 0; m < sampleSize; m++ ) {
-			sampleMean[n] += vals[m][n]*weights[m];
+		for ( int m = 0; m < numStats; m++ ) {
+			sampleStats[m][n] = 0.0;
+			for ( int obs = 0; obs < sampleSize; obs++ ) {
+				sampleStats[m][n] += pow(vals[obs][n], m+1)*weights[obs];
+			}
+			sampleStats[m][n] /= numObs;
 		}
-		sampleMean[n] /= numObs;
 	}
 
 	return;

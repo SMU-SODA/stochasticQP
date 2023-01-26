@@ -80,11 +80,19 @@ modelPtr *setupProblem(const char *Pname, int numvars, int numconstrs, int objse
 	}
 
 	if ( objQ != NULL ) {
-		status =  GRBaddqpterms(model, objQ->cnt, objQ->row, objQ->col, objQ->val);
+		iVector row = (iVector)arr_alloc(objQ->cnt, int);
+		iVector col = (iVector)arr_alloc(objQ->cnt, int);
+		for (int i = 0; i < objQ->cnt; i++) {
+			row[i] = objQ->row[i + 1] - 1;
+			col[i] = objQ->col[i + 1] - 1;
+		}
+		status =  GRBaddqpterms(model, objQ->cnt, row , col, objQ->val+1);
 		if ( status ) {
 			solverErrMsg(status);
 			return NULL;
 		}
+		mem_free(col);
+		mem_free(row);
 	}
 
 	return model;
@@ -276,9 +284,10 @@ int freeProblem(modelPtr *model) {
  * a MIP model). Upon successful completion, this method will populate the solution related attributes of the model. */
 int solveProblem ( modelPtr *model ) {
 	int status, optimstatus;
-
+	GRBsetintparam( env,
+		"method",
+		0);
 	status =  GRBoptimize(model);
-
 	if ( status ) {
 		solverErrMsg(status);
 		return 1;
@@ -387,7 +396,6 @@ int getDualSlack (modelPtr *model, double *dj, int start, int len) {
 	status = getDoubleAttributeArray(model, "RC", start, len, dj+1);
 	if (status)
 		errMsg("solver", "getPrimal", "failed to retrieve the reduced cost", 0);
-
 	return status;
 }//END getDualSlack()
 
@@ -578,7 +586,7 @@ int readProblem(cString probpath, modelPtr **model) {
 	if( status ) {
 		solverErrMsg(status);
 	}
-
+	
 	return status;
 }// END readProblem()
 

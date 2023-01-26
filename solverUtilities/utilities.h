@@ -44,12 +44,14 @@ typedef struct sparseVector_{
 	dVector	val;
 }sparseVector;
 
-typedef struct sparseMatrix_{
+typedef struct{
 	int		cnt;
 	iVector	col;
 	iVector	row;
 	dVector	val;
 }sparseMatrix;
+
+
 
 /* following sub-routines can be found in utility.c */
 FILE *openFile(cString outputDir, cString fname, char *mode);
@@ -110,5 +112,6 @@ iVector iVectorIntersect(iVector a, iVector b, int lenA, int lenB);
 
 unsigned long *encodeIntvec(iVector stream, int len, int wordLength, int maxValue);
 iVector decodeIntvec(unsigned long *codeWord, int len, int wordLength, int maxValue);
+
 
 #endif /* UTILS_H_ */

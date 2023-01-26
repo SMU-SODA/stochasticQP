@@ -1,5 +1,5 @@
 /*
- * utility.c
+ * u tility.c
  *
  *  Created on: Apr 20, 2014
  *      Author: Harsha Gangammanavar
@@ -235,7 +235,7 @@ double vXvSparse(dVector v, sparseVector *vSparse){
 
 	ans = 0.0;
 	for (cnt = 1; cnt <= vSparse->cnt; cnt++)
-		ans += vSparse->val[cnt] * v[vSparse->col[cnt]];
+		ans += vSparse->val[cnt] * v[vSparse->col[cnt]];  //zeo col?/
 
 	return ans;
 }//END vXvSparse()
@@ -258,16 +258,17 @@ dVector MSparsexvSub(sparseMatrix *M, dVector v, dVector ans){
 	return ans;
 }//END MSparsexvSub()
 
-dVector vxMSparse(dVector v, sparseMatrix *M, int len) {
+dVector vxMSparse(dVector v, sparseMatrix* M, int len) {
 	int		cnt;
 	dVector	ans;
 
-	if(!(ans = (dVector) arr_alloc(len+1, double)))
+	if (!(ans = (dVector)arr_alloc(len + 1, double)))
 		errMsg("allocation", "vxMSparse", "ans", 1);
-
+	if (M->cnt > 0) {
 	for (cnt = 1; cnt <= M->cnt; cnt++)
-		ans[M->col[cnt]] += v[M->row[cnt]] * M->val[cnt];
-	ans[0] = oneNorm(ans+1, len);
+		ans[M->col[cnt]] += v[M->row[cnt]] * M->val[cnt]; /*from 0 or 1?*/
+}
+	ans[0] = oneNorm(ans + 1, len);
 
 	return ans;
 }//END PIxT()
@@ -623,7 +624,6 @@ void subVectors(dVector a, dVector b, iVector indices, int len){
 
 }//END subVectors()
 
-
 void freeSparseMatrix(sparseMatrix *M) {
 
 	if (M->col) mem_free(M->col);
@@ -635,8 +635,10 @@ void freeSparseMatrix(sparseMatrix *M) {
 
 void freeSparseVector(sparseVector *v) {
 
-	if (v->col) mem_free(v->col);
-	if (v->val) mem_free(v->val);
-	mem_free(v);
+	if ( v ) {
+		if (v->col) mem_free(v->col);
+		if (v->val) mem_free(v->val);
+		mem_free(v);
+	}
 
 }//END freeSparseMatrix()

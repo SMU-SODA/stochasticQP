@@ -27,6 +27,8 @@ typedef struct {
 	int 	rvColCnt;		/* number of columns effected by randomness */
     int 	rvaOmCnt;		/* number of RVs in dynamics noise dVector a */
 	int 	rvbOmCnt;		/* number of RVs in right-hand side */
+	int 	rvyuOmCnt;		/* number of RVs in right-hand side */
+	int 	rvylOmCnt;		/* number of RVs in lower bound */
     int 	rvcOmCnt;		/* number of RVs in state-cost coefficients */
     int 	rvdOmCnt;		/* number of RVs in stage-cost coefficients */
     int 	rvAOmCnt;		/* number of RVs in dynamics state-matrix A */
@@ -45,9 +47,11 @@ typedef struct {
 	iVector	rvCols;			/* list of all columns in transfer matrix with at least one random element */
 	iVector	rvRows;			/* list of all rows with at least one random variable */
 	iVector	rvbOmRows;		/* list of all right-hand sides with random variables */
-	iVector	rvdOmCols;		/* list of all columns with cost coefficients with random variables */
 	iVector	rvCOmCols;		/* list of all columns with coefficients with random variables */
 	iVector	rvCOmRows;		/* list of all rows with coefficients with random variables */
+	iVector	rvdOmCols;		/* list of all columns with cost coefficients with random variables */
+	iVector	rvyuOmRows;		/* list of all upper bounds with random variables */
+	iVector	rvylOmRows;		/* list of all lower bounds with random variables */
 	iVector	rvOffset;		/* Index where the random variable begin - right-hand side, transfer matrix, and cost coefficients. */
 }coordType;
 
@@ -59,6 +63,8 @@ typedef struct{
 	sparseVector	*bBar;			/* right-hand side b_t */
 	sparseVector	*cBar;			/* state cost coefficients c_t */
 	sparseVector	*dBar;			/* objective function coefficients d_t */
+	sparseVector    *uBar;          /* the mean value of upper bound of variables */
+	sparseVector    *lBar;          /* the mean value of lower bound of variables */
 	sparseMatrix	*Abar;			/* dynamics state matrix A_{t+} */
 	sparseMatrix	*Bbar;			/* dynamics decision matrix B_{t+} */
 	sparseMatrix	*Cbar;			/* transfer matrix C_t */

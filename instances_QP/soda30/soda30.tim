@@ -1,0 +1,5 @@
+TIME          soda30
+PERIODS
+gen[0][1](0)          obj1                               TIME1
+RTflow[0][1,2](0)     fbRT[0][1][0]                      TIME2
+ENDATA

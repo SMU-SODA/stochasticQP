@@ -19,7 +19,6 @@ int readFiles(cString inputDir, cString probName, oneProblem **orig, timeType **
 	if ( (*orig) == NULL ) {
 		errMsg("read", "readFiles", "failed to read problem core file", 0);
 		return 1;
-	
 	}
 
 	/* read problem time file */
@@ -54,36 +53,35 @@ oneProblem *readCore(cString inputDir, cString probName) {
 	/* Locate the problem core file */
 #if _WIN64 || _WIND32
 	sprintf(srcFile, "%s%s\\%s.cor", inputDir, probName, probName);
+	sprintf(dstFile, "%s%s\\%s.mps", inputDir, probName, probName);
 #else
 	sprintf(srcFile, "%s%s/%s.cor", inputDir, probName, probName);
+	sprintf(dstFile, "%s%s/%s.mps", inputDir, probName, probName);
 #endif
 
 	if ( (fptr = fopen(srcFile, "r")) ) {
 
 		/* Change the name with extension *.cor to *.mps. Gurobi does not recognize *.cor. */
-		sprintf(dstFile, "%s%s\\%s.mps", inputDir, probName, probName);
 		rename(srcFile, dstFile);
 
-		/*why do we expect the readproblem to fail? what might happen?*/
-
-		if ((readProblem(dstFile, &model))) /*why do we need the pointer?*/
+		if ((readProblem(dstFile, &model)))
 		{
 			errMsg("solver", "readCore", "failed to read and copy the problem data", 0);
 			return NULL;
 		}
 
+		fptr = fopen(dstFile, "r");
 		rename(dstFile, srcFile);
 	}
 	else {
-		sprintf(srcFile, "%s%s\\%s.mps", inputDir, probName, probName);
-		if ((readProblem(srcFile, &model))) /*why do we need the pointer?*/
+		strcpy(srcFile, dstFile);
+		if ((readProblem(srcFile, &model)))
 		{
 			errMsg("solver", "readCore", "failed to read and copy the problem data", 0);
 			return NULL;
 		}
+
 		fptr = fopen(srcFile, "r");
-		//errMsg("read", "readCore", "failed to open problem core file", 0);
-	//	return NULL;
 	}
 
 	/* NAME section: read problem name and compare with that read earlier */
@@ -180,7 +178,7 @@ oneProblem *readCore(cString inputDir, cString probName) {
 		orig->matcnt[c] = orig->matbeg[c+1] - orig->matbeg[c];
 	orig->matcnt[c] = nzcnt - orig->matbeg[c];
 
-	
+
 
 
 	/* (5) Constraint and variable names. */
@@ -352,6 +350,7 @@ stocType *readStoc(cString inputDir, cString probName, oneProblem *orig, timeTyp
 	/* allocate memory to field locations */
 	if (!(fields = (cString *) arr_alloc(maxFields, cString)) )
 		errMsg("allocation", "readStoc", "field locations", 0);
+
 	for (n = 0; n < maxFields; n++ )
 		if ( !(fields[n] = (cString) arr_alloc(NAMESIZE, char)) )
 			errMsg("allocation", "readStoc", "individual field location", 0);
@@ -359,8 +358,10 @@ stocType *readStoc(cString inputDir, cString probName, oneProblem *orig, timeTyp
 	/* allocate memory to stocType and initialize elements */
 	if ( !(stoc = (stocType *) mem_malloc(sizeof(stocType))) )
 		errMsg("allocation", "readStoc", "stoc", 0);
+
 	if ( !(stoc->type = (cString) arr_alloc(NAMESIZE, char)) )
 		errMsg("allocation", "readStoc", "stoc->type", 0);
+
 	if ( !(stoc->col = (iVector) arr_alloc(maxOmegas, int)) )
 		errMsg("allocation", "readStoc", "stoc->col", 0);
 	if ( !(stoc->row = (iVector) arr_alloc(maxOmegas, int)) )
@@ -383,6 +384,8 @@ stocType *readStoc(cString inputDir, cString probName, oneProblem *orig, timeTyp
 		errMsg("read", "readStoc", "failed to read the problem name", 0);
 		return NULL;
 	}
+
+
 	if ( !(strncmp(fields[0], "STOCH", 5)) )
 		if( strcmp(probName, fields[1]) ) {
 			errMsg("read", "readStoc", "Problem name do not match, in STOCH section", 0);
@@ -390,7 +393,10 @@ stocType *readStoc(cString inputDir, cString probName, oneProblem *orig, timeTyp
 		}
 
 	while ( !(getLine(&fptr, fields, &fieldType, &numFields)) ) {
-		START_OVER: /* Used to continue parsing the stoch file when there are many stochastic elements. */
+
+		START_OVER: /* Used to continue parsing the stoch file when there are many stochastic elements. */ /*??????*/
+
+
 		if ( !(strcmp(fields[0], "INDEP")) ) {
 			if ( readIndep(fptr, fields, orig, maxOmegas, maxVals, stoc, &rvRows, &rvCols) ) {
 				errMsg("read", "readStoc", "failed to read stoch file with independent data", 0);
@@ -398,6 +404,8 @@ stocType *readStoc(cString inputDir, cString probName, oneProblem *orig, timeTyp
 			}
 			goto START_OVER;
 		}
+
+
 		if ( !(strcmp(fields[0], "BLOCKS")) ) {
 			if ( readBlocks(fptr, fields, orig, maxOmegas, maxVals, stoc, &rvRows, &rvCols) ) {
 				errMsg("read", "readStoc", "failed to read stoch file with blocks", 0);
@@ -405,6 +413,7 @@ stocType *readStoc(cString inputDir, cString probName, oneProblem *orig, timeTyp
 			}
 			goto START_OVER;
 		}
+
 		if ( !(strcmp(fields[0], "SCENARIOS")) ) {
 			if ( readScenarios(fptr, fields, orig, tim, maxOmegas, maxVals, stoc) ) {
 				errMsg("read", "readStoc", "failed to read stoch file with scenarios", 0);
@@ -458,10 +467,12 @@ int readIndep(FILE *fptr, cString *fields, oneProblem *orig, int maxOmegas, int 
 	/* allocate memory to hold the names of random variable */
 	if ( !((*rvRows) = (cString *) arr_alloc(maxOmegas, cString)) )
 		errMsg("allocation", "readIndep", "rvNames", 0);
+
+
 	if ( !((*rvCols) = (cString *) arr_alloc(maxOmegas, cString)) )
 		errMsg("allocation", "readIndep", "rvNames", 0);
 
-	if ( !(strcmp(fields[1], "DISCRETE")) ) {
+	if ( !(strcmp(fields[1], "DISCRETE")) ) {  /*what does this do?*/
 		if ( readIndepDiscrete(fptr, fields, maxOmegas, maxVals, rvRows, rvCols, orig, stoc)) {
 			errMsg("read", "readIndep", "failed to read independent discrete random variables", 0);
 			return 1;
@@ -515,7 +526,8 @@ int readIndepDiscrete(FILE *fptr, cString *fields, int maxOmegas, int maxVals, c
 	stoc->mod = NULL;
 
 	while (true) {
-		getLine(&fptr, fields, &strType, &numFields);
+
+		getLine(&fptr, fields, &strType, &numFields); /*getline?*/
 		if (strType != 'f')
 			break;										// Encountered ENDATA or a new group of random variables
 		n = stoc->numOmega - 1;
@@ -532,54 +544,78 @@ int readIndepDiscrete(FILE *fptr, cString *fields, int maxOmegas, int maxVals, c
 			/* new random variable encountered */
 			if ( !((*rvRows)[stoc->numOmega] = (cString) arr_alloc(NAMESIZE, char)) )
 				errMsg("allocation", "readIndep", "rvNames[n]", 0);
+
 			if ( !((*rvCols)[stoc->numOmega] = (cString) arr_alloc(NAMESIZE, char)) )
 				errMsg("allocation", "readIndep", "rvNames[n]", 0);
+
 			if ( !(stoc->vals[stoc->numOmega] = (dVector) arr_alloc(maxVals, double)) )
 				errMsg("allocation", "readIndep","omega.vals[n]", 0);
+
 			if ( !(stoc->probs[stoc->numOmega] = (dVector) arr_alloc(maxVals, double)) )
 				errMsg("allocation", "readIndep", "omega.probs[n]", 0);
 
 			strcpy((*rvCols)[stoc->numOmega], fields[0]);
 			strcpy((*rvRows)[stoc->numOmega], fields[1]);
 			stoc->numVals[stoc->numOmega++] = 0;
+
 			/* identify row and column coordinates in the problem */
 			if ( !(strcmp(fields[0], "RHS")) )
 				n = -1;
 			else {
-				n = 0;
+				n = 0;  
 				while ( n < orig->mac ){
 					if ( !(strcmp((*rvCols)[stoc->numOmega-1], orig->cname[n])) )
 						break;
 					n++;
 				}
 			}
+
+
+
 			if ( n == orig->mac ) {
 				errMsg("read", "readIndepDiscrete", "unknown column name in the stoch file", 0);
 				return 1;
 			}
-			stoc->col[stoc->numOmega-1] = n;
+
+
+			stoc->col[stoc->numOmega-1] = n;  /* finding the stochstic column */
+
+
 			if ( !(strcmp(fields[1], orig->objname)) )
 				n = -1;
 			else {
 				n = 0;
 				while (n < orig->mar ) {
-					if ( !(strcmp((*rvRows)[stoc->numOmega-1], orig->rname[n])) )
+					if ( !(strcmp((*rvRows)[stoc->numOmega-1], orig->rname[n])) ) /*finding the row  orig->rname[n] dose not have var names*/
 						break;
 					n++;
 				}
+
+				if(!(strcmp(fields[1], "BDU"))){
+					n = -2;
+				}
+				else if (!(strcmp(fields[1], "BDL"))) {
+					n = -3;
+				}
+				/*check if it is BDU -2 and BDL IS -3*/
 			}
+
+
 			if ( n == orig->mar ) {
 				errMsg("read", "readIndepDiscrete", "unknown row name in the stoch file", 0);
 				return 1;
 			}
 			stoc->row[stoc->numOmega-1] = n;
+
 		}
+
 		if ( numFields == 4) {
 			stoc->vals[stoc->numOmega-1][stoc->numVals[stoc->numOmega-1]] = str2float(fields[2]);
 			stoc->probs[stoc->numOmega-1][stoc->numVals[stoc->numOmega-1]] = str2float(fields[3]);
 			stoc->mean[stoc->numOmega-1] += str2float(fields[2])*str2float(fields[3]);
 			stoc->numVals[stoc->numOmega-1]++;
 		}
+
 		else if ( numFields == 5 ) {
 			stoc->vals[stoc->numOmega-1][stoc->numVals[stoc->numOmega-1]] = str2float(fields[2]);
 			stoc->probs[stoc->numOmega-1][stoc->numVals[stoc->numOmega-1]] = str2float(fields[4]);
@@ -590,6 +626,8 @@ int readIndepDiscrete(FILE *fptr, cString *fields, int maxOmegas, int maxVals, c
 			errMsg("read", "readIndep", "missing field in stoch file", 0);
 			return 1;
 		}
+
+
 	}
 
 	/* Reallocate memory to fit the exact size */
@@ -1293,6 +1331,7 @@ void freeOneProblem(oneProblem *p) {
 		if(p->matcnt) mem_free(p->matcnt);
 		if(p->cname) mem_free(p->cname);
 		if(p->rname) mem_free(p->rname);
+		if(p->objQ) freeSparseMatrix(p->objQ);
 		mem_free(p);
 	}
 

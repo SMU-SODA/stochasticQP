@@ -1,20 +1,26 @@
 // Tolerance level used to differentiate floating point numbers */
-TOLERANCE    0.001
+TOLERANCE    0.000001
 
 // Minimum iterations
 MIN_ITER 1
 
 // Maximum number of iterations
-MAX_ITER   10
+MAX_ITER   100
 
 // Master type: 0 for LP, 1 for MILP, 5 for QP and 7 for MIQP
 MASTER_TYPE 5
 
-// Set to (1) if sample average approximation is to be constructed
-SAA 0
-// Number of observations to be used to set the sample average approximation
-MAX_OBS 600
+// Type of algorithm to employ: full solve (0), dual-based (1), and partition-based (2)
+ALGOTYPE 2
 
+// Set to (1) if sample average approximation is to be constructed
+SAA 1
+
+// Number of observations to be used to set the sample average approximation
+MAX_OBS 5
+
+// A fraction (0,1] to determine what fraction of samples are solved
+SAMPLE_FRACTION 0.1
 
 // Run seeds
 RUN_SEED    3554548844580680
@@ -80,4 +86,3 @@ EVAL_SEED	7200786232212849811
 EVAL_SEED	3531095045851544
 EVAL_SEED	8536356961121783
 EVAL_SEED	4742397086462006
-

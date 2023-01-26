@@ -1,55 +1,105 @@
+#define _CRTDBG_MAP_ALLOC
 #include "stochasticQP.h"
+#include <stdlib.h>
+#include <crtdbg.h>
+#define DEBUG_NEW new(_NORMAL_BLOCK, __FILE__, __LINE__)
+#define new DEBUG_NEW
 
 cString outputDir;
 long MEM_USED;
 configType config;
 
 int main(int argc, char* argv[]) {
+	// creating file pointer to work with files
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+	_CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_DEBUG);
+	//_CrtSetBreakAlloc(28288723);
+	FILE* fptr = NULL;
+
+	clock_t start;
+	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	cString inputDir, probname;
 	int numStages;
-	stocType* stoch;
-	probType** prob;
+	stocType* stoch = NULL;
+	probType** prob = NULL;
 	cellType* cell = NULL;
 	char configFile[BLOCKSIZE];
+	clock_t end;
 
 	/* Obtain parameter input from the command line */
 	parseCmdLine(argc, argv, &probname, &inputDir);
 
 	/* read algorithm configuration file */
 #if _WIN64
-	strcpy(configFile, "C:\\Users\\Niloofar\\source\\repos\\stochasticQP\\config.sd");
+	strcpy(configFile, "C:\\Users\\Niloofar\\source\\repos\\stochasticQP\\config.sqp");
 #else
-	strcpy(configFile, "./config.sd");
+	strcpy(configFile, "./config.sqp");
 #endif
 	if (readConfig(configFile))
 		goto TERMINATE;
 
 	/* set up output directory: using the outputDir in config file and the input problem name */
 	createOutputDir(outputDir, "stochasticQP", probname);
-
+	// opening file in writing mode
+	fptr = openFile(outputDir, "pSolve100.csv", "w");
+	fprintf(fptr, "Iterations , Part iteration ,Objective function , Master time, Subproblem time, Cut time , Total time\n ");
 	/*This function reads the problem and decomposes that into stages.*/
+
 	prob = newProbwSMPS(inputDir, probname, &stoch, &numStages);
-	if ( prob == NULL ) {
+	if (prob == NULL) {
 		errMsg("read", "main", "failed to read files or setup the probType", 0);
 		goto TERMINATE;
 	}
 
-	/*Build the algorithm cell..*/
-	cell = buildCell(prob, stoch);
-	if ( cell == NULL ) {
-		errMsg("setup", "main", "failed to build the cell", 0);
-		goto TERMINATE;
+
+	for (int i = 0; i < 2; i++) {
+		printf("iteration number %d", i);
+		config.RUN_SEED[0] = config.RUN_SEED[1 + i];
+		start = clock();
+		/*Build the algorithm cell..*/
+
+		cell = buildCell(prob, stoch);
+		if (cell == NULL) {
+			errMsg("setup", "main", "failed to build the cell", 0);
+			goto TERMINATE;
+		}
+
+		/* Invoke the algorithm */
+
+		runAlgo(prob, stoch, cell);
+
+		printf("Successfully completed executing the algorithm.\n");
+		end = clock();
+		cell->Totaltime = (end - start);
+
+		fprintf(fptr, "%d, %d, %f, %f , %f , %f , %f \n", cell->numit, cell->IterPart, cell->obj, cell->Tmas / CLOCKS_PER_SEC, cell->Tsub / CLOCKS_PER_SEC, cell->Tcut / CLOCKS_PER_SEC, cell->Totaltime / CLOCKS_PER_SEC);
+
+
+		/* Free all the structures */
+		printf("%d, %d, %f, %f , %f , %f , %f \n", cell->numit, cell->IterPart, cell->obj, cell->Tmas / CLOCKS_PER_SEC, cell->Tsub / CLOCKS_PER_SEC, cell->Tcut / CLOCKS_PER_SEC, cell->Totaltime / CLOCKS_PER_SEC);
+		//printf("%d, %d, %f, %f , %f , %f , %f \n", cell->numit, cell->IterPart, cell->obj, cell->Tmas / CLOCKS_PER_SEC, cell->Tsub / CLOCKS_PER_SEC, cell->Tcut / CLOCKS_PER_SEC, cell->Totaltime / CLOCKS_PER_SEC);
+		//printf("%d, %d, %f, %f , %f , %f , %f \n", cell->numit, cell->IterPart, cell->obj, cell->Tmas / CLOCKS_PER_SEC, cell->Tsub / CLOCKS_PER_SEC, cell->Tcut / CLOCKS_PER_SEC, cell->Totaltime / CLOCKS_PER_SEC);
+
+		
+		if (cell) freeCellType(cell);
 	}
 
-	 runAlgo(prob, stoch, cell);
+	fclose(fptr);
+	freeConfig();
+	if (prob) freeProbType(prob, 2);
+	mem_free(outputDir);
+	mem_free(probname); mem_free(inputDir);
+	if (stoch) freeStocType(stoch);
+	_CrtDumpMemoryLeaks();
 
-	 TERMINATE: return 0;
+TERMINATE: return 0;
 } /*END main()*/
 
 void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir) {
 
 	if (argc == 1) {
-		printHelpMenu(); exit(0);	}
+		printHelpMenu(); exit(0);
+	}
 
 
 	for (int i = 1; (i < argc); i++) {
@@ -67,6 +117,10 @@ void parseCmdLine(int argc, char* argv[], cString* probName, cString* inputDir) 
 			case 'o': {
 				outputDir = (char*)arr_alloc(2 * BLOCKSIZE, char);
 				strcpy(outputDir, argv[++i]); break;
+			}
+			case 'a': {
+				config.ALGOTYPE = atoi(argv[++i]);
+				break;
 			}
 			}
 		}
@@ -125,6 +179,8 @@ int readConfig(cString configFile) {
 			fscanf(fptr, "%lf", &config.EPSILON);
 		else if (!(strcmp(line, "MULTICUT")))
 			fscanf(fptr, "%d", &config.MULTICUT);
+		else if (!(strcmp(line, "ALGOTYPE")))
+			fscanf(fptr, "%d", &config.ALGOTYPE);
 
 		else if (!(strcmp(line, "EVAL_SEED"))) {
 			fscanf(fptr, "%lld", &config.EVAL_SEED[r2 + 1]);
@@ -134,10 +190,10 @@ int readConfig(cString configFile) {
 				config.EVAL_SEED = (long long*)mem_realloc(config.EVAL_SEED, (maxReps + 1) * sizeof(long long));
 			}
 		}
-		
+
 		else if (!(strcmp(line, "CUT_MULT")))
 			fscanf(fptr, "%d", &config.CUT_MULT);
-	
+
 		else if (!(strcmp(line, "MULTIPLE_REP")))
 			fscanf(fptr, "%d", &config.MULTIPLE_REP);
 
@@ -146,10 +202,9 @@ int readConfig(cString configFile) {
 		else if (!(strcmp(line, "MAX_OBS")))
 			fscanf(fptr, "%d", &config.MAX_OBS);
 
-
 		else if (!(strcmp(line, "SAMPLE_FRACTION")))
 			fscanf(fptr, "%lf", &config.SAMPLE_FRACTION);
-		
+
 
 		else if (!(strcmp(line, "MAX_TIME")))
 			fscanf(fptr, "%lf", &config.MAX_TIME);
@@ -186,3 +241,7 @@ void freeConfig() {
 	if (config.EVAL_SEED)
 		mem_free(config.EVAL_SEED);
 }//END freeConfig()
+
+
+
+
