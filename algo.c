@@ -21,8 +21,8 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 	clock_t EndMas;
 	double subset = config.SAMPLE_FRACTION * cell->omega->cnt; /*initialize the number of samples you want to take from Omega in each iteration*/
 	clock_t tStart = clock();
-	double Tempobj = -1000;
-	cell->obj = -500;
+	double Tempobj = -100000;
+	cell->obj = -50000;
 
 	cell->k  = 0;
 	while (cell->obj - Tempobj > 0.001 ||  cell->numit < 5){

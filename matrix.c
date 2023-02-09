@@ -2,6 +2,10 @@
 #include "stdlib.h"
 #include "math.h"
 #include "stochasticQP.h"
+//include <lapacke.h>
+#include <stdio.h>
+
+
 
 void showmat(Mat* A) {
 	if (A->row > 0 && A->col > 0) {
@@ -100,16 +104,42 @@ Mat* scalermultiply(Mat* M, double c) {
 	return B;
 }
 Mat* sum(Mat* A, Mat* B) {
-	int r = A->row;
-	int c = A->col;
-	Mat* C = newmat(r, c, 0);
-	int k = 0;
-	for (int i = 0; i < r; i++) {
-		for (int j = 0; j < c; j++) {
-			C->entries[k] = A->entries[k] + B->entries[k];
-			k += 1;
-		}
-	}
+	Mat* C;
+	if(A->row == 0 || A->col==0){
+		int r = B->row;
+		int c = B->col;
+		C = newmat(r, c, 0);
+		int k = 0;
+		for (int i = 0; i < r; i++) {
+			for (int j = 0; j < c; j++) {
+				C->entries[k] = B->entries[k];
+				k += 1;
+			}
+		 }
+ 	  }
+	else 	if(B->row == 0 || B->col==0){
+		int r = A->row;
+		int c = A->col;
+		 C = newmat(r, c, 0);
+		int k = 0;
+		for (int i = 0; i < r; i++) {
+			for (int j = 0; j < c; j++) {
+				C->entries[k] = A->entries[k];
+				k += 1;
+			}
+		 }
+ 	  }
+	else {
+		int r = B->row;
+		int c = B->col;
+		 C = newmat(r, c, 0);
+		int k = 0;
+		for (int i = 0; i < r; i++) {
+			for (int j = 0; j < c; j++) {
+				C->entries[k] = B->entries[k] + A->entries[k];
+				k += 1;
+			}
+	    }}
 	return C;
 }
 Mat* minus(Mat* A, Mat* B) {
@@ -324,13 +354,18 @@ Mat* adjoint(Mat* A) {
 }
 
 Mat* inverse(Mat* A) {
-	double de = det(A);
-	Mat* B = adjoint(A);
+	//double de = det(A);
+	Mat* M ;
+	M = (Mat*)mem_malloc(sizeof(Mat));
+    M->col = A->col;
+    M->row = A->row;
+    M->entries = testLA(A->entries, A->col);
+	//Mat* C = scalermultiply(B, 1 / de);
+	//freemat(B);
+    //showmat(A);
+    //showmat(B);
 
-	Mat* C = scalermultiply(B, 1 / de);
-	freemat(B);
-
-	return C;
+	return M;
 }//END inverse()
 
 Mat* copyvalue(Mat* A) {
@@ -560,9 +595,9 @@ sparseMatrix* BuildHess(sparseMatrix* M) {
 	sparseMatrix* N;
 	N = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));
 	int elm = 1;
-	N->col = (iVector)arr_alloc(2 * M->cnt +1, int);
-	N->row = (iVector)arr_alloc(2 * M->cnt +1, int);
-	N->val = (dVector)arr_alloc(2 * M->cnt +1, double);
+	N->col = (int*)arr_alloc(2 * M->cnt +1, int);
+	N->row = (int*)arr_alloc(2 * M->cnt +1, int);
+	N->val = (double*)arr_alloc(2 * M->cnt +1, double);
 	for (int i = 1; i <= M->cnt; i++) {
 		N->row[elm] = M->row[i];
 		N->col[elm] = M->col[i];
@@ -580,5 +615,4 @@ sparseMatrix* BuildHess(sparseMatrix* M) {
 
 	}
 	N->cnt = elm - 1;
-	return N;
-}
+	return N;}

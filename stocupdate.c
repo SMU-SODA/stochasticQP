@@ -117,6 +117,34 @@ int addtoLambda(lambdaType* lambda, solnType *dual, int numRows, int numCols, bo
 
 /* This function allocates memory for an omega structure.  It allocates the memory to structure elements: a dVector to hold an array of
  * observation and the probability associated with it. */
+//END newOmega()
+
+lambdaType* newLambda(double SigmaSize, probType** prob) {
+	lambdaType* lambda = NULL;
+	/* Assign memory to lambda structure which is the set of dual solutions we obtained so far. pi is related to equality constraints, mu2
+corresponds to upper bounds and mu3 corresponds to lower bounds */
+
+	lambda = (lambdaType*)mem_malloc(sizeof(lambdaType));
+	lambda->cnt = 0;
+	lambda->pi = (double**) arr_alloc(SigmaSize, double*);
+	lambda->umu = (double**) arr_alloc(SigmaSize, double*);
+	lambda->lmu = (double**) arr_alloc(SigmaSize, double*);
+	lambda->y =   (double**) arr_alloc(SigmaSize, double*);
+	lambda->pd = (Mat**) arr_alloc(SigmaSize, Mat*);
+	lambda->mubar = (double*)arr_alloc(SigmaSize, double*);
+
+	return lambda;
+}//END newLambda()
+
+sigmaType* newSigma(double SigmaSize, probType** prob ) {
+	sigmaType* sigma = NULL; /* Sigma is a collection of fixed parts of alpha and beta which is independent of the observation */
+	sigma = (sigmaType*)mem_malloc(sizeof(sigmaType));
+	sigma->vals = (pixbCType**) arr_alloc(SigmaSize, pixbCType*);
+	sigma->cnt = 0;
+	return sigma;
+}//END newSigma()
+
+
 omegaType* newOmega(stocType* stoc) {
 	omegaType* omega;
 	int cnt, i, base, idx;
@@ -198,34 +226,7 @@ omegaType* newOmega(stocType* stoc) {
 	}
 
 	return omega;
-}//END newOmega()
-
-lambdaType* newLambda(double SigmaSize, probType** prob) {
-	lambdaType* lambda = NULL;
-	/* Assign memory to lambda structure which is the set of dual solutions we obtained so far. pi is related to equality constraints, mu2
-corresponds to upper bounds and mu3 corresponds to lower bounds */
-
-	lambda = (lambdaType*)mem_malloc(sizeof(lambdaType));
-	lambda->cnt = 0;
-	lambda->pi = (double**) arr_alloc(SigmaSize, double*);
-	lambda->umu = (double**) arr_alloc(SigmaSize, double*);
-	lambda->lmu = (double**) arr_alloc(SigmaSize, double*);
-	lambda->y =   (double**) arr_alloc(SigmaSize, double*);
-	lambda->pd = (Mat**) arr_alloc(SigmaSize, Mat*);
-	lambda->mubar = (double*)arr_alloc(SigmaSize, double*);
-
-	return lambda;
-}//END newLambda()
-
-sigmaType* newSigma(double SigmaSize, probType** prob ) {
-	sigmaType* sigma = NULL; /* Sigma is a collection of fixed parts of alpha and beta which is independent of the observation */
-	sigma = (sigmaType*)mem_malloc(sizeof(sigmaType));
-	sigma->vals = (pixbCType**) arr_alloc(SigmaSize, pixbCType*);
-	sigma->cnt = 0;
-	return sigma;
-}//END newSigma()
-
-
+}
 deltaType* newDelta(double SigmaSize, probType** prob , cellType* cell) {
 	deltaType* delta = NULL;
 	/* assign memory to deta structure, this will record the deltaAlpha and deltaBetha associated with each observation*/

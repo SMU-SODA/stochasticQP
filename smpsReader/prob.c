@@ -1,3 +1,4 @@
+
 /*
  * prob.c
  *
@@ -7,9 +8,12 @@
 
 #include "prob.h"
 
+#include "../stochasticQP.h"
+extern configType config;
 /* Decomposes the problem _orig_ into subproblems as well as decomposes the stochastic information _stoc_ into stage stochastic information. The decomposition
  * is carried out using information specified in _tim_. The function also stores stage lower bound information provided in _Lb_. It returns an array of
  * probType structures, each probType corresponds to a particular stage */
+
 probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int *numStages) {
 	oneProblem 	*orig = NULL;
 	timeType 	*tim = NULL;
@@ -215,9 +219,10 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 				}
 
 				prob[t]->sp->objQ->cnt++;
-				prob[t]->sp->objQ->col[prob[t]->sp->objQ->cnt] = orig->objQ->col[r1] - tim->col[t];
-				prob[t]->sp->objQ->row[prob[t]->sp->objQ->cnt] = orig->objQ->row[r1] - tim->col[t];
+				prob[t]->sp->objQ->col[prob[t]->sp->objQ->cnt] = orig->objQ->col[r1] - tim->col[t] + 1;
+				prob[t]->sp->objQ->row[prob[t]->sp->objQ->cnt] = orig->objQ->row[r1] - tim->col[t] + 1;
 				prob[t]->sp->objQ->val[prob[t]->sp->objQ->cnt] = orig->objQ->val[r1];
+
 			}
 		}
 	}
@@ -577,6 +582,96 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 	if ( (meanX = meanProblem(orig, (*stoc))) == NULL) {
 		errMsg("setup", "newProbwSMPS", "failed to solve the mean-value problem", 0);
 		goto TERMINATE;	}
+
+
+
+	/* Solve the mean value problem using PDSA*/
+	/* Initial partition */
+	/*Obrain the right-hand side*/
+//	double* Rhs = (dVector)arr_alloc(orig->mar+1 , double);
+//
+//	if (getDoubleAttributeArray(orig->model, "RHS", 0, orig->mar, Rhs+1 )) {
+//		errMsg("solver", "meanvaluePDAS", "failed to obtain variable lower bounds", 0);
+//	}
+//	double* upb = (dVector)arr_alloc(orig->mac+1 , double);
+//	if (getDoubleAttributeArray(orig->model, "UB", 0, orig->mac, upb+1 )) {
+//		errMsg("solver", "meanvaluePDAS", "failed to obtain variable lower bounds", 0);
+//
+//	}
+//	double* lob = (dVector)arr_alloc(orig->mac+1 , double);
+//	if (getDoubleAttributeArray(orig->model, "LB", 0, orig->mac, lob+1 )) {
+//		errMsg("solver", "meanvaluePDAS", "failed to obtain variable lower bounds", 0);
+//
+//	}
+//	double* coef = (dVector)arr_alloc(orig->mac+1 , double);
+//
+//	if (getDoubleAttributeArray(orig->model, "Obj", 0, orig->mac+1, coef )) {
+//		errMsg("solver", "meanvaluePDAS", "failed to obtain variable coef", 0);
+//	}
+//
+//	dVector umu = (double*) arr_alloc(orig->mac + 1, double);
+//	dVector lmu = (double*) arr_alloc(orig->mac + 1, double);
+//
+//	if ( getBoundDual(orig->model, orig->mac, umu, lmu) ) {
+//		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
+//		return 1;
+//	}
+//	int* part =	(iVector) arr_alloc(orig->mac + 1, int);
+//	int low = 0; int  up = 0; int inact = 0;
+//	for (int i = 1; i <= orig->mac; i++) {
+//		if ( fabs(meanX[i] - lob[i-1]) < config.TOLERANCE && fabs(lmu[i]) > config.TOLERANCE) {
+//			part[i] = 1;
+//			(low)++;
+//		}
+//		else if( fabs(upb[i-1] - meanX[i]) < config.TOLERANCE && fabs(umu[i]) > config.TOLERANCE) {
+//			part[i] = 2;
+//			(up)++;
+//		}
+//		else {
+//			part[i] = 0;
+//			(inact)++;
+//		}
+//	}
+//
+//
+//	sparseMatrix* D = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));
+//		sparseMatrix* Q2 = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));
+//		Q2->col = orig->objQ->col -1;
+//		Q2->row = orig->objQ->row -1;
+//		Q2->val = orig->objQ->val -1;
+//		Q2->cnt = orig->objQ->cnt;
+//
+//		D->cnt = 0;
+//		D->col = (int*)arr_alloc(orig->matsz + 1, int);
+//		D->row = (int*)arr_alloc(orig->matsz + 1, int);
+//		D->val = (double*)arr_alloc(orig->matsz + 1 , double);
+//
+//		for(int i = 0; i < orig->mac; i++){
+//			for(int j = orig->matbeg[i]; j < orig->matbeg[i+1] ; j++){
+//				D->col[D->cnt + 1] = i + 1;
+//				D->row[D->cnt + 1] = orig->matind[j] + 1;
+//				D->val[D->cnt + 1] = orig->matval[j];
+//				D->cnt ++;
+//			}
+//			if(i == (orig->mac - 1))
+//			{
+//				for(int j = orig->matbeg[i]; j < orig->matsz ; j++){
+//					D->col[D->cnt + 1] = i + 1;
+//					D->row[D->cnt + 1] = orig->matind[j] + 1;
+//					D->val[D->cnt + 1] = orig->matval[j];
+//					D->cnt ++;
+//				}
+//			}
+//		}
+
+
+
+
+
+
+
+
+
 
 	/* Compute the stage-wise lower bounds -
 	TO DO: NEEDS TO BE UPDATED TO ACCOUNT RANDOMNESS IN BOUNDS */

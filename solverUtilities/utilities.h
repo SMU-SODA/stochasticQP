@@ -77,6 +77,7 @@ double vXvSparse(dVector v, sparseVector *vSparse);
 dVector MSparsexvAdd(sparseMatrix *M, dVector v, dVector ans);
 dVector MSparsexvSub(sparseMatrix *M, dVector v, dVector ans);
 dVector vxMSparse(dVector v, sparseMatrix *M, int len);
+dVector MSparsexv(dVector v, sparseMatrix* M, int len);
 void vPlusv(dVector a, dVector b, double mult, int len);
 double smooth(double newVal, double oldVal, double factor);
 

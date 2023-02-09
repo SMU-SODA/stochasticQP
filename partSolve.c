@@ -1,5 +1,5 @@
 #include "stochasticQP.h"
-
+extern configType config;
 oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset) {
 	double tol = 0.0000001;
 	double alpha;
@@ -57,20 +57,21 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 	int partIndx = 0;
 
 	/* Build a basis */
-	long long int* basis = (long long int*) arr_alloc(prob->num->cols + 1, long long int);
-	Buildbase(basis, prob->num->cols, 3);
+	//long long int* basis = (long long int*) arr_alloc(prob->num->cols + 1, long long int);
+	//Buildbase(basis, prob->num->cols, 3);
 	/* calculate deltaalpha and delta beta for all existing partitions*/
 
 	/* calculate delta x*/
 	dVector dx = (double*)arr_alloc(prob->num->prevCols + 1, double);
-	for (int i = 0; i <= prob->num->prevCols; i++) {
-		dx[i] = cell->candidX[i] - cell->incumbX[i];
+	for (int i = 1; i <= prob->num->prevCols; i++) {
+		dx[i] = x[i] - cell->incumbX[i];
 	}
-	int size = 100;
-	double*** dnu;
-	double*** dmu;
-	double*** dy;
-	double*** dld;
+	int size = 1000;
+	double** dnu;
+	double** dmu;
+	double** dy;
+	double** dld;
+	double test = 0;
 	pixbCType** deltax; /*size has to be fixed- FREE*/
 	dnu = (double**)arr_alloc(size, double*); /*size has to be fixed- FREE*/;
 	dmu = (double**)arr_alloc(size, double*); /*size has to be fixed- FREE*/;
@@ -78,9 +79,7 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 	dld = (double**)arr_alloc(size, double*); /*size has to be fixed- FREE*/;
 	deltax = (pixbCType**)arr_alloc(size, pixbCType*); /*size has to be fixed- FREE*/
 
-	for (int i = 0; i <= prob->num->prevCols; i++) {
-		dx[i] = cell->candidX[i] - cell->incumbX[i];
-	}
+
 	for (int p = 0; p < cell->partition->cnt; p++) {
 		AddtoDettaX(prob, cell, deltax, dx, cell->partition->low[p], cell->partition->up[p], cell->partition->inact[p], p, dy, dld, dnu, dmu);
 	}
@@ -108,23 +107,34 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 
 			Start = clock();
 
-			StocUpdatePart(cell, prob, bOmega, COmega, lOmega, uOmega, soln, basis, &partIndx, dx, deltax, dy, dld, dnu, dmu);
+			StocUpdatePart(cell, prob, bOmega, COmega, lOmega, uOmega, soln, &partIndx, dx, deltax, dy, dld, dnu, dmu);
 
 			End = clock();
 
-			cell->stochupdate = cell->stochupdate + (End - Start);
-
+			cell->stochupdate = cell->stochupdate + (End - Start)/ CLOCKS_PER_SEC;
+			//printf("\n %f", cell->stochupdate );
 
 			/*4b. Calculate observations specific coefficients. */
 			double* beta = (double*)arr_alloc(prob->num->prevCols + 1, double);
 
-			alpha = cell->sigma->vals[partIndx]->alpha + cell->delta->vals[partIndx][obs]->alpha + deltax[partIndx]->alpha; /*to do*/
+//			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
+//			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
+//			dOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[2];
+//			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
+//			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
+//			for(int i = 1; i <= prob->num->cols ; i++){
+//				test = soln->y[i] - cell->lambda->y[partIndx][i] - cell->delta->dy[partIndx][obs][i] - dy[partIndx][i];
+//				if(test < -.1 || test > +.1){
+//					printf("We have an error calculating the solution");
+//				}
+//			}
+
+			alpha = cell->sigma->vals[partIndx]->alpha + cell->delta->vals[partIndx][obs]->alpha + deltax[partIndx]->alpha;
 
 			for (int c = 1; c <= prob->num->prevCols; c++)
 				beta[c] += cell->sigma->vals[partIndx]->beta[c];
 			for (int c = 1; c <= prob->num->prevCols; c++)
 				beta[c] += cell->delta->vals[partIndx][obs]->beta[c] + deltax[partIndx]->beta[c];
-
 
 			double obj;
 			obj = getObjective(cell->subprob->model);
@@ -147,8 +157,8 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 	/* 4. loop through subset omegaP and use argmax on subproblems */
 	for (int obs = 0; obs < cell->omega->cnt; obs++) {
 		if (!omegaP[obs]) {
-			/* 4a. Identify the best dual using the argmax operation */
 
+			/* 4a. Identify the best dual using the argmax operation */
 
 			lambdaIdx = argmaxPart(cell, tol, prob, cell->sigma, cell->delta, cell->candidX, obs, prob->num->prevCols, index, &flag, deltax, dy, dld, dnu, dmu, bOmega, lOmega, uOmega);
 
@@ -170,21 +180,18 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 				End = clock();
 				cell->Tsub = cell->Tsub + (End - Start);
 				Start = clock();
-				StocUpdatePart(cell, prob, bOmega, COmega, lOmega, uOmega, soln, basis, &lambdaIdx, dx, deltax, dy, dld, dnu, dmu);
+				StocUpdatePart(cell, prob, bOmega, COmega, lOmega, uOmega, soln, &lambdaIdx, dx, deltax, dy, dld, dnu, dmu);
 				End = clock();
 				cell->stochupdate = cell->stochupdate + (End - Start);
 				freeSolnType(soln);
-			}
-			double* beta = (double*)arr_alloc(prob->num->prevCols + 1, double);
+			    }
+			    double* beta = (double*)arr_alloc(prob->num->prevCols + 1, double);
 
 			alpha = cell->sigma->vals[lambdaIdx]->alpha + cell->delta->vals[lambdaIdx][obs]->alpha + deltax[lambdaIdx]->alpha; /*to do*/
-
 			for (int c = 1; c <= prob->num->prevCols; c++)
 				beta[c] += cell->sigma->vals[lambdaIdx]->beta[c];
 			for (int c = 1; c <= prob->num->prevCols; c++)
 				beta[c] += cell->delta->vals[lambdaIdx][obs]->beta[c] + deltax[lambdaIdx]->beta[c];
-
-
 
 			/* 4b. Calculate observations specific coefficients. */
 
@@ -225,7 +232,7 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 	mem_free(uOmega);
 	mem_free(lOmega);
 	mem_free(COmega);
-	mem_free(basis);
+	//mem_free(basis);
 	mem_free(dx);
 
 	for (int i = 0; i < cell->partition->cnt; i++) {
@@ -237,7 +244,6 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 		mem_free(deltax[i]);
 	}
 	mem_free(deltax);
-
 	mem_free(dnu);
 	mem_free(dmu);
 	mem_free(dy);
@@ -265,7 +271,7 @@ TERMINATE:
 
 
 int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseMatrix* COmega, sparseVector* lOmega,
-	sparseVector* uOmega, solnType* soln, long long int* basis, int* partIndx, dVector dx, pixbCType** deltax, double** dy, double** dld, double** dnu, double** dmu) {
+	sparseVector* uOmega, solnType* soln, int* partIndx, dVector dx, pixbCType** deltax, double** dy, double** dld, double** dnu, double** dmu) {
 	int up = 0, inact = 0, low = 0; /*Number of variables on their bounds*/
 	bool newPartFlag = false;
 	Mat* W;
@@ -283,9 +289,43 @@ int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseM
 		errMsg("solver", "AddtoPart", "failed to obtain variable upper bounds", 0);
 
 	}
+	double* Rhs = (dVector)arr_alloc(prob->num->rows + 1, double);
+	if (getDoubleAttributeArray(cell->subprob->model, "RHS", 0, prob->num->rows, Rhs + 1)) {
+		errMsg("solver", "AddtoPart", "failed to obtain variable RHS", 0);
 
+	}
+	double* coef = (dVector)arr_alloc(prob->num->cols + 1, double);
+	if (getDoubleAttributeArray(cell->subprob->model, "Obj", 0, prob->num->cols, coef + 1)) {
+		errMsg("solver", "AddtoPart", "failed to obtain variable COEFS COST", 0);
+
+	}
 	/* 4b. Calculate the partition */
-	(*partIndx) = addtoPartition(prob, cell, uOmega, lOmega, soln, &newPartFlag, &up, &inact, &low, basis, lStat, uStat);
+	(*partIndx) = addtoPartition(prob, cell, uOmega, lOmega, soln, &newPartFlag, &up, &inact, &low, lStat, uStat);
+
+    int* partpdas;
+    int* partinit;
+    partinit = (int*)arr_alloc(prob->num->cols+1,int);
+    for(int i = 1; i<= prob->num->cols; i++){
+    	partinit[i] = cell->partition->part[(*partIndx)][i];
+    }
+    partinit[1] = 0;
+    partinit[2] = 2;
+    Mat* ypi = pdas(prob->Dbar, partinit, prob->sp->objQ,  coef ,  Rhs  , prob->num->cols ,prob->num->rows,uStat, lStat);
+    //mem_free(partpdas);
+    mem_free(Rhs);
+	mem_free(coef);
+	int elm= 0;
+	for(int i = 1; i <= prob->num->cols ; i++){
+		if(partinit[i]==0){
+			if(ypi->entries[elm]-soln->y[i]> config.TOLERANCE || ypi->entries[elm]-soln->y[i]< -config.TOLERANCE ){
+				printf("violation pdas");
+			}
+			elm++;
+		}
+	}
+	mem_free(partinit);
+	freemat(ypi);
+
 
 	if (inact < prob->num->rows) {
 		printf("inact is less than M");
@@ -295,15 +335,18 @@ int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseM
 	if (newPartFlag) {
 
 		/* 4d.1 Extract the WT matrices*/
-		CalC(cell, prob, prob->sp->objQ, prob->Dbar, &W, &T, low, up, inact);
+		CalC(cell->partition->part[(*partIndx)], prob->sp->objQ, prob->Dbar, &W, &T, low, up, inact , prob->num->rows ,  prob->num->cols);
 
-		Mat* WT = CombineWT(prob, W, T, low, up, inact);
+
+
+
+		Mat* WT = CombineWT(prob->num->rows , prob->num->cols , W, T, low, up, inact);
 
 		/* Add the matrix wt to a structure */
 
 		cell->wtSet->wt[(*partIndx)] = WT;
 		cell->wtSet->cnt++;
-		//showmat(WT);
+
 		/* 4d.2 Add the obtained solution to the lambda structure*/
 
 		addtoLambdaP(cell, soln, WT, prob, bOmega, uOmega, lOmega, low, up, inact, dx);
@@ -315,6 +358,7 @@ int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseM
 		cell->delta->dy[(*partIndx)] = (double**)arr_alloc(cell->omega->cnt, double*);
 		cell->delta->dmu[(*partIndx)] = (double**)arr_alloc(cell->omega->cnt, double*);
 		cell->delta->dnu[(*partIndx)] = (double**)arr_alloc(cell->omega->cnt, double*);
+		cell->delta->vals[(*partIndx)] = (pixbCType**)arr_alloc(cell->omega->cnt,pixbCType*);
 		/* 4d.3 add to  delta sol and complete a row*/
 		for (int obs = 0; obs < cell->omega->cnt; obs++) {
 			/* Add a new row to the delta structure for all observations and the latest lambda (lambdaIdx) */
@@ -322,7 +366,7 @@ int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseM
 			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
 			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
 			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
-			addtoDeltaP(cell, soln, W, T, WT, prob, COmega, bOmega, uOmega, lOmega, obs, (*partIndx), inact, up, low, lStat, uStat, dy[(*partIndx)], dld[(*partIndx)], dnu[(*partIndx)], dmu[(*partIndx)]);
+			addtoDeltaP(cell, W, T, WT, prob, COmega, bOmega, uOmega, lOmega, obs, (*partIndx), inact, up, low, lStat, uStat, dy[(*partIndx)], dld[(*partIndx)], dnu[(*partIndx)], dmu[(*partIndx)]);
 
 		}
 
@@ -489,7 +533,10 @@ void AddtoDettaX(probType* prob, cellType* cell, pixbCType** delta, dVector delt
 
 	/* 1.a. caculate -cbardeltax*/
 
-	dVector deltarho = vxMSparse(deltaX, prob->Cbar, prob->num->rows);
+	dVector deltarho = MSparsexv(deltaX, prob->Cbar, prob->num->rows);
+
+
+
 	Mat* rhyu = newmat(prob->num->rows + up, 1, 0);
 
 
@@ -584,8 +631,6 @@ void AddtoDettaX(probType* prob, cellType* cell, pixbCType** delta, dVector delt
 
 
 }//END DelttaX()
-
-
 
 
 
