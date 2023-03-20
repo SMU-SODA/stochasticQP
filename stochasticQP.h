@@ -6,8 +6,13 @@
 
 #define WRITE_FILES
 #undef ALGO_CHECK
-#undef STOCH_CHECK
+#define STOCH_CHECK
 
+
+
+
+double* testLA (double* A , int S);
+int RankLA( double* a , int m , int n );
 typedef enum {
 	FULL,
 	DUALLBASED,
@@ -30,6 +35,17 @@ typedef struct {
 	int col;
 }Mat;
 
+
+typedef struct {
+	dVector y;
+	dVector pi;
+	dVector lmu;
+	dVector umu;
+	double  mubBar;
+} solnType;
+void pdas(solnType* soln ,sparseMatrix* D, int* partition, sparseMatrix* Q, dVector coef , dVector Rhs  , int cols , int rows , dVector Ubound , dVector Lbound);
+
+
 typedef struct {
 	int		cnt;					/* number of elements in the structure */
 	double* 	mubar;					
@@ -46,13 +62,7 @@ typedef struct {
 	dVector 	beta;	           	/* dVector pi x C */
 } pixbCType;
 
-typedef struct {
-	dVector y;
-	dVector pi;
-	dVector lmu;
-	dVector umu;
-	double  mubBar;
-} solnType;
+
 
 typedef struct {
 	int cnt;
@@ -100,7 +110,7 @@ typedef struct {
 	int		ck;					/* Iteration when the cut was generated */
 	double  alpha;              /* scalar value for the right-hand side */
 	dVector  beta;               /* coefficients of the master problems's primal variables */
-
+	double 	alphaIncumb;		/* right-hand side when using QP master, this is useful for quick updates */
 	// bool	isIncumb;			/* indicates if the cut is an incumbent cut */
 	// double alphaIncumb;		/* right-hand side when using QP master, this is useful for quick updates */
 
@@ -325,22 +335,18 @@ solnType* buildSolnType (numType *num);
 void freeSolnType(solnType *soln);
 
 void VsumVsparse(dVector result , dVector v, sparseVector* vs , int len);
-
-
 int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* COmega, sparseVector* bOmega,
-	sparseVector* uOmega, sparseVector* lOmega);
-
-
+		sparseVector* uOmega, sparseVector* lOmega);
 void PartCalc(solnType* sol, dVector yund, dVector ybar, int numc, int* part, int* up, int* inact, int* low);
 PartitionType *newPartition(int Partsize);
-oneCut * partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset);
+oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x,double* meanx, double solveset);
 int addtoPartition(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln,
-	bool* flag, int* up, int* inact, int* low, long long int* base, dVector lStat, dVector uStat);
+	bool* flag, int* up, int* inact, int* low,  dVector lStat, dVector uStat);
 void newSolSet(int Partsize, probType* prob, cellType* cell);
 void freeSolSet(solutionSetType* SolSet);
 void Buildbase(long long int* basis, int cols, int bas);
 
-Mat* CombineWT(probType* prob, Mat* W, Mat* T, int low, int up, int inact);
+Mat* CombineWT(int rows , int cols, Mat* W, Mat* T, int low, int up, int inact);
 
 //typedef struct MatList {
 	//Mat* mat;
@@ -360,22 +366,29 @@ Mat* inverse(Mat* A);
 Mat* scalermultiply(Mat* M, double c);
 Mat* multiply(Mat* A, Mat* B);
 Mat* sum(Mat* A, Mat* B);
+Mat* copyvalue(Mat* A);
 void freemat(Mat* A);
 sparseMatrix* BuildHess(sparseMatrix* M);
-void CalC(cellType* cell, probType* prob, sparseMatrix* Q, sparseMatrix* D, Mat** W, Mat** T, int low, int up, int inact);
+void CalC(int* part, sparseMatrix* Q, sparseMatrix* D , Mat** W, Mat** T, int low, int up, int inact , int rows , int cols );
 Mat* transSparsM(sparseMatrix* M, int col, int row);
 Mat* removerow(Mat* A, int r);
 Mat* removecol(Mat* A, int c);
 void AddtoSigmaP(cellType* cell, solnType* sol, probType* prob);
-void addtoDeltaP(cellType* cell, solnType* soln, Mat* W, Mat* T, Mat* WT, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega, int obs, int lambdaIdx, int inact, int up, int low, dVector lStat, dVector uStat, double* dy, double* dld, double* ddnu, double* ddmu);
+
+void addtoDeltaP(cellType* cell, Mat* W, Mat* T, Mat* WT, probType* prob, sparseMatrix* COmega, sparseVector* bOmega, sparseVector* uOmega, sparseVector* lOmega, int obs, int lambdaIdx, int inact, int up, int low, dVector lStat, dVector uStat, double* dy, double* dld, double* ddnu, double* ddmu);
+
 void newDeltaSol(cellType* cell, int sigmaSize, int obsnum);
 Mat* adjoint(Mat* A);
 void removecol2(Mat* A, Mat* B, int c);
 void showmat(Mat* A);
-int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseMatrix* COmega, sparseVector* lOmega,
-	sparseVector* uOmega, solnType* soln, long long int* basis, int* partIndx, dVector dx, pixbCType** deltax, double** dy, double** dld, double** dnu, double** dmu);
-
-
-
+void StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseMatrix* COmega, sparseVector* lOmega,
+ 	sparseVector* uOmega, solnType* soln,  int* partIndx, dVector dx, pixbCType** deltax, double** dy, double** dld, double** dnu, double** dmu);
 
 void AddtoDettaX(probType* prob, cellType* cell, pixbCType** delta, dVector deltaX, int low, int up, int inact, int partindex, double** deltay, double** deltaLd, double** dnu, double** dmu);
+
+
+
+int changeQPrhs(probType *prob, cellType *cell, dVector xk);
+int changeQPbds(modelPtr* modle, int numCols, sparseVector* lbar, sparseVector* ubar, dVector xk);
+int changeQPcoef(modelPtr* model, probType* prob , int numCols, sparseVector* dBar, dVector xk);
+double maxdouble(double a, double b);

@@ -14,19 +14,52 @@
 extern configType config;
 
 int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
+    double opteta = 0;
+
+    double status = 0;
+    double quadcand = 0;
+    double quadincum = 0;
+    double fxk = 0;
+    double fxk1 = 0;
+    double fwk = 0;
+    double fwk1 = 0;
+    cell->incumbEst = -INFINITY;
 	oneCut *cut = NULL;
+
 	clock_t StartCut;
 	clock_t EndCut;
 	clock_t StartMas;
 	clock_t EndMas;
+	dVector temp1;
+	double incumbObj;
 	double subset = config.SAMPLE_FRACTION * cell->omega->cnt; /*initialize the number of samples you want to take from Omega in each iteration*/
 	clock_t tStart = clock();
-	double Tempobj = -1000;
-	cell->obj = -500;
+	double Tempobj = -100000;
+	cell->obj = -50000;
+	int* index;
+	index = (int*) arr_alloc(prob[0]->num->cols + 1, int);
 
+	double* meanx = (double*) arr_alloc(prob[0]->num->cols + 1, double);
+	for (int i = 1; i <= prob[0]->num->cols; i++) {
+		index[i] = i;
+		meanx[i]=cell->candidX[i];
+	}
 	cell->k  = 0;
-	//||  cell->numit < 5 cell->obj - Tempobj > 0.001
-	while (cell->obj - Tempobj > 0.001 || cell->numit < 50){
+
+    /* update the master problem with the initial incumbent*/
+
+	changeQPrhs(prob[0], cell, cell->incumbX);
+	changeQPbds(cell->master->model , prob[0]->num->cols , prob[0]->lBar, prob[0]->uBar, cell->incumbX);
+	changeQPcoef(cell->master->model , prob[0] ,  prob[0]->num->cols , prob[0]->dBar,  cell->incumbX);
+    double* candidatesol = (double*) arr_alloc(prob[0]->num->cols + 1, double);
+
+	if(prob[0]->sp->objQ != NULL){temp1 = vxMSparse(cell->incumbX, prob[0]->sp->objQ, prob[0]->num->cols);}
+	else{temp1 = (double*)arr_alloc(prob[0]->num->cols + 1 , double);}
+
+	incumbObj = vXv(temp1, cell->incumbX, index, prob[0]->num->cols) + vXvSparse( cell->incumbX , prob[0]->dBar);
+
+    mem_free(temp1);
+	while (cell->obj - Tempobj > 0.001 || cell->numit < 35){
 		cell->numit++;
 
 		/* 1. Check optimality */
@@ -34,8 +67,16 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 		/* 2. Switch between algorithms to add a new affine functions. */
 		switch (config.ALGOTYPE) {
 		case 0:
+			if(cell->numit > 1){
+				for (int i = 1; i <= prob[0]->num->cols; i++) {
+								candidatesol[i] = cell->candidX[i] + cell->incumbX[i] ;
+							}
+			}
+			else{for (int i = 1; i <= prob[0]->num->cols; i++) {
+				candidatesol[i] = cell->candidX[i]  ;
+			}}
 			StartCut = clock();
-			cut = fullSolveCut(prob[1], cell, stoc, cell->candidX);
+			cut = fullSolveCut(prob[1], cell, stoc, candidatesol);
 			EndCut = clock();
 			cell->Tcut = cell->Tcut + (EndCut - StartCut);
 			//printf("\n %f", ((EndCut - StartCut) / CLOCKS_PER_SEC));
@@ -58,8 +99,18 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 			break;
 		case 2:
 			/* calculate delta x*/
+
+			if(cell->numit > 1){
+				for (int i = 1; i <= prob[0]->num->cols; i++) {
+								candidatesol[i] = cell->candidX[i] + cell->incumbX[i] ;
+							}
+			}
+			else{for (int i = 1; i <= prob[0]->num->cols; i++) {
+				candidatesol[i] = cell->candidX[i]  ;
+			}}
+
 			StartCut = clock();
-			cut = partSolve(prob[1],  cell,  stoc, cell->candidX, subset);			
+			cut = partSolve(prob[1],  cell,  stoc, candidatesol, meanx, subset);
 			EndCut = clock();
 			cell->Tcut = cell->Tcut + (EndCut - StartCut);
 			//printf("\n %f", ((EndCut - StartCut)/ CLOCKS_PER_SEC));
@@ -81,7 +132,10 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 
 		/* 3. Add the affine function to the master problem. */
 		/* 3a. Add cut to the set */
+        cut->alphaIncumb =  cut->alpha - vXv(cut->beta , cell->incumbX, index, prob[0]->num->cols) ;		/* right-hand side when using QP master, this is useful for quick updates */
 		cell->cuts->vals[cell->cuts->cnt] = cut;
+
+		cell->cuts->vals[cell->cuts->cnt]->rowNum = prob[0]->num->rows + cell->cuts->cnt;
 		cell->cuts->cnt++;
 
 		/* 3b. Update the master problem by adding the cut*/
@@ -113,8 +167,8 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 		printf("\tObjective function value = %lf\n", getObjective(cell->master->model));
 #endif
 		Tempobj = cell->obj;
-		printf("\t%d: Objective function value = %lf\n", cell->numit, getObjective(cell->master->model));
-		cell->obj = getObjective(cell->master->model);
+		printf("\t%d: Objective function value = %lf\n", cell->numit, getObjective(cell->master->model) + incumbObj);
+		cell->obj = getObjective(cell->master->model) + incumbObj;
 		if (getPrimal(cell->master->model, cell->candidX, 0, prob[0]->num->cols) ) {
 			errMsg("solver", "fullSolve", "failed to obtain the candidate solution", 0);
 			return 1;
@@ -143,7 +197,7 @@ int addCut2Solver(modelPtr *model, oneCut *cut, int lenX) {
 	sprintf(cut->name, "cut_%04d", cummCutNum++);
 
 	/* Add a new linear constraint to a model. */
-	if( addRow(model, lenX+1, cut->alpha, GE, rmatind, cut->beta, cut->name) ) {
+	if( addRow(model, lenX+1, cut->alphaIncumb, GE, rmatind, cut->beta, cut->name) ) {
 		errMsg("solver", "addCut2Solver", "failed to addrow", 0);
 		return 1;
 	}
@@ -172,4 +226,3 @@ oneCut *newCut(int numX) {
 
 	return cut;
 }//END newCut
-

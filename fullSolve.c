@@ -56,19 +56,22 @@ oneCut* fullSolveCut(probType* prob, cellType* cell, stocType* stoch, double* x)
 
 		/* 2a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
 		Start = clock();
-		if (solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], bOmega, COmega, dOmega, lOmega, uOmega, dual)) {
+		if (solveSubprob(prob, cell->subprob, x, cell->omega->vals[obs], bOmega, COmega, dOmega, lOmega, uOmega, dual)) {
 			errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 			goto TERMINATE;
 		}
 		End = clock();
 		cell->Tsub = cell->Tsub + (End - Start);
 		cell->LPcnt++;
+
 		dVector temp1 = vxMSparse(dual->y, prob->sp->objQ, prob->num->cols);
 		/* Optimality cut calculations */
 		alpha = -vXv(temp1, dual->y, index, prob->num->cols) +
 			vXvSparse(dual->pi, prob->bBar) + vXvSparse(dual->lmu, prob->lBar) - vXvSparse(dual->umu, prob->uBar) +
 			vXvSparse(dual->pi, bOmega) - vXvSparse(dual->umu, uOmega) + vXvSparse(dual->lmu, lOmega); /*TO DO: ybar and yund vals start from index 0*/
 		mem_free(temp1);
+
+
 		dVector beta = vxMSparse(dual->pi, prob->Cbar, prob->num->prevCols);
 
 		double* dbeta = vxMSparse(dual->pi, COmega, prob->num->prevCols);
@@ -86,6 +89,8 @@ oneCut* fullSolveCut(probType* prob, cellType* cell, stocType* stoch, double* x)
 #if defined(STOCH_CHECK)
 		//printf("Objective estimate computed as cut height = %lf\n", alpha - vXv(beta, x, NULL, prob->num->prevCols));
 		//printf("Dif  = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols) - obj);
+//		if((alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols) - obj >1) || (alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols) - obj)<-1){
+//		printf("Dif  = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols) - obj);}
 #endif
 
 		/* 2c. Aggregate the cut coefficients by weighting by observation probability. */

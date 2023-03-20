@@ -46,25 +46,20 @@ void addtoSigma(cellType* cell, probType* prob, solnType *soln) {
 		index[i] = i ;
 	}
 
-	cell->sigma->vals[obs] = (pixbCType*) mem_malloc(sizeof(pixbCType));
+	cell->sigma->vals[obs] = (pixbCType *) mem_malloc(sizeof(pixbCType));
 
 
 	/*Calculate fixed section of beta = Cbar*pi (pi is the dual vector associated with equality constraints)*/
 	dVector fbeta = vxMSparse(soln->pi, prob->Cbar, prob->num->prevCols);
 	cell->sigma->vals[obs]->beta = reduceVector(fbeta, prob->coord->CCols, prob->num->cntCcols);
 
-
-	cell->sigma->vals[obs]->alpha = 0;
-	
-		dVector yTopQbar = vxMSparse(soln->y, prob->sp->objQ, prob->num->cols);
-		cell->sigma->vals[obs]->alpha = cell->sigma->vals[obs]->alpha - vXv(yTopQbar, soln->y, index, prob->num->cols);
-		mem_free(yTopQbar);
-	
 	/*Calculate fixred section of alpha -.5 yQy  + bbar* pi + yunder nu - ybar mu)*/
-	cell->sigma->vals[obs]->alpha = cell->sigma->vals[obs]->alpha + vXvSparse(soln->pi, prob->bBar) + vXvSparse(soln->lmu, prob->lBar) - vXvSparse(soln->umu, prob->uBar);
-
-
-
+	cell->sigma->vals[obs]->alpha = vXvSparse(soln->pi, prob->bBar) + vXvSparse(soln->lmu, prob->lBar) + vXvSparse(soln->umu, prob->uBar);
+	if ( prob->sp->objQ != NULL) {
+		dVector yTopQbar = vxMSparse(soln->y, prob->sp->objQ, prob->num->cols);
+		cell->sigma->vals[obs]->alpha -= vXv(yTopQbar, soln->y, index, prob->num->cols);
+		mem_free(yTopQbar);
+	}
 	cell->sigma->cnt++;
 
 	mem_free(fbeta);
@@ -87,14 +82,12 @@ void addtoDelta(cellType* cell, probType* prob, sparseMatrix* COmega, sparseVect
 
 	/* calculate alpha and beta*/
 	cell->delta->vals[numPi][obs]->alpha = vXvSparse(cell->lambda->pi[numPi], bOmega)
-																- vXvSparse(cell->lambda->umu[numPi], uOmega) + vXvSparse(cell->lambda->lmu[numPi], lOmega); /*TO DO: ybar and yund vals start from index 0*/
+																+ vXvSparse(cell->lambda->umu[numPi], uOmega) + vXvSparse(cell->lambda->lmu[numPi], lOmega); /*TO DO: ybar and yund vals start from index 0*/
 
 	if ( prob->num->rvCOmCnt > 0 )
 		cell->delta->vals[numPi][obs]->beta = reduceVector(dbeta, prob->coord->rvCOmCols, prob->num->rvCOmCnt);
 	else
 		cell->delta->vals[numPi][obs]->beta = NULL;
-
-
 
 	free(dbeta);
 
@@ -114,9 +107,9 @@ int addtoLambda(lambdaType* lambda, solnType *dual, int numRows, int numCols, bo
 	if ( idx == lambda->cnt ) {
 		/* TODO: New lambda discovered */
 		(*newLambdaFlag) = true;
-		lambda->pi[lambda->cnt]  = duplicVector(dual->pi, numRows);
-		lambda->umu[lambda->cnt] = duplicVector(dual->umu, numCols);
-		lambda->lmu[lambda->cnt] = duplicVector(dual->lmu, numCols);
+		lambda->pi[lambda->cnt]  = duplicVector(dual->pi, numRows+1);
+		lambda->umu[lambda->cnt] = duplicVector(dual->umu, numCols+1);
+		lambda->lmu[lambda->cnt] = duplicVector(dual->lmu, numCols+1);
 		lambda->cnt++;
 	}
 	return idx;
@@ -124,6 +117,34 @@ int addtoLambda(lambdaType* lambda, solnType *dual, int numRows, int numCols, bo
 
 /* This function allocates memory for an omega structure.  It allocates the memory to structure elements: a dVector to hold an array of
  * observation and the probability associated with it. */
+//END newOmega()
+
+lambdaType* newLambda(double SigmaSize, probType** prob) {
+	lambdaType* lambda = NULL;
+	/* Assign memory to lambda structure which is the set of dual solutions we obtained so far. pi is related to equality constraints, mu2
+corresponds to upper bounds and mu3 corresponds to lower bounds */
+
+	lambda = (lambdaType*)mem_malloc(sizeof(lambdaType));
+	lambda->cnt = 0;
+	lambda->pi = (double**) arr_alloc(SigmaSize, double*);
+	lambda->umu = (double**) arr_alloc(SigmaSize, double*);
+	lambda->lmu = (double**) arr_alloc(SigmaSize, double*);
+	lambda->y =   (double**) arr_alloc(SigmaSize, double*);
+	lambda->pd = (Mat**) arr_alloc(SigmaSize, Mat*);
+	lambda->mubar = (double*)arr_alloc(SigmaSize, double*);
+
+	return lambda;
+}//END newLambda()
+
+sigmaType* newSigma(double SigmaSize, probType** prob ) {
+	sigmaType* sigma = NULL; /* Sigma is a collection of fixed parts of alpha and beta which is independent of the observation */
+	sigma = (sigmaType*)mem_malloc(sizeof(sigmaType));
+	sigma->vals = (pixbCType**) arr_alloc(SigmaSize, pixbCType*);
+	sigma->cnt = 0;
+	return sigma;
+}//END newSigma()
+
+
 omegaType* newOmega(stocType* stoc) {
 	omegaType* omega;
 	int cnt, i, base, idx;
@@ -205,34 +226,7 @@ omegaType* newOmega(stocType* stoc) {
 	}
 
 	return omega;
-}//END newOmega()
-
-lambdaType* newLambda(double SigmaSize, probType** prob) {
-	lambdaType* lambda = NULL;
-	/* Assign memory to lambda structure which is the set of dual solutions we obtained so far. pi is related to equality constraints, mu2
-corresponds to upper bounds and mu3 corresponds to lower bounds */
-
-	lambda = (lambdaType*)mem_malloc(sizeof(lambdaType));
-	lambda->cnt = 0;
-	lambda->pi = (double**) arr_alloc(SigmaSize, double*);
-	lambda->umu = (double**) arr_alloc(SigmaSize, double*);
-	lambda->lmu = (double**) arr_alloc(SigmaSize, double*);
-	lambda->y =   (double**) arr_alloc(SigmaSize, double*);
-	lambda->pd = (Mat**) arr_alloc(SigmaSize, Mat*);
-	lambda->mubar = (double*)arr_alloc(SigmaSize, double*);
-
-	return lambda;
-}//END newLambda()
-
-sigmaType* newSigma(double SigmaSize, probType** prob ) {
-	sigmaType* sigma = NULL; /* Sigma is a collection of fixed parts of alpha and beta which is independent of the observation */
-	sigma = (sigmaType*)mem_malloc(sizeof(sigmaType));
-	sigma->vals = (pixbCType**) arr_alloc(SigmaSize, pixbCType*);
-	sigma->cnt = 0;
-	return sigma;
-}//END newSigma()
-
-
+}
 deltaType* newDelta(double SigmaSize, probType** prob , cellType* cell) {
 	deltaType* delta = NULL;
 	/* assign memory to deta structure, this will record the deltaAlpha and deltaBetha associated with each observation*/
@@ -297,17 +291,12 @@ void freeLambda(lambdaType* lambda) {
 			}
 			mem_free(lambda->y);
 		}
-
-
-		if (config.ALGOTYPE == 2) {
+		if (lambda->pd) {
 			for (int i = 0; i < lambda->cnt; i++) {
-				mem_free(lambda->pd[i]->entries);
-				mem_free(lambda->pd[i]);
+				freemat(lambda->pd[i]);
 			}
 			mem_free(lambda->pd);
 		}
-
-
 		if ( lambda->mubar ) mem_free(lambda->mubar);
 		mem_free(lambda);
 	}
@@ -322,11 +311,10 @@ void freeDelta(deltaType* delta, int numobs) {
 				if (delta->vals[i]) {
 					for (int j = 0; j < numobs; j++) {
 						freeLambdaDelta(delta->vals[i][j]);
-						if (config.ALGOTYPE == 2) {
-							mem_free(delta->dy[i][j]);
-							mem_free(delta->dmu[i][j]);
-							mem_free(delta->dnu[i][j]);
-						}
+
+						mem_free(delta->dy[i][j]);
+						mem_free(delta->dmu[i][j]);
+						mem_free(delta->dnu[i][j]);
 					}
 					mem_free(delta->vals[i]);
 					mem_free(delta->dy[i]);

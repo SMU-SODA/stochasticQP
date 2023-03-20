@@ -586,7 +586,7 @@ int readProblem(cString probpath, modelPtr **model) {
 	if( status ) {
 		solverErrMsg(status);
 	}
-	
+
 	return status;
 }// END readProblem()
 

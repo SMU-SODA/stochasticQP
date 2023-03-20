@@ -41,7 +41,7 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 
 	/* 2. Generate a subset */
 	omegaP = subsetGenerator(cell->omega->cnt);
-	double obj;
+
 	/* 3. loop through subset omegaP and solve the subproblems */
 	for (int obs = 0; obs < cell->omega->cnt; obs++) {
 		if ( omegaP[obs] ) {
@@ -62,28 +62,20 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 			/*3b. update sigma, lambda, and delta structures */
 			lambdaIdx = stocUpdateQP(cell, prob, soln, COmega, bOmega, uOmega, lOmega);
 
-
-
-
 			/*3c. Calculate observations specific coefficients. */
 			double* beta = (double*)arr_alloc(prob->num->prevCols + 1, double);
 			alpha = cell->sigma->vals[lambdaIdx]->alpha + cell->delta->vals[lambdaIdx][obs]->alpha;
-
 			for (int c = 1; c <= prob->num->cntCcols; c++)
 				beta[prob->coord->CCols[c]] += cell->sigma->vals[lambdaIdx]->beta[c];
-
-
 			for (int c = 1; c <= prob->num->rvCOmCnt; c++)
 				beta[prob->coord->rvCOmCols[c]] += cell->delta->vals[lambdaIdx][obs]->beta[c];
-			
+			double obj;
 			obj = getObjective(cell->subprob->model);
 #if defined(STOCH_CHECK)
 			//printf("Reconstructed objective function (exact)  = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
-			printf("Dif Exact = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols)-obj );
+		//	printf("Dif  = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols)-obj );
 #endif
-			if(abs(alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols) - obj) > 0.01){
-				printf("ERROR\n");
-			}
+
 			/*3d. Aggregate the cut coefficients by weighting by observation probability. */
 			cut->alpha += cell->omega->probs[obs] * alpha;
 			for (int c = 1; c <= prob->num->prevCols; c++) {
@@ -101,21 +93,18 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 
 			/* 4b. Calculate observations specific coefficients. */
 			double* beta = (double*)arr_alloc(prob->num->prevCols + 1, double);
-
 			alpha = cell->sigma->vals[lambdaIdx]->alpha + cell->delta->vals[lambdaIdx][obs]->alpha;
-
 			for (int c = 1; c <= prob->num->cntCcols; c++)
 				beta[prob->coord->CCols[c]] += cell->sigma->vals[lambdaIdx]->beta[c];
-
 			for (int c = 1; c <= prob->num->rvCOmCnt; c++)
 				beta[prob->coord->rvCOmCols[c]] += cell->delta->vals[lambdaIdx][obs]->beta[c];
 
 #if defined(STOCH_CHECK)
-			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0] ;
-			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1] ;
-			dOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[2] ;
-			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3] ;
-			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4] ;
+			bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0] - 1;
+			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1] - 1;
+			dOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[2] - 1;
+			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3] - 1;
+			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4] - 1;
 
 			/* 3a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
 			if (solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], bOmega, COmega, dOmega, lOmega, uOmega, soln)) {
@@ -123,7 +112,7 @@ oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 				goto TERMINATE;
 			}
 
-			printf("Dif Aprox = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols) - getObjective(cell->subprob->model));
+			//printf("Reconstructed objective function (approx) = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
 #endif
 
 			/* 4c. Aggregate the cut coefficients by weighting by observation probability. */

@@ -2,49 +2,45 @@
 #include "stdlib.h"
 #include "math.h"
 #include "stochasticQP.h"
+//include <lapacke.h>
+#include <stdio.h>
+
+
 
 void showmat(Mat* A) {
-	FILE* fptr = NULL;
-	fptr = openFile("C:\\Users\\Niloofar\\OutputFolder\\stochasticQP\\soda30\\", "mat1.txt", "w");
 	if (A->row > 0 && A->col > 0) {
 		int k = 0;
-		fprintf(fptr, "[");
+		printf("[");
 		for (int i = 1; i <= A->row; i++) {
-			fprintf(fptr, "[");
 			for (int j = 1; j <= A->col; j++) {
 				if (j < A->col) {
-					fprintf(fptr, "%f,", A->entries[k++]);
+					printf("%f\t", A->entries[k++]);
 				}
 				else {
-					fprintf(fptr, "%f]", A->entries[k++]);
+					printf("%f", A->entries[k++]);
 				}
 			}
 			if (i < A->row) {
-				fprintf(fptr, ",");
+				printf("\n");
 			}
 			else {
-				fprintf(fptr, "]\n");
+				printf("]\n");
 			}
 		}
-		fprintf(fptr, "\n");
+		printf("\n");
 	}
 	else {
-		fprintf(fptr, "[]");
+		printf("[]");
 	}
-
-	fclose(fptr);
 }
 
-Mat* newmat(int r,int c,double d){
-	Mat* M=(Mat*)malloc(sizeof(Mat));			
-	M->row=r;M->col=c;
-	M->entries=(double*)malloc(sizeof(double)*r*c);
-	int k=0;
-	for(int i=1;i<=M->row;i++){
-		for(int j=1;j<=M->col;j++){
-			M->entries[k++]=d;
-		}
-	}
+Mat* newmat(int r, int c, double d) {
+
+	Mat* M;
+	M = (Mat*)mem_malloc(sizeof(Mat));
+	M->row = r; M->col = c;
+	M->entries = (dVector) arr_alloc(r * c , double);
+
 	return M;
 }//END newmat()
 
@@ -108,16 +104,42 @@ Mat* scalermultiply(Mat* M, double c) {
 	return B;
 }
 Mat* sum(Mat* A, Mat* B) {
-	int r = A->row;
-	int c = A->col;
-	Mat* C = newmat(r, c, 0);
-	int k = 0;
-	for (int i = 0; i < r; i++) {
-		for (int j = 0; j < c; j++) {
-			C->entries[k] = A->entries[k] + B->entries[k];
-			k += 1;
-		}
-	}
+	Mat* C;
+	if(A->row == 0 || A->col==0){
+		int r = B->row;
+		int c = B->col;
+		C = newmat(r, c, 0);
+		int k = 0;
+		for (int i = 0; i < r; i++) {
+			for (int j = 0; j < c; j++) {
+				C->entries[k] = B->entries[k];
+				k += 1;
+			}
+		 }
+ 	  }
+	else 	if(B->row == 0 || B->col==0){
+		int r = A->row;
+		int c = A->col;
+		 C = newmat(r, c, 0);
+		int k = 0;
+		for (int i = 0; i < r; i++) {
+			for (int j = 0; j < c; j++) {
+				C->entries[k] = A->entries[k];
+				k += 1;
+			}
+		 }
+ 	  }
+	else {
+		int r = B->row;
+		int c = B->col;
+		 C = newmat(r, c, 0);
+		int k = 0;
+		for (int i = 0; i < r; i++) {
+			for (int j = 0; j < c; j++) {
+				C->entries[k] = B->entries[k] + A->entries[k];
+				k += 1;
+			}
+	    }}
 	return C;
 }
 Mat* minus(Mat* A, Mat* B) {
@@ -294,7 +316,7 @@ double det(Mat* M) {
 	for (int j = 1; j <= M->col; j++) {
 		double c = M->entries[j - 1];
 		removecol2(M1, M2, j);
-		if (c > 0.0001 || c < -0.0001) {
+		if (c > 0.001 || c < -0.001) {
 			d += si * det(M2) * c;
 		}
 		si *= -1;
@@ -332,14 +354,18 @@ Mat* adjoint(Mat* A) {
 }
 
 Mat* inverse(Mat* A) {
-	
-	double de = det(A);
-	Mat* B = adjoint(A);
+	//double de = det(A);
+	Mat* M ;
+	M = (Mat*)mem_malloc(sizeof(Mat));
+    M->col = A->col;
+    M->row = A->row;
+    M->entries = testLA(A->entries, A->col);
+	//Mat* C = scalermultiply(B, 1 / de);
+	//freemat(B);
+    //showmat(A);
+    //showmat(B);
 
-	Mat* C = scalermultiply(B, 1 / de);
-	freemat(B);
-
-	return C;
+	return M;
 }//END inverse()
 
 Mat* copyvalue(Mat* A) {
@@ -569,9 +595,9 @@ sparseMatrix* BuildHess(sparseMatrix* M) {
 	sparseMatrix* N;
 	N = (sparseMatrix*)mem_malloc(sizeof(sparseMatrix));
 	int elm = 1;
-	N->col = (iVector)arr_alloc(2 * M->cnt +1, int);
-	N->row = (iVector)arr_alloc(2 * M->cnt +1, int);
-	N->val = (dVector)arr_alloc(2 * M->cnt +1, double);
+	N->col = (int*)arr_alloc(2 * M->cnt +1, int);
+	N->row = (int*)arr_alloc(2 * M->cnt +1, int);
+	N->val = (double*)arr_alloc(2 * M->cnt +1, double);
 	for (int i = 1; i <= M->cnt; i++) {
 		N->row[elm] = M->row[i];
 		N->col[elm] = M->col[i];
@@ -589,5 +615,4 @@ sparseMatrix* BuildHess(sparseMatrix* M) {
 
 	}
 	N->cnt = elm - 1;
-	return N;
-}
+	return N;}
