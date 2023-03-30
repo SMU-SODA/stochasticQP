@@ -1,4 +1,4 @@
-#include "../stochasticQP.h"
+#include "stochasticQP.h"
 extern configType config;
 
 void pdas(solnType* soln , sparseMatrix* D, int* partition, sparseMatrix* Q, dVector coef , dVector Rhs , int cols , int rows , dVector Ubound , dVector Lbound){

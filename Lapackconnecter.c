@@ -4,10 +4,10 @@
  *  Created on: Jan 23, 2023
  *      Author: george
  */
-
+#include <lapack.h>
 #include <lapacke.h>
 #include <stdio.h>
-#include "utilities.h"
+#include "./solverUtilities/utilities.h"
 #include <math.h>
 
 
@@ -44,6 +44,7 @@ double* testLA (double* A , int S)
 	 //free(lapackWorkspace);
 	 return B;
 } /* End of LAPACKE_dgels Example */
+
 /* Auxiliary routine: printing a matrix */
 void print_matrix_rowmajor( char* desc, lapack_int m, lapack_int n, double* mat, lapack_int ldm ) {
         lapack_int i, j;

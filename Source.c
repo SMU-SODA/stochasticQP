@@ -7,7 +7,7 @@
 //#define _CRTDBG_MAP_ALLOC
 //#include "crtdbg.h"
 extern configType config;
-#include "utilities.h"
+#include "./solverUtilities/utilities.h"
 /* Building the cell for the 2-SQP algorithms */
 cellType* buildCell(probType** prob , stocType* stoc) {
 	cellType* cell;
