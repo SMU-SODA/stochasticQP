@@ -84,7 +84,6 @@ int RankLA( double* A , int m , int n) {
     double U[m*m], Vt[n*n], superb[m-1];
     lapack_int lda = n, ldu = m, ldvt = n, info;
 
-	    printf("Matrix A:\n");
 
 	    info = LAPACKE_dgesvd(LAPACK_ROW_MAJOR, 'S', 'S', m, n, A, lda, s, U, ldu, Vt, ldvt, superb);
 

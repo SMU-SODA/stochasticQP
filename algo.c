@@ -12,17 +12,22 @@
 #include "stochasticQP.h"
 
 extern configType config;
-
+double max(double a, double b) {
+    return (a > b) ? a : b;
+}
 int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
     double opteta = 0;
 
     double status = 0;
-    double quadcand = 0;
+    double candquad = 0;
     double quadincum = 0;
     double fxk = 0;
     double fxk1 = 0;
     double fwk = 0;
     double fwk1 = 0;
+
+    double eta = 0;
+
     cell->incumbEst = -INFINITY;
 	oneCut *cut = NULL;
 
@@ -59,6 +64,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 	incumbObj = vXv(temp1, cell->incumbX, index, prob[0]->num->cols) + vXvSparse( cell->incumbX , prob[0]->dBar);
 
     mem_free(temp1);
+
 	while (cell->obj - Tempobj > 0.001 || cell->numit < 35){
 		cell->numit++;
 
@@ -133,7 +139,8 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 		/* 3. Add the affine function to the master problem. */
 		/* 3a. Add cut to the set */
         cut->alphaIncumb =  cut->alpha - vXv(cut->beta , cell->incumbX, index, prob[0]->num->cols) ;		/* right-hand side when using QP master, this is useful for quick updates */
-		cell->cuts->vals[cell->cuts->cnt] = cut;
+
+        cell->cuts->vals[cell->cuts->cnt] = cut;
 
 		cell->cuts->vals[cell->cuts->cnt]->rowNum = prob[0]->num->rows + cell->cuts->cnt;
 		cell->cuts->cnt++;
@@ -153,6 +160,39 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 			return 1;
 		}
 #endif
+
+		/*Incumbent Update*/
+
+		/*if f^(k+1)(x^k+1) - f^(k+1)(w^k) <= gamma( f^k(x^k+1) - f^k(w^k) )*/
+
+
+         /*Calculate the quadratic part of objective function for x^(k+1)*/
+		if(prob[0]->sp->objQ != NULL){temp1 = vxMSparse(candidatesol , prob[0]->sp->objQ, prob[0]->num->cols);}
+			else{temp1 = (double*)arr_alloc(prob[0]->num->cols + 1 , double);}
+
+			candquad= vXv(temp1, candidatesol, index, prob[0]->num->cols) + vXvSparse( cell->incumbX , prob[0]->dBar);
+
+		    mem_free(temp1);
+
+
+		 if(cell->numit > 1){
+         GRBgetdblattrelement(cell->master->model, "X" ,prob[0]->num->cols , &eta);
+		  }
+
+		/* calculate f^(k)(x^k+1) */
+
+		  fxk = candquad +  eta;
+
+		/* calculate f^(k+1)(x^k+1) */
+
+		  fxk1 = candquad +  max(eta , cut->alpha - vXv(cut->beta , candidatesol , index, prob[0]->num->cols));
+
+		/* calculate f^(k+1)(w^k) */
+
+		/* calculate f^(k)(w^k) */
+
+
+
 
 		/* 4. Solve the master problem. */
 		StartMas = clock();

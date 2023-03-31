@@ -487,7 +487,7 @@ void pdas(solnType* soln , sparseMatrix* D, int* partition, sparseMatrix* Q, dVe
 												//showmat(Bmat);
 												if( RankLA( Bmat->entries , Bmat->row , (Bmat->col) ) == rows ){
 
-													printf("making active  aval ");
+													//printf("making active  aval ");
 													removeCol(TempDMI, i);
 
 
@@ -508,7 +508,7 @@ void pdas(solnType* soln , sparseMatrix* D, int* partition, sparseMatrix* Q, dVe
 												removeCol(Bmat, i);
 
 												if(RankLA( Bmat->entries , Bmat->row , Bmat->col ) == rows ){
-													printf("making active");
+													//printf("making active");
 													removeCol(TempDMI, i);
                                                   //  showmat(TempDMI);
 
