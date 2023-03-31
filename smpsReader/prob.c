@@ -144,6 +144,15 @@ probType **newProbwSMPS(cString inputDir, cString probName, stocType **stoc, int
 			k = m - tim->col[t];
 
 
+
+			prob[t]->uBar->val[prob[t]->uBar->cnt + 1] = orig->bdu[m];
+				prob[t]->uBar->col[prob[t]->uBar->cnt + 1] = m - tim->col[t] + 1;
+				prob[t]->uBar->cnt++;
+
+				prob[t]->lBar->val[prob[t]->lBar->cnt + 1] = orig->bdl[m];
+				prob[t]->lBar->col[prob[t]->lBar->cnt + 1] = m - tim->col[t] + 1;
+				prob[t]->lBar->cnt++;
+
 			prob[t]->dBar->val[prob[t]->dBar->cnt + 1] = orig->objx[m];
 			prob[t]->dBar->col[prob[t]->dBar->cnt + 1] = m - tim->col[t] + 1;
 			prob[t]->dBar->cnt++;

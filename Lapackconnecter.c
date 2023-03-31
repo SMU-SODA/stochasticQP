@@ -8,6 +8,7 @@
 #include <lapacke.h>
 #include <stdio.h>
 #include "utilities.h"
+#include <math.h>
 
 
 //double* testLA (double* A, int S);
@@ -74,4 +75,33 @@ void print_vector( char* desc, lapack_int n, lapack_int* vec ) {
         printf( "\n" );
 }
 
+int RankLA( double* A , int m , int n) {
 
+	   // Compute the SVD of A
+    // Compute the SVD of A
+    double s[m];
+    double U[m*m], Vt[n*n], superb[m-1];
+    lapack_int lda = n, ldu = m, ldvt = n, info;
+
+	    printf("Matrix A:\n");
+
+	    info = LAPACKE_dgesvd(LAPACK_ROW_MAJOR, 'S', 'S', m, n, A, lda, s, U, ldu, Vt, ldvt, superb);
+
+	    if (info > 0) {
+	        printf("SVD computation failed: the %d-th singular value did not converge.\n", info);
+	        exit(1);
+	    }
+	    // Compute the rank of A from the singular values
+	    int rank = 0;
+	    double tol = m * s[0] * DBL_EPSILON;  // threshold for small singular values
+	    for (int i = 0; i < m; i++) {
+	        if (s[i] > tol) {
+	            rank++;
+	        }
+	    }
+        if(rank < 7){
+	    printf("The rank of A is %d.\n", rank);}
+
+
+    return rank;
+}

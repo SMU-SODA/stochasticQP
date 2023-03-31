@@ -228,5 +228,9 @@ void freeConfig() {
 }//END freeConfig()
 
 
+double maxdouble(double a, double b) {
+    /* Returns the maximum of two double values */
+    return (a > b) ? a : b;
+}
 
 

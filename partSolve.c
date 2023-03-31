@@ -1,13 +1,16 @@
 #include "stochasticQP.h"
 extern configType config;
+
+
+
 oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset) {
+
 	double tol = 0.0000001;
 	double alpha;
 	int lambdaIdx;
 	int* index = (iVector)arr_alloc(prob->num->prevCols + 1, int);
 	clock_t Start;
 	clock_t End;
-
 
 	for (int i = 1; i <= prob->num->prevCols; i++) {
 		index[i] = i;
@@ -43,12 +46,10 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 	lOmega->col = prob->coord->rvylOmRows;
 
 	/* Structure to hold dual solutions */
-
 	bool* omegaP;
 
 	/* 1. define a new cut */
 	oneCut* cut = newCut(prob->num->cols);
-
 
 	/* 2. Generate a subset */
 	omegaP = subsetGenerator(cell->omega->cnt);
@@ -94,16 +95,13 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 			solnType* soln = buildSolnType(prob->num);
 
 			Start = clock();
-
 			/* 4a. Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
 			if (solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], bOmega, COmega, dOmega, lOmega, uOmega, soln)) {
 				errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 				goto TERMINATE;
 			}
-
 			End = clock();
 			cell->Tsub = cell->Tsub + (End - Start);
-
 
 			Start = clock();
 
@@ -151,7 +149,7 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 			mem_free(beta);
 			freeSolnType(soln);
 		}
-	}
+}
 
 	/* loop through the rest of the observations */
 	/* 4. loop through subset omegaP and use argmax on subproblems */
@@ -161,37 +159,88 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x, do
 			/* 4a. Identify the best dual using the argmax operation */
 
 			lambdaIdx = argmaxPart(cell, tol, prob, cell->sigma, cell->delta, cell->candidX, obs, prob->num->prevCols, index, &flag, deltax, dy, dld, dnu, dmu, bOmega, lOmega, uOmega);
-
+			dVector beta;
 			if (flag == 0) {
-				cell->IterPart = cell->numit;
-				printf("I have to solve\n");
 
 				bOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
 				COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
 				dOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[2];
 				uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
 				lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
-				solnType* soln = buildSolnType(prob->num);
-				Start = clock();
-				if (solveSubprob(prob, cell->subprob, cell->candidX, cell->omega->vals[obs], bOmega, COmega, dOmega, lOmega, uOmega, soln)) {
-					errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
-					goto TERMINATE;
-				}
-				End = clock();
-				cell->Tsub = cell->Tsub + (End - Start);
-				Start = clock();
-				StocUpdatePart(cell, prob, bOmega, COmega, lOmega, uOmega, soln, &lambdaIdx, dx, deltax, dy, dld, dnu, dmu);
-				End = clock();
-				cell->stochupdate = cell->stochupdate + (End - Start);
-				freeSolnType(soln);
-			    }
-			    double* beta = (double*)arr_alloc(prob->num->prevCols + 1, double);
+								dVector lStat, uStat;
+							dVector Rhs, costFull;
+											Rhs = computeRHS(prob->bBar, prob->Cbar , bOmega , COmega , cell->candidX , prob->num->rows);
 
-			alpha = cell->sigma->vals[lambdaIdx]->alpha + cell->delta->vals[lambdaIdx][obs]->alpha + deltax[lambdaIdx]->alpha; /*to do*/
-			for (int c = 1; c <= prob->num->prevCols; c++)
-				beta[c] += cell->sigma->vals[lambdaIdx]->beta[c];
-			for (int c = 1; c <= prob->num->prevCols; c++)
-				beta[c] += cell->delta->vals[lambdaIdx][obs]->beta[c] + deltax[lambdaIdx]->beta[c];
+										    costFull = expandVector(prob->dBar->val, prob->dBar->col, prob->dBar->cnt, prob->num->cols);
+
+										    for (int n = 1; n < dOmega->cnt; n++)
+											costFull[dOmega->col[n]] += dOmega->val[n];
+
+
+										    lStat = expandVector(prob->lBar->val, prob->lBar->col, prob->lBar->cnt, prob->num->cols);
+											if ( prob->num->rvylOmCnt > 0 ) {
+											for ( int n = 1; n <= lOmega->cnt; n++ ) {
+												lStat[lOmega->col[n]] += lOmega->val[n];
+											}
+											}
+											uStat = expandVector(prob->uBar->val, prob->uBar->col, prob->uBar->cnt, prob->num->cols);
+											if ( prob->num->rvyuOmCnt > 0 ) {
+											for ( int n = 1; n <= uOmega->cnt; n++ ) {
+												uStat[uOmega->col[n]] += uOmega->val[n];
+											}
+											}
+											solnType* soln = buildSolnType(prob->num);
+
+											int* index;
+											beta = (double*)arr_alloc(prob->num->prevCols + 1, double);
+											index = (int*) arr_alloc(prob->num->cols + 1, int);
+											for (int i = 1; i <= prob->num->cols; i++) {
+												index[i] = i;
+											}
+											double tempobj = 0;
+											double maxobj = -INFINITY;
+											double* tempbeta;
+											double temalpha = 0;
+											for(int j = 0; j < cell->sigma->cnt; j++){
+												double* tempbeta;
+											pdas(soln, prob->Dbar, cell->partition->part[j], prob->sp->objQ,  costFull ,  Rhs  , prob->num->cols , prob->num->rows , uStat , lStat);
+
+											            	dVector temp1 = vxMSparse(soln->y, prob->sp->objQ, prob->num->cols);
+											            	temalpha = -vXv(temp1, soln->y, index, prob->num->cols) +
+														vXvSparse(soln->pi, prob->bBar) + vXvSparse(soln->lmu, prob->lBar) - vXvSparse(soln->umu, prob->uBar) +
+															vXvSparse(soln->pi, bOmega) - vXvSparse(soln->umu, uOmega) + vXvSparse(soln->lmu, lOmega); /*TO DO: ybar and yund vals start from index 0*/
+												    		mem_free(temp1);
+
+
+												    		tempbeta = vxMSparse(soln->pi, prob->Cbar, prob->num->prevCols);
+														    tempobj = alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols);
+
+														if (tempobj > maxobj) {
+															maxobj = tempobj;
+
+															alpha = temalpha;
+															copyVector( tempbeta , beta , prob->num->prevCols );
+
+														}
+														mem_free(tempbeta);
+											}
+											 mem_free(index);
+													mem_free(lStat);
+													mem_free(uStat);
+													mem_free(costFull);
+													mem_free(Rhs);
+													freeSolnType(soln);
+										    }
+										    else{
+										    beta = (double*)arr_alloc(prob->num->prevCols + 1, double);
+
+									    	alpha = cell->sigma->vals[lambdaIdx]->alpha + cell->delta->vals[lambdaIdx][obs]->alpha + deltax[lambdaIdx]->alpha; /*to do*/
+											for (int c = 1; c <= prob->num->prevCols; c++)
+												beta[c] += cell->sigma->vals[lambdaIdx]->beta[c];
+											for (int c = 1; c <= prob->num->prevCols; c++)
+												beta[c] += cell->delta->vals[lambdaIdx][obs]->beta[c] + deltax[lambdaIdx]->beta[c];}
+
+
 
 			/* 4b. Calculate observations specific coefficients. */
 
@@ -270,7 +319,7 @@ TERMINATE:
 
 
 
-int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseMatrix* COmega, sparseVector* lOmega,
+void StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseMatrix* COmega, sparseVector* lOmega,
 	sparseVector* uOmega, solnType* soln, int* partIndx, dVector dx, pixbCType** deltax, double** dy, double** dld, double** dnu, double** dmu) {
 	int up = 0, inact = 0, low = 0; /*Number of variables on their bounds*/
 	bool newPartFlag = false;
@@ -289,42 +338,41 @@ int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseM
 		errMsg("solver", "AddtoPart", "failed to obtain variable upper bounds", 0);
 
 	}
-	double* Rhs = (dVector)arr_alloc(prob->num->rows + 1, double);
-	if (getDoubleAttributeArray(cell->subprob->model, "RHS", 0, prob->num->rows, Rhs + 1)) {
-		errMsg("solver", "AddtoPart", "failed to obtain variable RHS", 0);
+	//	double* Rhs = (dVector)arr_alloc(prob->num->rows + 1, double);
+	//	if (getDoubleAttributeArray(cell->subprob->model, "RHS", 0, prob->num->rows, Rhs + 1)) {
+	//		errMsg("solver", "AddtoPart", "failed to obtain variable RHS", 0);
+	//
+	//	}
+	//	double* coef = (dVector)arr_alloc(prob->num->cols + 1, double);
+	//	if (getDoubleAttributeArray(cell->subprob->model, "Obj", 0, prob->num->cols, coef + 1)) {
+	//		errMsg("solver", "AddtoPart", "failed to obtain variable COEFS COST", 0);
 
-	}
-	double* coef = (dVector)arr_alloc(prob->num->cols + 1, double);
-	if (getDoubleAttributeArray(cell->subprob->model, "Obj", 0, prob->num->cols, coef + 1)) {
-		errMsg("solver", "AddtoPart", "failed to obtain variable COEFS COST", 0);
-
-	}
 	/* 4b. Calculate the partition */
 	(*partIndx) = addtoPartition(prob, cell, uOmega, lOmega, soln, &newPartFlag, &up, &inact, &low, lStat, uStat);
 
-    int* partpdas;
-    int* partinit;
-    partinit = (int*)arr_alloc(prob->num->cols+1,int);
-    for(int i = 1; i<= prob->num->cols; i++){
-    	partinit[i] = cell->partition->part[(*partIndx)][i];
-    }
-    partinit[1] = 0;
-    partinit[2] = 2;
-    Mat* ypi = pdas(prob->Dbar, partinit, prob->sp->objQ,  coef ,  Rhs  , prob->num->cols ,prob->num->rows,uStat, lStat);
-    //mem_free(partpdas);
-    mem_free(Rhs);
-	mem_free(coef);
-	int elm= 0;
-	for(int i = 1; i <= prob->num->cols ; i++){
-		if(partinit[i]==0){
-			if(ypi->entries[elm]-soln->y[i]> config.TOLERANCE || ypi->entries[elm]-soln->y[i]< -config.TOLERANCE ){
-				printf("violation pdas");
-			}
-			elm++;
-		}
-	}
-	mem_free(partinit);
-	freemat(ypi);
+	//    int* partpdas;
+	//    int* partinit;
+	//    partinit = (int*)arr_alloc(prob->num->cols+1,int);
+	//    for(int i = 1; i<= prob->num->cols; i++){
+	//    	partinit[i] = cell->partition->part[(*partIndx)][i];
+	//    }
+	//    partinit[13] = 0;
+	//    //partinit[2] = 2;
+	//    Mat* ypi = pdas(prob->Dbar, partinit, prob->sp->objQ,  coef ,  Rhs  , prob->num->cols ,prob->num->rows,uStat, lStat);
+	//    mem_free(partpdas);
+	//    mem_free(Rhs);
+	//	mem_free(coef);
+	//	int elm= 0;
+	//	for(int i = 1; i <= prob->num->cols ; i++){
+	//		if(partinit[i]==0){
+	//			if(ypi->entries[elm]-soln->y[i]> config.TOLERANCE || ypi->entries[elm]-soln->y[i]< -config.TOLERANCE ){
+	//				printf("violation pdas");
+	//			}
+	//			elm++;
+	//		}
+	//	}
+	//	mem_free(partinit);
+	//	freemat(ypi);
 
 
 	if (inact < prob->num->rows) {
@@ -374,7 +422,7 @@ int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseM
 		freemat(T);
 	}
 	mem_free(lStat); mem_free(uStat);
-	return 0;
+
 }; //EndStocUpdatePart
 
 
@@ -471,22 +519,9 @@ int argmaxPart(cellType* cell, double tol, probType* prob, sigmaType* sigma, del
 		}
 	}
 
-
-
 	if (flag[0] == false) {
-		printf("nofeas");
+		//printf("nofeas");
 	}
-
-
-
-
-
-
-
-
-
-
-
 
 	return lambdaIdx;
 }//END argmax()
@@ -631,6 +666,5 @@ void AddtoDettaX(probType* prob, cellType* cell, pixbCType** delta, dVector delt
 
 
 }//END DelttaX()
-
 
 

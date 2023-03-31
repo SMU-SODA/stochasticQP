@@ -4,13 +4,15 @@
 #include "./smpsReader/prob.h"
 
 
-#undef WRITE_FILES
+#define WRITE_FILES
 #undef ALGO_CHECK
 #define STOCH_CHECK
 
 
-double* testLA (double* A , int S);
 
+
+double* testLA (double* A , int S);
+int RankLA( double* a , int m , int n );
 typedef enum {
 	FULL,
 	DUALLBASED,
@@ -32,7 +34,18 @@ typedef struct {
 	int row;
 	int col;
 }Mat;
-Mat* pdas(sparseMatrix* D, int* partition, sparseMatrix* Q, dVector coef , dVector Rhs  , int cols , int rows , dVector Ubound , dVector Lbound);
+
+
+typedef struct {
+	dVector y;
+	dVector pi;
+	dVector lmu;
+	dVector umu;
+	double  mubBar;
+} solnType;
+void pdas(solnType* soln ,sparseMatrix* D, int* partition, sparseMatrix* Q, dVector coef , dVector Rhs  , int cols , int rows , dVector Ubound , dVector Lbound);
+
+
 typedef struct {
 	int		cnt;					/* number of elements in the structure */
 	double* 	mubar;					
@@ -49,13 +62,7 @@ typedef struct {
 	dVector 	beta;	           	/* dVector pi x C */
 } pixbCType;
 
-typedef struct {
-	dVector y;
-	dVector pi;
-	dVector lmu;
-	dVector umu;
-	double  mubBar;
-} solnType;
+
 
 typedef struct {
 	int cnt;
@@ -103,7 +110,7 @@ typedef struct {
 	int		ck;					/* Iteration when the cut was generated */
 	double  alpha;              /* scalar value for the right-hand side */
 	dVector  beta;               /* coefficients of the master problems's primal variables */
-
+	double 	alphaIncumb;		/* right-hand side when using QP master, this is useful for quick updates */
 	// bool	isIncumb;			/* indicates if the cut is an incumbent cut */
 	// double alphaIncumb;		/* right-hand side when using QP master, this is useful for quick updates */
 
@@ -359,6 +366,7 @@ Mat* inverse(Mat* A);
 Mat* scalermultiply(Mat* M, double c);
 Mat* multiply(Mat* A, Mat* B);
 Mat* sum(Mat* A, Mat* B);
+Mat* copyvalue(Mat* A);
 void freemat(Mat* A);
 sparseMatrix* BuildHess(sparseMatrix* M);
 void CalC(int* part, sparseMatrix* Q, sparseMatrix* D , Mat** W, Mat** T, int low, int up, int inact , int rows , int cols );
@@ -373,7 +381,14 @@ void newDeltaSol(cellType* cell, int sigmaSize, int obsnum);
 Mat* adjoint(Mat* A);
 void removecol2(Mat* A, Mat* B, int c);
 void showmat(Mat* A);
-int StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseMatrix* COmega, sparseVector* lOmega,
-	sparseVector* uOmega, solnType* soln,  int* partIndx, dVector dx, pixbCType** deltax, double** dy, double** dld, double** dnu, double** dmu);
+void StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparseMatrix* COmega, sparseVector* lOmega,
+ 	sparseVector* uOmega, solnType* soln,  int* partIndx, dVector dx, pixbCType** deltax, double** dy, double** dld, double** dnu, double** dmu);
 
 void AddtoDettaX(probType* prob, cellType* cell, pixbCType** delta, dVector deltaX, int low, int up, int inact, int partindex, double** deltay, double** deltaLd, double** dnu, double** dmu);
+
+
+
+int changeQPrhs(probType *prob, cellType *cell, dVector xk);
+int changeQPbds(modelPtr* modle, int numCols, sparseVector* lbar, sparseVector* ubar, dVector xk);
+int changeQPcoef(modelPtr* model, probType* prob , int numCols, sparseVector* dBar, dVector xk);
+double maxdouble(double a, double b);

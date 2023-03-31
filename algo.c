@@ -25,7 +25,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 	cell->obj = -50000;
 
 	cell->k  = 0;
-	while (cell->obj - Tempobj > 0.001 ||  cell->numit < 5){
+	while (cell->obj - Tempobj > 0.001 ||  cell->numit < 50){
 		cell->numit++;
 
 		/* 1. Check optimality */
@@ -78,11 +78,17 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 		cell->cuts->vals[cell->cuts->cnt] = cut;
 		cell->cuts->cnt++;
 
+
+
+
 		/* 3b. Update the master problem by adding the cut*/
 		if ( addCut2Solver(cell->master->model, cut, prob[0]->num->cols) ) {
 			errMsg("solver", "fullSolve", "failed to add cut to the master problem", 0);
 			return 1;
 		}
+
+
+		/*update the master for ncumbent*/
 
 #if defined(WRITE_FILES)
 		char str[BLOCKSIZE];

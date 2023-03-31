@@ -1,7 +1,7 @@
 * This Power Generation Problem comes from J.L. Higle and S. Sen,
 * Stochastic Decomposition, Kluwer Academic Publishers 1996, who credit
-* F.V. Louveaux and Y. Smeers, “Optimal investment for electricity generation:
-* A stochastic model and a test problem”, in: Yu. Ermoliev and R.J-B Wets (eds.)
+* F.V. Louveaux and Y. Smeers, ï¿½Optimal investment for electricity generation:
+* A stochastic model and a test problemï¿½, in: Yu. Ermoliev and R.J-B Wets (eds.)
 * Numerical Techniques for Stochastic Optimization, Springer Verlag, 1988.
 *
 *23412345678  12345678  123456789012   12345678  123456789012
@@ -96,29 +96,17 @@ BOUNDS
   LO bnd       EQ4ND2       0.1
   LO bnd       EQ4ND3       0.1
 QUADOBJ
-    EQ1ND1       EQ1ND1             11.  
-    EQ1ND1       EQ1ND2             11.
-    EQ1ND1       EQ1ND3             11. 
-    EQ1ND2       EQ1ND2             11. 
-    EQ1ND2       EQ1ND3             11.  
+    EQ1ND1       EQ1ND1             11.   
+    EQ1ND2       EQ1ND2             11.  
     EQ1ND3       EQ1ND3             11.
-    EQ2ND1       EQ2ND1             11.  
-    EQ2ND1       EQ2ND2             11.
-    EQ2ND1       EQ2ND3             11. 
+    EQ2ND1       EQ2ND1             11.   
     EQ2ND2       EQ2ND2             11. 
-    EQ2ND2       EQ2ND3             11.  
     EQ2ND3       EQ2ND3             11.
     EQ3ND1       EQ3ND1             11.  
-    EQ3ND1       EQ3ND2             11.
-    EQ3ND1       EQ3ND3             11. 
     EQ3ND2       EQ3ND2             11. 
-    EQ3ND2       EQ3ND3             11.  
     EQ3ND3       EQ3ND3             11.
     EQ4ND1       EQ4ND1             11.  
-    EQ4ND1       EQ4ND2             11.
-    EQ4ND1       EQ4ND3             11. 
-    EQ4ND2       EQ4ND2             11. 
-    EQ4ND2       EQ4ND3             11.  
+    EQ4ND2       EQ4ND2             11.  
     EQ4ND3       EQ4ND3             11.
     PEN1         PEN1               11.
     PEN2         PEN2               11.

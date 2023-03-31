@@ -1,12 +1,12 @@
 #include "../stochasticQP.h"
 extern configType config;
 
-Mat* pdas(sparseMatrix* D, int* partition, sparseMatrix* Q, dVector coef , dVector Rhs , int cols , int rows , dVector Ubound , dVector Lbound){
-
+void pdas(solnType* soln , sparseMatrix* D, int* partition, sparseMatrix* Q, dVector coef , dVector Rhs , int cols , int rows , dVector Ubound , dVector Lbound){
 	int flage = 0;
 	int up;
 	int low;
 	int inact;
+	int * Tempcols;
 	sparseMatrix* H = BuildHess(Q);
 	Mat* M1;
 	Mat* M2;
@@ -34,6 +34,7 @@ Mat* pdas(sparseMatrix* D, int* partition, sparseMatrix* Q, dVector coef , dVect
 	Mat* DMU;
 	Mat* DML;
 	Mat* DMI;
+	Mat* TempDMI;
 	Mat* temp1;
 	Mat* temp2;
 	Mat* temp3;
@@ -45,6 +46,7 @@ Mat* pdas(sparseMatrix* D, int* partition, sparseMatrix* Q, dVector coef , dVect
 	Mat* temp7;
 	Mat* temp8 ;
 	Mat* munu ;
+	Mat* Bmat;
 	int* VPU;
 	int* VPL;
 	int* VDU;
@@ -85,6 +87,7 @@ Mat* pdas(sparseMatrix* D, int* partition, sparseMatrix* Q, dVector coef , dVect
 		DMU = transSparsM(D, cols, rows);
 		DML = transSparsM(D, cols, rows);
 		DMI = transSparsM(D, cols, rows);
+		TempDMI = transSparsM(D, cols, rows);
 
 		/*A. [QII , DMIT ; DMI , 0]*/
 
@@ -134,7 +137,7 @@ Mat* pdas(sparseMatrix* D, int* partition, sparseMatrix* Q, dVector coef , dVect
 		}
 
 		invM1 = inverse(M1);
-		// showmat(M1);
+		showmat(M1);
 		/* B. -[QIL ; DML] */
 
 		/*B1. DML*/
@@ -235,8 +238,7 @@ Mat* pdas(sparseMatrix* D, int* partition, sparseMatrix* Q, dVector coef , dVect
 		}
 		/* E. Calculate the right-hand side*/
 
-		temp1;
-		temp2;
+
 		temp1 = multiply(M2,M5);
 		temp2 = multiply(M3,M6);
 		temp3 = sum(temp1 , temp2);
@@ -434,28 +436,92 @@ Mat* pdas(sparseMatrix* D, int* partition, sparseMatrix* Q, dVector coef , dVect
 			}}
 
 
-		if(VDcntL + VDcntU + VPcntL + VPcntU != 0){
+		if(VDcntL + VDcntU  != 0){
 
-			//    	   int numExchg = minimum(VDcntL + VDcntU, VPcntL + VPcntU);
-			//
-			//    	   for ( int i = 0; i < numExcg; i++ ) {
-			//
-			//    	   }
+
 
 			/* Create a new partition*/
-			for(int i = 1; i <= VPcntL ; i++){
-				part[VPL[i]] = 1;
-			}
-			for(int i = 1; i <= VPcntU ; i++){
-				part[VPU[i]] = 2;
-			}
+//			for(int i = 1; i <= VPcntL ; i++){
+//				part[VPL[i]] = 1;
+//			}
+//			for(int i = 1; i <= VPcntU ; i++){
+//				part[VPU[i]] = 2;
+//			}
 			for(int i = 1; i <= VDcntL ; i++){
 				part[VDL[i]] = 0;
 			}
 			for(int i = 1; i <= VDcntU ; i++){
 				part[VDU[i]] = 0;
 			}
+			inact = 0;
+						for(int i = 1 ; i <= cols; i++){
+							if(part[i]==0){
+								inact++;
+							}
+						}
 
+						Tempcols = (int*) arr_alloc(inact + 1, int);
+
+						elm = 0;
+
+						for (int i = cols; i >= 1; i--) {
+							if (part[i] == 1 || part[i] == 2) {
+
+								removeCol(TempDMI, i);
+							}
+							else{
+								Tempcols[inact  - elm] = i;
+								elm++;
+							}
+						}
+
+									int flage2 = 0;
+
+									for(int j = 1; j <= VPcntL & flage2 != 1 ; j++){
+										for (int i = 1; i <= inact; i++){
+
+											if(Tempcols[i] == VPL[j]){
+
+												Bmat = copyvalue(TempDMI);
+												removeCol(Bmat, i);
+												showmat(Bmat);
+												if( RankLA( Bmat->entries , Bmat->row , (Bmat->col) ) == rows ){
+
+													printf("making active  aval ");
+													removeCol(TempDMI, i);
+
+
+													part[VPL[j]] = 1;
+													flage2 = 1;
+												}
+												freemat(Bmat);
+												break;
+											}
+										}
+									}
+
+									for(int j = 1; j <= VPcntU & flage2 != 1 ; j++){
+										for (int i = 1; i <= inact; i++){
+											if(Tempcols[i] == VPU[j]){
+
+												Bmat = copyvalue(TempDMI);
+												removeCol(Bmat, i);
+
+												if(RankLA( Bmat->entries , Bmat->row , Bmat->col ) == rows ){
+													printf("making active");
+													removeCol(TempDMI, i);
+                                                    showmat(TempDMI);
+
+													part[VPU[j]] = 2;
+													flage2 = 1;
+												}
+												freemat(Bmat);
+												break;
+											}
+
+										}
+									}
+									mem_free(Tempcols);
 			freemat(M1);freemat(M2);freemat(M3);freemat(M4);freemat(M5);freemat(M6);freemat(M7);freemat(M8);
 			freemat(M9);freemat(M10);
 			freemat(DMLT);
@@ -482,6 +548,53 @@ Mat* pdas(sparseMatrix* D, int* partition, sparseMatrix* Q, dVector coef , dVect
 		}
 		else {flage = 1;}
 	}
+	int cnt = 0;
+		for (int i = 1; i <= cols; i++) {
+
+			if (part[i] == 2) {
+
+				soln->y[i] = Ubound[i];
+			}
+			if (part[i] == 1) {
+
+				soln->y[i] = Lbound[i];
+			}
+			if (part[i] == 0) {
+
+				soln->y[i] = ypi->entries[cnt];
+				cnt++;
+			}
+		}
+
+		/* D.2. Place pibar in lambda */
+		copyVector(ypi->entries + inact, soln->pi + 1, rows - 1);
+
+		/* D.3. Place nu in lambda */
+
+		cnt = 0;
+		for (int i = 1; i <= cols; i++) {
+			if (part[i] == 0 || part[i] == 2) {
+				soln->lmu[i] = 0;
+			}
+			if (part[i] == 1) {
+				soln->lmu[i] = munu->entries[ cnt];
+				cnt++;
+			}
+		}
+		/* D.4. Place mu in lambda */
+
+		cnt = 0;
+		for (int i = 1; i <= cols; i++) {
+			if (part[i] == 0 || part[i] == 1) {
+				soln->umu[i] = 0;
+			}
+			if (part[i] == 2) {
+				soln->umu[i] = munu->entries[low + cnt];
+				cnt++;
+			}
+		}
+
+
 	freemat(M1);freemat(M2);freemat(M3);freemat(M4);freemat(M5);freemat(M6);freemat(M7);freemat(M8);
 	freemat(M9);freemat(M10);
 	freemat(DMLT);
@@ -507,6 +620,6 @@ Mat* pdas(sparseMatrix* D, int* partition, sparseMatrix* Q, dVector coef , dVect
 	mem_free(VDL);           mem_free(VDU);
 	freeSparseMatrix(H);
 	mem_free(part);
-	return ypi;
+
 
 }
