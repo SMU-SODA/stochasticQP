@@ -107,9 +107,9 @@ int addtoLambda(lambdaType* lambda, solnType *dual, int numRows, int numCols, bo
 	if ( idx == lambda->cnt ) {
 		/* TODO: New lambda discovered */
 		(*newLambdaFlag) = true;
-		lambda->pi[lambda->cnt]  = duplicVector(dual->pi, numRows+1);
-		lambda->umu[lambda->cnt] = duplicVector(dual->umu, numCols+1);
-		lambda->lmu[lambda->cnt] = duplicVector(dual->lmu, numCols+1);
+		lambda->pi[lambda->cnt]  = duplicVector(dual->pi, numRows);
+		lambda->umu[lambda->cnt] = duplicVector(dual->umu, numCols);
+		lambda->lmu[lambda->cnt] = duplicVector(dual->lmu, numCols);
 		lambda->cnt++;
 	}
 	return idx;
@@ -312,9 +312,11 @@ void freeDelta(deltaType* delta, int numobs) {
 					for (int j = 0; j < numobs; j++) {
 						freeLambdaDelta(delta->vals[i][j]);
 
-						mem_free(delta->dy[i][j]);
-						mem_free(delta->dmu[i][j]);
-						mem_free(delta->dnu[i][j]);
+						if (config.ALGOTYPE == 2) {
+											mem_free(delta->dy[i][j]);
+											mem_free(delta->dmu[i][j]);
+											mem_free(delta->dnu[i][j]);
+										}
 					}
 					mem_free(delta->vals[i]);
 					mem_free(delta->dy[i]);

@@ -25,7 +25,6 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
     double fxk1 = 0;
     double fwk = 0;
     double fwk1 = 0;
-
     double eta = 0;
 
     cell->incumbEst = -INFINITY;
@@ -94,9 +93,21 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 			break;
 
 		case 1:
+
+			if(cell->numit > 1){
+						for (int i = 1; i <= prob[0]->num->cols; i++) {
+										candidatesol[i] = cell->candidX[i] + cell->incumbX[i] ;
+									}
+					}
+					else{for (int i = 1; i <= prob[0]->num->cols; i++) {
+						candidatesol[i] = cell->candidX[i]  ;
+					}
+					}
 			StartCut = clock();
-			cut = dualSolve(prob[1], cell, stoc, cell->candidX, subset);
+
+			cut = dualSolve(prob[1], cell, stoc, candidatesol, subset);
 			EndCut = clock();
+
 			cell->Tcut = cell->Tcut + (EndCut - StartCut);
 			if (cut == NULL) {
 				errMsg("algorithm", "runAlgo", "failed to create the cut using dual solve", 0);
