@@ -65,7 +65,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 
     mem_free(temp1);
 
-	while (cell->obj - Tempobj > 0.001 || cell->numit < 35){
+	while (cell->obj - Tempobj > 0.001 || cell->numit < 60){
 		cell->numit++;
 
 		/* 1. Check optimality */
@@ -188,11 +188,33 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 		  fxk1 = candquad +  max(eta , cut->alpha - vXv(cut->beta , candidatesol , index, prob[0]->num->cols));
 
 		/* calculate f^(k+1)(w^k) */
+		  cell->incumbEst = cut->alpha - vXv(cut->beta , cell->incumbX , index, prob[0]->num->cols);
+		  fwk = incumbObj +  cell->incumbEst;
 
 		/* calculate f^(k)(w^k) */
 
+		  cell->incumbEst = max(cell->incumbEst , cut->alpha - vXv(cut->beta , cell->incumbX , index, prob[0]->num->cols));
+		  fwk1 = incumbObj +  cell->incumbEst;
 
+			 if(cell->numit > 1){
+	         if(fxk1 - fwk1 <= 0.1*(fxk - fwk))
+	         {
+	        	 /*update the incumbent*/
+	        		for (int i = 1; i <= prob[0]->num->cols; i++) {
 
+	        			cell->incumbX[i]=cell->candidX[i];
+	        		}
+	        		changeQPrhs(prob[0], cell, cell->incumbX);
+	        		changeQPbds(cell->master->model , prob[0]->num->cols , prob[0]->lBar, prob[0]->uBar, cell->incumbX);
+	        		changeQPcoef(cell->master->model , prob[0] ,  prob[0]->num->cols , prob[0]->dBar,  cell->incumbX);
+	        		if(prob[0]->sp->objQ != NULL){temp1 = vxMSparse(cell->incumbX, prob[0]->sp->objQ, prob[0]->num->cols);}
+	        		else{temp1 = (double*)arr_alloc(prob[0]->num->cols + 1 , double);}
+	        		incumbObj = vXv(temp1, cell->incumbX, index, prob[0]->num->cols) + vXvSparse( cell->incumbX , prob[0]->dBar);
+	        	    mem_free(temp1);
+	        	    cell->incumbEst = fxk1;
+	        	    printf(" Incumbent updated\n ");
+	         }
+			  }
 
 		/* 4. Solve the master problem. */
 		StartMas = clock();

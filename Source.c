@@ -488,13 +488,13 @@ oneProblem *newMaster(oneProblem *probSP) {
 			flag = 0;
 		for (int i = 1; i <= stage0->objQ->cnt; i++) {
 	        if(stage0->objQ->row[i ] == j && stage0->objQ->col[i] == j){
-	        	stage0->objQ->val[i] = stage0->objQ->val[i] + 0.0001; //sigma
+	        	stage0->objQ->val[i] = stage0->objQ->val[i] + 0.00001; //sigma
 	        	flag = 1;
 	        }
 		}
 		if(flag == 0){
 			stage0->objQ->cnt = stage0->objQ->cnt + 1;
-			stage0->objQ->val[stage0->objQ->cnt] = 0.0001;
+			stage0->objQ->val[stage0->objQ->cnt] = 0.00001;
 			stage0->objQ->col[stage0->objQ->cnt] = j;
 			stage0->objQ->row[stage0->objQ->cnt] = j;
 		}

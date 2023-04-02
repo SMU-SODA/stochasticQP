@@ -65,7 +65,7 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x,dou
 	/* calculate delta x*/
 	dVector dx = (double*)arr_alloc(prob->num->prevCols + 1, double);
 	for (int i = 1; i <= prob->num->prevCols; i++) {
-		dx[i] = meanx[i] - cell->incumbX[i];
+		dx[i] = x[i] - meanx[i] ;
 	}
 	int size = 1000;
 	double** dnu;
