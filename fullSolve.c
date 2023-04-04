@@ -76,7 +76,6 @@ oneCut* fullSolveCut(probType* prob, cellType* cell, stocType* stoch, double* x)
 
 		double* dbeta = vxMSparse(dual->pi, COmega, prob->num->prevCols);
 
-
 		if (prob->num->rvCOmCnt > 0) {
 			dbeta = vxMSparse(dual->pi, COmega, prob->num->prevCols);
 

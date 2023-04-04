@@ -16,7 +16,15 @@ double max(double a, double b) {
     return (a > b) ? a : b;
 }
 int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
-    double opteta = 0;
+
+	FILE* fptr = NULL;
+	cString outputDir = "/home/george/Documents/workspace/stochasticQP/instances_QP/";
+	fptr = openFile(outputDir, "fullsolvebounds.csv", "w");
+	fprintf(fptr,"Iteration Num ,Lower bound , Upper bound \n ");
+
+	/*This function reads the problem and decomposes that into stages.*/
+
+
 
     double status = 0;
     double candquad = 0;
@@ -64,7 +72,9 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 
     mem_free(temp1);
 
-	while (cell->obj - Tempobj > 0.001 || cell->numit < 60){
+	while ( (double) (fxk1-fxk)/ (double) fxk1 > 0.0001 || cell->numit < 5){
+
+
 		cell->numit++;
 
 		/* 1. Check optimality */
@@ -74,7 +84,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 		case 0:
 			if(cell->numit > 1){
 				for (int i = 1; i <= prob[0]->num->cols; i++) {
-								candidatesol[i] = cell->candidX[i] + cell->incumbX[i] ;
+								candidatesol[i] = cell->candidX[i] + cell->incumbX[i];
 							}
 			}
 			else{for (int i = 1; i <= prob[0]->num->cols; i++) {
@@ -181,14 +191,12 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 		if(prob[0]->sp->objQ != NULL){temp1 = vxMSparse(candidatesol , prob[0]->sp->objQ, prob[0]->num->cols);}
 			else{temp1 = (double*)arr_alloc(prob[0]->num->cols + 1 , double);}
 
-			candquad= vXv(temp1, candidatesol, index, prob[0]->num->cols) + vXvSparse( cell->incumbX , prob[0]->dBar);
+			candquad= vXv(temp1, candidatesol, index, prob[0]->num->cols) + vXvSparse( candidatesol , prob[0]->dBar);
 
 		    mem_free(temp1);
 
 
-		 if(cell->numit > 1){
-         GRBgetdblattrelement(cell->master->model, "X" ,prob[0]->num->cols , &eta);
-		  }
+
 
 		/* calculate f^(k)(x^k+1) */
 
@@ -197,6 +205,9 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 		/* calculate f^(k+1)(x^k+1) */
 
 		  fxk1 = candquad +  max(eta , cut->alpha - vXv(cut->beta , candidatesol , index, prob[0]->num->cols));
+
+		  fprintf(fptr, "%d, %f, %f  \n", cell->numit, fxk, fxk1);
+
 
 		/* calculate f^(k+1)(w^k) */
 		  cell->incumbEst = cut->alpha - vXv(cut->beta , cell->incumbX , index, prob[0]->num->cols);
@@ -235,6 +246,9 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 		}
 		EndMas = clock();
 		cell->Tmas = cell->Tmas + (EndMas - StartMas);
+		 if(cell->numit > 1){
+        GRBgetdblattrelement(cell->master->model, "X" ,prob[0]->num->cols , &eta);
+		  }
 
 #if defined(ALGO_CHECK)
 		printf("\tObjective function value = %lf\n", getObjective(cell->master->model));
@@ -247,7 +261,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 			return 1;
 		}
 	}
-
+	fclose(fptr);
 	return 0;
 
 	TERMINATE:

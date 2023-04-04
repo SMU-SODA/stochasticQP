@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
 	/* set up output directory: using the outputDir in config file and the input problem name */
 	createOutputDir(outputDir, "stochasticQP", probname);
 	// opening file in writing mode
-	fptr = openFile(outputDir, "PartSolveprox.csv", "w");
+	fptr = openFile(outputDir, "fullprox300.csv", "w");
 	fprintf(fptr, "Iterations , Part iteration ,Objective function , Master time, Subproblem time, Cut time , Total time\n ");
 	/*This function reads the problem and decomposes that into stages.*/
 	
