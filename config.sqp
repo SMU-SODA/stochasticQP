@@ -20,7 +20,7 @@ SAA 1
 MAX_OBS 600
 
 // A fraction (0,1] to determine what fraction of samples are solved
-SAMPLE_FRACTION 1
+SAMPLE_FRACTION 0.1
 
 // Run seeds
 RUN_SEED    3554548844580680

@@ -364,7 +364,8 @@ double getObjective ( modelPtr *model ) {
 	return objval;
 }//END getObjective()
 
-/* Obtain the primal solution vector. */
+/* Obtain the primal solution vector */
+
 int getPrimal ( modelPtr *model, double *X, int start, int len ) {
 	int status;
 

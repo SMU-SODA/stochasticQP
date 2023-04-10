@@ -3,7 +3,7 @@ extern configType config;
 
 
 
-oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x,double* meanx, double solveset) {
+oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x,double* meanx, double solveset , confidType* conf) {
 
 	double tol = 0.0000001;
 	double alpha;
@@ -73,6 +73,8 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x,dou
 	double** dy;
 	double** dld;
 	double test = 0;
+	double* data = (double*)arr_alloc(cell->omega->cnt, double);
+	int n = 0;
 	pixbCType** deltax; /*size has to be fixed- FREE*/
 	dnu = (double**)arr_alloc(size, double*); /*size has to be fixed- FREE*/;
 	dmu = (double**)arr_alloc(size, double*); /*size has to be fixed- FREE*/;
@@ -100,6 +102,10 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x,dou
 				errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 				goto TERMINATE;
 			}
+
+
+
+
 			End = clock();
 			cell->Tsub = cell->Tsub + (End - Start);
 
@@ -109,7 +115,7 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x,dou
 
 			End = clock();
 
-			cell->stochupdate = cell->stochupdate + (End - Start)/ CLOCKS_PER_SEC;
+			cell->stochupdate = cell->stochupdate + (End - Start);
 			//printf("\n %f", cell->stochupdate );
 
 			/*4b. Calculate observations specific coefficients. */
@@ -136,9 +142,11 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x,dou
 
 			double obj;
 			obj = getObjective(cell->subprob->model);
+			data[n] = obj;
+			n = n + 1;
 #if defined(STOCH_CHECK)
 			//printf("Reconstructed objective function (exact)  = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols));
-			//printf("Dif  = %lf\n", alpha - vXv(cell->candidX, beta, NULL, prob->num->prevCols)-obj );
+			//printf("obj  = %lf\n", obj );
 #endif
 
 			/* 4c. Aggregate the cut coefficients by weighting by observation probability. */
@@ -150,6 +158,8 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x,dou
 			freeSolnType(soln);
 		}
 }
+
+	calculateSampleStats(data,  n , conf) ;
 
 	/* loop through the rest of the observations */
 	/* 4. loop through subset omegaP and use argmax on subproblems */
@@ -299,6 +309,7 @@ oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x,dou
 	mem_free(dmu);
 	mem_free(dy);
 	mem_free(dld);
+	mem_free(data);
 
 
 
@@ -383,6 +394,7 @@ void StocUpdatePart(cellType* cell, probType* prob, sparseVector* bOmega, sparse
 	/* 4d. Store the fixed parts of current partition if needed*/
 
 	if (newPartFlag) {
+		cell->IterPart = cell->numit ;
 
 		/* 4d.1 Extract the WT matrices*/
 		CalC(cell->partition->part[(*partIndx)], prob->sp->objQ, prob->Dbar, &W, &T, low, up, inact , prob->num->rows ,  prob->num->cols);

@@ -616,3 +616,4 @@ sparseMatrix* BuildHess(sparseMatrix* M) {
 	}
 	N->cnt = elm - 1;
 	return N;}
+

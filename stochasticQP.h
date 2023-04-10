@@ -6,7 +6,7 @@
 
 #define WRITE_FILES
 #undef ALGO_CHECK
-#define STOCH_CHECK
+#undef STOCH_CHECK
 
 
 
@@ -43,8 +43,15 @@ typedef struct {
 	dVector umu;
 	double  mubBar;
 } solnType;
-void pdas(solnType* soln ,sparseMatrix* D, int* partition, sparseMatrix* Q, dVector coef , dVector Rhs  , int cols , int rows , dVector Ubound , dVector Lbound);
 
+typedef struct {
+    double l;
+    double u;
+    double alpha;
+} confidType;
+
+void pdas(solnType* soln ,sparseMatrix* D, int* partition, sparseMatrix* Q, dVector coef , dVector Rhs  , int cols , int rows , dVector Ubound , dVector Lbound);
+void calculateSampleStats(double *data, int n , confidType* conf);
 
 typedef struct {
 	int		cnt;					/* number of elements in the structure */
@@ -304,7 +311,7 @@ void freeSigma(sigmaType* sigma);
 void freeLambda(lambdaType* lambda);
 void freeDelta(deltaType *delta , int numobs);
 void freePartition(PartitionType* partition);
-oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset);
+oneCut* dualSolve(probType* prob, cellType* cell, stocType* stoch, double* x, double solveset , confidType* conf);
 int solveSubprobdual(probType* prob, oneProblem* subproblem, dVector Xvect, dVector obsVals, dVector piS, double*,double* mu2, double* mu3);
 int calcSigma(sigmaType* sigma, cellType* cell  ,probType** prob, dVector pi, dVector mu2, dVector mu3 , sparseVector* bOmega, sparseMatrix* COmega,
 		sparseVector* yuOmega , int obs);
@@ -339,7 +346,7 @@ int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* C
 		sparseVector* uOmega, sparseVector* lOmega);
 void PartCalc(solnType* sol, dVector yund, dVector ybar, int numc, int* part, int* up, int* inact, int* low);
 PartitionType *newPartition(int Partsize);
-oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x,double* meanx, double solveset);
+oneCut* partSolve(probType* prob, cellType* cell, stocType* stoch, double* x,double* meanx, double solveset , confidType* conf);
 int addtoPartition(probType* prob, cellType* cell, sparseVector* uOmega, sparseVector* lOmega, solnType* soln,
 	bool* flag, int* up, int* inact, int* low,  dVector lStat, dVector uStat);
 void newSolSet(int Partsize, probType* prob, cellType* cell);

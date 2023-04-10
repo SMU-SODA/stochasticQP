@@ -495,9 +495,8 @@ oneProblem *newMaster(oneProblem *probSP) {
 		if(flag == 0){
 			stage0->objQ->cnt = stage0->objQ->cnt + 1;
 			stage0->objQ->val[stage0->objQ->cnt] = 0.00001;
-			stage0->objQ->col[stage0->objQ->cnt] = j;
-			stage0->objQ->row[stage0->objQ->cnt] = j;
-		}
+			stage0->objQ->col[stage0->objQ->cnt] = j ;
+			stage0->objQ->row[stage0->objQ->cnt] = j;}
 		}
 
 
@@ -630,7 +629,6 @@ int stocUpdateQP(cellType* cell, probType* prob, solnType* dual, sparseMatrix* C
 			COmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
 			uOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[3];
 			lOmega->val = cell->omega->vals[obs] + prob->coord->rvOffset[4];
-
 			addtoDelta(cell, prob, COmega, bOmega, uOmega, lOmega, obs, lambdaIdx);
 		}
 

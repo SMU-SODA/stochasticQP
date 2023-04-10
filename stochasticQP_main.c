@@ -24,19 +24,23 @@ int main(int argc, char* argv[]) {
 	parseCmdLine(argc, argv, &probname, &inputDir);
 
 	/* read algorithm configuration file */
+
 #if _WIN64
 	strcpy(configFile, "C:\\Users\\Niloofar\\source\\repos\\stochasticQP\\config.sqp");
 #else
+
 	strcpy(configFile, "./config.sqp");
+
 #endif
+
 	if (readConfig(configFile))
 		goto TERMINATE;
 
 	/* set up output directory: using the outputDir in config file and the input problem name */
 	createOutputDir(outputDir, "stochasticQP", probname);
 	// opening file in writing mode
-	fptr = openFile(outputDir, "fullprox300.csv", "w");
-	fprintf(fptr, "Iterations , Part iteration ,Objective function , Master time, Subproblem time, Cut time , Total time\n ");
+	fptr = openFile(outputDir, "partsigma.csv", "w");
+	fprintf(fptr, "Iterations , Part iteration ,Objective function , Master time, Subproblem time, Cut time , UPdateTime , Total time\n ");
 	/*This function reads the problem and decomposes that into stages.*/
 	
 	prob = newProbwSMPS(inputDir, probname, &stoch, &numStages);
@@ -49,6 +53,7 @@ int main(int argc, char* argv[]) {
 	for (int i = 0; i < 30; i++) {
 		config.RUN_SEED[0] = config.RUN_SEED[1 + i];
 		start = clock();
+
 	/*Build the algorithm cell..*/
 
 	cell = buildCell(prob, stoch);
@@ -64,7 +69,7 @@ int main(int argc, char* argv[]) {
 	    end = clock();
 	cell->Totaltime = (end - start);
 
-	fprintf(fptr, "%d, %d, %f, %f , %f , %f , %f \n", cell->numit, cell->IterPart, cell->obj, cell->Tmas / CLOCKS_PER_SEC , cell->Tsub / CLOCKS_PER_SEC , cell->Tcut / CLOCKS_PER_SEC , cell->Totaltime / CLOCKS_PER_SEC);
+	fprintf(fptr, "%d, %d, %f, %f , %f , %f , %f , %f \n", cell->numit, cell->IterPart, cell->obj, cell->Tmas / CLOCKS_PER_SEC , cell->Tsub / CLOCKS_PER_SEC , cell->Tcut / CLOCKS_PER_SEC , cell->stochupdate / CLOCKS_PER_SEC , cell->Totaltime / CLOCKS_PER_SEC);
 	
 	/* Free all the structures */
 	if (cell) freeCellType(cell);

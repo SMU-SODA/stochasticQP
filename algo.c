@@ -25,7 +25,6 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 	/*This function reads the problem and decomposes that into stages.*/
 
 
-
     double status = 0;
     double candquad = 0;
     double quadincum = 0;
@@ -34,6 +33,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
     double fwk = 0;
     double fwk1 = 0;
     double eta = 0;
+    double pterm    = 0;
 
     cell->incumbEst = -INFINITY;
 	oneCut *cut = NULL;
@@ -71,9 +71,15 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 	incumbObj = vXv(temp1, cell->incumbX, index, prob[0]->num->cols) + vXvSparse( cell->incumbX , prob[0]->dBar);
 
     mem_free(temp1);
+    confidType* conf = (confidType*)mem_malloc(sizeof(confidType));
 
-	while ( (double) (fxk1-fxk)/ (double) fxk1 > 0.0001 || cell->numit < 5){
+    conf->u = 0;
+    double pfxk1 = 0;
 
+
+	//while ( (double) (fxk1-fxk)/ (double) fxk1 > 0.0001 || cell->numit < 5){
+    //while ( (double) (pfxk1 - fxk)/ (double) fxk1 > 0.0001 || cell->numit < 5){
+    	while (cell->obj - Tempobj > 0.001 ||  cell->numit < 50){
 
 		cell->numit++;
 
@@ -110,12 +116,12 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 									}
 					}
 					else{for (int i = 1; i <= prob[0]->num->cols; i++) {
-						candidatesol[i] = cell->candidX[i]  ;
+						candidatesol[i] = cell->candidX[i] ;
 					}
 					}
 			StartCut = clock();
 
-			cut = dualSolve(prob[1], cell, stoc, candidatesol, subset);
+			cut = dualSolve(prob[1], cell, stoc, candidatesol, subset,  conf);
 			EndCut = clock();
 
 			cell->Tcut = cell->Tcut + (EndCut - StartCut);
@@ -137,9 +143,10 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 			}}
 
 			StartCut = clock();
-			cut = partSolve(prob[1],  cell,  stoc, candidatesol, meanx, subset);
+			cut = partSolve(prob[1],  cell,  stoc, candidatesol, meanx, subset, conf);
 			EndCut = clock();
 			cell->Tcut = cell->Tcut + (EndCut - StartCut);
+			if(cell->numit == 1){}
 			//printf("\n %f", ((EndCut - StartCut)/ CLOCKS_PER_SEC));
 			//printf("\n %f", cell->Tcut  / CLOCKS_PER_SEC);
 			if (cut == NULL) {
@@ -206,7 +213,8 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 
 		  fxk1 = candquad +  max(eta , cut->alpha - vXv(cut->beta , candidatesol , index, prob[0]->num->cols));
 
-		  fprintf(fptr, "%d, %f, %f  \n", cell->numit, fxk, fxk1);
+		  pfxk1 = candquad + conf->u;
+
 
 
 		/* calculate f^(k+1)(w^k) */
@@ -219,7 +227,7 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 		  fwk1 = incumbObj +  cell->incumbEst;
 
 			 if(cell->numit > 1){
-	         if(fxk1 - fwk1 <= 0.1*(fxk - fwk))
+	         if(fxk1 - fwk1 <= 0.2*(fxk - fwk))
 	         {
 	        	 /*update the incumbent*/
 	        		for (int i = 1; i <= prob[0]->num->cols; i++) {
@@ -254,14 +262,25 @@ int runAlgo (probType **prob, stocType *stoc, cellType* cell) {
 		printf("\tObjective function value = %lf\n", getObjective(cell->master->model));
 #endif
 		Tempobj = cell->obj;
-		printf("\t%d: Objective function value = %lf\n", cell->numit, getObjective(cell->master->model) + incumbObj);
-		cell->obj = getObjective(cell->master->model) + incumbObj;
+
+
 		if (getPrimal(cell->master->model, cell->candidX, 0, prob[0]->num->cols) ) {
 			errMsg("solver", "fullSolve", "failed to obtain the candidate solution", 0);
 			return 1;
 		}
+
+		pterm = 0;
+
+		for(int i= 1; i<= prob[0]->num->cols ; i++){
+		pterm = pterm + cell->candidX[i]*cell->candidX[i];
+        }
+		cell->obj = getObjective(cell->master->model) + incumbObj - 0.00002* pterm;
+
+		printf("\t%d: Objective function value = %lf\n", cell->numit, getObjective(cell->master->model) + incumbObj - 0.00002* pterm );
+
 	}
 	fclose(fptr);
+	mem_free(conf);
 	return 0;
 
 	TERMINATE:
